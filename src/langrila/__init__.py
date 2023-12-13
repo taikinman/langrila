@@ -9,6 +9,7 @@ from .chat_module.function_calling import (
 )
 from .embedding.openai import OpenAIEmbeddingModule
 from .memory.json import JSONConversationMemory
+from .memory.cosmos import CosmosConversationMemory
 from .message import Message
 from .prompt_template import PromptTemplate
 from .usage import Usage
