@@ -234,6 +234,28 @@ response.model_dump()
   {'role': 'user', 'content': 'What does he think about Tifa?'}]}
 ```
 
+## Conversation memory with Cosmos DB
+
+```python
+from langrila import CosmosConversationMemory
+
+chat = OpenAIChatModule(
+    api_key_name = "API_KEY", # env variable name
+    model_name="gpt-3.5-turbo-16k-0613",
+    conversation_memory=CosmosConversationMemory(
+        endpoint_name = "COSMOS_ENDPOINT", # env variable names
+        key_name = "COSMOS_KEY", 
+        dbname_name = "COSMOS_DB_NAME", 
+        containername_name = "COSMOS_CONTAINER_NAME", 
+        pkey_name = "COSMOS_PKEY"
+        ),
+    api_type="azure",
+    api_version="2023-07-01-preview", 
+    deployment_id_name="DEPLOY_ID", # env variable name
+    endpoint_name="ENDPOINT", # env variable name
+)
+```
+
 ## Assembling module for specific use case
 ### Using prompt template
 
