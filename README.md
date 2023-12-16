@@ -237,6 +237,7 @@ response.model_dump()
 ## Conversation memory with Cosmos DB
 
 ```python
+from langrila import OpenAIChatModule
 from langrila.memory.cosmos import CosmosConversationMemory
 
 chat = OpenAIChatModule(
