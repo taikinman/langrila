@@ -38,9 +38,9 @@ from langrila import OpenAIChatModule
 
 # For conventional model
 chat = OpenAIChatModule(
-    api_key_name = "API_KEY", # env variable name
+    api_key_env_name = "API_KEY", # env variable name
     model_name="gpt-3.5-turbo-16k-0613",
-    # organization_id_name="ORGANIZATION_ID", # env variable name
+    # organization_id_env_name="ORGANIZATION_ID", # env variable name
     timeout=60, 
     max_retries=2, 
 )
@@ -63,7 +63,7 @@ response.model_dump()
 For newest model released on 2023/11/6.
 ```python
 chat = OpenAIChatModule(
-    api_key_name = "API_KEY", # env variable name
+    api_key_env_name = "API_KEY", # env variable name
     model_name="gpt-4-1106-preview", # you can specify newest model
     timeout=60, 
     max_retries=2, 
@@ -75,12 +75,12 @@ chat = OpenAIChatModule(
 ### For Azure
 ```python
 chat = OpenAIChatModule(
-        api_key_name="AZURE_API_KEY", # env variable name
+        api_key_env_name="AZURE_API_KEY", # env variable name
         model_name="gpt-3.5-turbo-16k-0613",
         api_type="azure",
         api_version="2023-07-01-preview", 
-        deployment_id_name="DEPLOY_ID", # env variable name
-        endpoint_name="ENDPOINT", # env variable name
+        deployment_id_env_name="DEPLOY_ID", # env variable name
+        endpoint_env_name="ENDPOINT", # env variable name
     )
 
 ```
@@ -160,7 +160,7 @@ tool_config = ToolConfig(
 
                     
 client = OpenAIFunctionCallingModule(
-        api_key_name="API_KEY", 
+        api_key_env_name="API_KEY", 
         model_name = "gpt-3.5-turbo-1106",
         tools=[get_weather], 
         tool_configs=[tool_config],
@@ -184,12 +184,12 @@ response.model_dump()
 ### For Azure
 ```python
 formatter = OpenAIFunctionCallingModule(
-            api_key_name = "AZURE_API_KEY", # env variable name
+            api_key_env_name = "AZURE_API_KEY", # env variable name
             model_name="gpt-3.5-turbo-16k-0613",
             api_type="azure", 
             api_version="2023-07-01-preview",
-            endpoint_name="ENDPOINT", # env variable name
-            deployment_id_name="DEPLOY_ID", # env variable name
+            endpoint_env_name="ENDPOINT", # env variable name
+            deployment_id_env_name="DEPLOY_ID", # env variable name
             timeout=60,
             max_retries=2,
             tools=[get_weather], 
@@ -203,7 +203,7 @@ formatter = OpenAIFunctionCallingModule(
 from langrila import JSONConversationMemory
 
 chat = OpenAIChatModule(
-    api_key_name = "API_KEY", # env variable name
+    api_key_env_name = "API_KEY", # env variable name
     model_name="gpt-3.5-turbo-16k-0613",
     conversation_memory=JSONConversationMemory("./conversation_memory.json"),
     timeout=60, 
@@ -241,7 +241,7 @@ from langrila import OpenAIChatModule
 from langrila.memory.cosmos import CosmosConversationMemory
 
 chat = OpenAIChatModule(
-    api_key_name = "API_KEY", # env variable name
+    api_key_env_name = "API_KEY", # env variable name
     model_name="gpt-3.5-turbo-16k-0613",
     conversation_memory=CosmosConversationMemory(
         endpoint_env_name = "COSMOS_ENDPOINT", # env variable names
@@ -251,8 +251,8 @@ chat = OpenAIChatModule(
         ),
     api_type="azure",
     api_version="2023-07-01-preview", 
-    deployment_id_name="DEPLOY_ID", # env variable name
-    endpoint_name="ENDPOINT", # env variable name
+    deployment_id_env_name="DEPLOY_ID", # env variable name
+    endpoint_env_name="ENDPOINT", # env variable name
 )
 ```
 
@@ -274,7 +274,7 @@ SAMPLE_TEMPLATE = """Please answer Yes or No to the following questions.
 class TemplateChat(BaseModule):
     def __init__(
         self,
-        api_key_name: str,
+        api_key_env_name: str,
         model_name: str,
         max_tokens: int = 2048,
         timeout: int = 60,
@@ -282,7 +282,7 @@ class TemplateChat(BaseModule):
         context_length: Optional[int] = None,
     ):
         self.chat = OpenAIChatModule(
-            api_key_name=api_key_name,
+            api_key_env_name=api_key_env_name,
             model_name=model_name,
             max_tokens=max_tokens,
             timeout=timeout,
@@ -303,7 +303,7 @@ prompt_template = PromptTemplate(
 )
 
 chat = TemplateChat(
-    api_key_name="API_KEY", 
+    api_key_env_name="API_KEY", 
     model_name = "gpt-3.5-turbo-1106",
 )
 
@@ -330,7 +330,7 @@ from langrila.database.chroma import ChromaCollectionModule, ChromaRetrievalModu
 #######################
 
 embedder = OpenAIEmbeddingModule(
-        api_key_name="API_KEY", 
+        api_key_env_name="API_KEY", 
     )
 
 collection = ChromaCollectionModule(
@@ -382,7 +382,7 @@ from langrila.database.qdrant import QdrantLocalCollectionModule, QdrantLocalRet
 #######################
 
 embedder = OpenAIEmbeddingModule(
-        api_key_name="API_KEY", 
+        api_key_env_name="API_KEY", 
     )
 
 collection = QdrantLocalCollectionModule(
@@ -438,9 +438,9 @@ class RetrievalChatWithTemplate(BaseModule):
         api_type: str = "azure",
         api_version: str = "2023-07-01-preview",
         api_version_embedding: str = "2023-05-15",
-        endpoint_name: str = "ENDPOINT",
-        api_key_name: str = "API_KEY",
-        deployment_id_name: str = "DEPLOY_ID",
+        endpoint_env_name: str = "ENDPOINT",
+        api_key_env_name: str = "API_KEY",
+        deployment_id_env_name: str = "DEPLOY_ID",
         deployment_id_name_embedding: str = "DEPLOY_ID_EMBEDDING",
         max_tokens: int = 2048,
         timeout: int = 60,
@@ -453,17 +453,17 @@ class RetrievalChatWithTemplate(BaseModule):
         chatmodel_kwargs = {
             "api_type": api_type,
             "api_version": api_version,
-            "api_key_name": api_key_name,
-            "endpoint_name": endpoint_name,
-            "deployment_id_name": deployment_id_name,
+            "api_key_env_name": api_key_env_name,
+            "endpoint_env_name": endpoint_env_name,
+            "deployment_id_env_name": deployment_id_env_name,
         }
 
         embedding_kwargs = {
             "api_type": api_type,
             "api_version": api_version_embedding,
-            "api_key_name": api_key_name,
-            "endpoint_name": endpoint_name,
-            "deployment_id_name": deployment_id_name_embedding,
+            "api_key_env_name": api_key_env_name,
+            "endpoint_env_name": endpoint_env_name,
+            "deployment_id_env_name": deployment_id_name_embedding,
             "model_name": "text-embedding-ada-002"
         }
 

@@ -13,13 +13,13 @@ from ..utils import get_async_client, get_client, get_n_tokens, get_token_limit,
 class BaseChatModule(BaseModule):
     def __init__(
         self,
-        api_key_name: str,
+        api_key_env_name: str,
         model_name: str,
-        organization_id_name: Optional[str] = None,
+        organization_id_env_name: Optional[str] = None,
         api_type: str = "openai",
         api_version: Optional[str] = None,
-        endpoint_name: Optional[str] = None,
-        deployment_id_name: Optional[str] = None,
+        endpoint_env_name: Optional[str] = None,
+        deployment_id_env_name: Optional[str] = None,
         max_tokens: int = 2048,
         timeout: int = 60,
         max_retries: int = 2,
@@ -29,19 +29,19 @@ class BaseChatModule(BaseModule):
         assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
         if api_type == "azure":
             assert (
-                api_version and endpoint_name and deployment_id_name
-            ), "api_version, endpoint_name, and deployment_id_name must be specified for Azure API."
+                api_version and endpoint_env_name and deployment_id_env_name
+            ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified for Azure API."
 
-        self.api_key_name = api_key_name
+        self.api_key_env_name = api_key_env_name
         self.model_name = model_name
-        self.organization_id_name = organization_id_name
+        self.organization_id_env_name = organization_id_env_name
         self.max_tokens = max_tokens
         self.timeout = timeout
         self.max_retries = max_retries
         self.api_type = api_type
         self.api_version = api_version
-        self.endpoint_name = endpoint_name
-        self.deployment_id_name = deployment_id_name
+        self.endpoint_env_name = endpoint_env_name
+        self.deployment_id_env_name = deployment_id_env_name
 
         self.additional_inputs = {}
         if api_type == "openai" and model_name in _NEWER_MODEL_CONFIG.keys():
@@ -68,11 +68,11 @@ class BaseChatModule(BaseModule):
             raise ValueError("messages type must be list.")
 
         client = get_client(
-            api_key_name=self.api_key_name,
-            organization_id_name=self.organization_id_name,
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
             api_version=self.api_version,
-            endpoint_name=self.endpoint_name,
-            deployment_id_name=self.deployment_id_name,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
             api_type=self.api_type,
             max_retries=self.max_retries,
             timeout=self.timeout,
@@ -107,11 +107,11 @@ class BaseChatModule(BaseModule):
             raise ValueError("messages type must be list.")
 
         client = get_async_client(
-            api_key_name=self.api_key_name,
-            organization_id_name=self.organization_id_name,
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
             api_version=self.api_version,
-            endpoint_name=self.endpoint_name,
-            deployment_id_name=self.deployment_id_name,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
             api_type=self.api_type,
             max_retries=self.max_retries,
             timeout=self.timeout,
@@ -146,11 +146,11 @@ class BaseChatModule(BaseModule):
             raise ValueError("messages type must be list.")
 
         client = get_client(
-            api_key_name=self.api_key_name,
-            organization_id_name=self.organization_id_name,
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
             api_version=self.api_version,
-            endpoint_name=self.endpoint_name,
-            deployment_id_name=self.deployment_id_name,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
             api_type=self.api_type,
             max_retries=self.max_retries,
             timeout=self.timeout,
@@ -199,11 +199,11 @@ class BaseChatModule(BaseModule):
             raise ValueError("messages type must be list.")
 
         client = get_async_client(
-            api_key_name=self.api_key_name,
-            organization_id_name=self.organization_id_name,
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
             api_version=self.api_version,
-            endpoint_name=self.endpoint_name,
-            deployment_id_name=self.deployment_id_name,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
             api_type=self.api_type,
             max_retries=self.max_retries,
             timeout=self.timeout,
@@ -247,13 +247,13 @@ class BaseChatModule(BaseModule):
 class OpenAIChatModule(BaseModule):
     def __init__(
         self,
-        api_key_name: str,
+        api_key_env_name: str,
         model_name: str,
         api_type: str = "openai",
         api_version: Optional[str] = None,
-        endpoint_name: Optional[str] = None,
-        deployment_id_name: Optional[str] = None,
-        organization_id_name: Optional[str] = None,
+        endpoint_env_name: Optional[str] = None,
+        deployment_id_env_name: Optional[str] = None,
+        organization_id_env_name: Optional[str] = None,
         max_tokens: Optional[int] = 2048,
         timeout: int = 60,
         max_retries: int = 2,
@@ -281,14 +281,14 @@ class OpenAIChatModule(BaseModule):
         assert context_length > 0, "context_length must be positive."
 
         self.chat_model = BaseChatModule(
-            api_key_name=api_key_name,
-            organization_id_name=organization_id_name,
+            api_key_env_name=api_key_env_name,
+            organization_id_env_name=organization_id_env_name,
             model_name=model_name,
             max_tokens=max_tokens,
             api_type=api_type,
             api_version=api_version,
-            endpoint_name=endpoint_name,
-            deployment_id_name=deployment_id_name,
+            endpoint_env_name=endpoint_env_name,
+            deployment_id_env_name=deployment_id_env_name,
             timeout=timeout,
             max_retries=max_retries,
             seed=seed,
