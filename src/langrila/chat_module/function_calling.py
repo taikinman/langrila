@@ -85,16 +85,16 @@ class ToolConfig(BaseModel):
 class BaseFunctionCallingModule(BaseModule):
     def __init__(
         self,
-        api_key_name: str,
+        api_key_env_name: str,
         model_name: str,
         tools: list[Callable],
         tool_configs: list[ToolConfig],
         tool_choice: str = "auto",
         api_type: str = "openai",
         api_version: Optional[str] = None,
-        endpoint_name: Optional[str] = None,
-        deployment_id_name: Optional[str] = None,
-        organization_id_name: Optional[str] = None,
+        endpoint_env_name: Optional[str] = None,
+        deployment_id_env_name: Optional[str] = None,
+        organization_id_env_name: Optional[str] = None,
         timeout: int = 30,
         max_retries: int = 2,
         max_tokens: int = 2048,
@@ -103,15 +103,15 @@ class BaseFunctionCallingModule(BaseModule):
         assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
         if api_type == "azure":
             assert (
-                api_version and endpoint_name and deployment_id_name
-            ), "api_version, endpoint_name, and deployment_id_name must be specified for Azure API."
+                api_version and endpoint_env_name and deployment_id_env_name
+            ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified for Azure API."
 
-        self.api_key_name = api_key_name
-        self.organization_id_name = organization_id_name
+        self.api_key_env_name = api_key_env_name
+        self.organization_id_env_name = organization_id_env_name
         self.api_type = api_type
         self.api_version = api_version
-        self.endpoint_name = endpoint_name
-        self.deployment_id_name = deployment_id_name
+        self.endpoint_env_name = endpoint_env_name
+        self.deployment_id_env_name = deployment_id_env_name
         self.model_name = model_name
         self.timeout = timeout
         self.max_retries = max_retries
@@ -147,11 +147,11 @@ class BaseFunctionCallingModule(BaseModule):
             raise ValueError("messages must not be empty.")
 
         client = get_client(
-            api_key_name=self.api_key_name,
-            organization_id_name=self.organization_id_name,
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
             api_version=self.api_version,
-            endpoint_name=self.endpoint_name,
-            deployment_id_name=self.deployment_id_name,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
             api_type=self.api_type,
             max_retries=self.max_retries,
             timeout=self.timeout,
@@ -219,11 +219,11 @@ class BaseFunctionCallingModule(BaseModule):
             raise ValueError("messages must not be empty.")
 
         client = get_async_client(
-            api_key_name=self.api_key_name,
-            organization_id_name=self.organization_id_name,
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
             api_version=self.api_version,
-            endpoint_name=self.endpoint_name,
-            deployment_id_name=self.deployment_id_name,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
             api_type=self.api_type,
             max_retries=self.max_retries,
             timeout=self.timeout,
@@ -290,15 +290,15 @@ class BaseFunctionCallingModule(BaseModule):
 class OpenAIFunctionCallingModule(BaseModule):
     def __init__(
         self,
-        api_key_name: str,
+        api_key_env_name: str,
         model_name: str,
         tools: list[Callable],
         tool_configs: list[ToolConfig],
-        organization_id_name: Optional[str] = None,
+        organization_id_env_name: Optional[str] = None,
         api_type: str = "openai",
         api_version: Optional[str] = None,
-        endpoint_name: Optional[str] = None,
-        deployment_id_name: Optional[str] = None,
+        endpoint_env_name: Optional[str] = None,
+        deployment_id_env_name: Optional[str] = None,
         max_tokens: int = 2048,
         timeout: int = 60,
         max_retries: int = 2,
@@ -324,12 +324,12 @@ class OpenAIFunctionCallingModule(BaseModule):
         assert context_length > 0, "context_length must be positive."
 
         self.function_calling_model = BaseFunctionCallingModule(
-            api_key_name=api_key_name,
-            organization_id_name=organization_id_name,
+            api_key_env_name=api_key_env_name,
+            organization_id_env_name=organization_id_env_name,
             api_type=api_type,
             api_version=api_version,
-            endpoint_name=endpoint_name,
-            deployment_id_name=deployment_id_name,
+            endpoint_env_name=endpoint_env_name,
+            deployment_id_env_name=deployment_id_env_name,
             tools=tools,
             tool_configs=tool_configs,
             model_name=model_name,
