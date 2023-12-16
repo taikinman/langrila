@@ -243,11 +243,10 @@ chat = OpenAIChatModule(
     api_key_name = "API_KEY", # env variable name
     model_name="gpt-3.5-turbo-16k-0613",
     conversation_memory=CosmosConversationMemory(
-        endpoint_name = "COSMOS_ENDPOINT", # env variable names
-        key_name = "COSMOS_KEY", 
-        dbname_name = "COSMOS_DB_NAME", 
-        containername_name = "COSMOS_CONTAINER_NAME", 
-        pkey_name = "COSMOS_PKEY"
+        endpoint_env_name = "COSMOS_ENDPOINT", # env variable names
+        key_env_name = "COSMOS_KEY", 
+        db_env_name = "COSMOS_DB_NAME", 
+        container_env_name = "COSMOS_CONTAINER_NAME"
         ),
     api_type="azure",
     api_version="2023-07-01-preview", 
