@@ -72,7 +72,7 @@ class ToolConfig(BaseModel):
     def model_dump(self):
         dumped = super().model_dump(exclude=["parameters", "type"])
         dumped["parameters"] = self.parameters.model_dump()
-        return {"type": self.type, self.type:dumped}
+        return {"type": self.type, self.type: dumped}
 
     @field_validator("type")
     def check_type_value(cls, v):
@@ -121,7 +121,6 @@ class BaseFunctionCallingModule(BaseModule):
         assert (
             len(_tool_names_from_config ^ set(self.tools.keys())) == 0
         ), f"tool names in tool_configs must be the same as the function names in tools. tool names in tool_configs: {_tool_names_from_config}, function names in tools: {set(self.tools.keys())}"
-
 
         self.tool_choice = tool_choice
         self.max_tokens = max_tokens
@@ -190,11 +189,7 @@ class BaseFunctionCallingModule(BaseModule):
                 )
                 results.append(output)
 
-            return FunctionCallingResults(
-                usage=usage,
-                results=results,
-                prompt=messages
-            )
+            return FunctionCallingResults(usage=usage, results=results, prompt=messages)
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
             funcname = response_message.function_call.name
@@ -208,11 +203,7 @@ class BaseFunctionCallingModule(BaseModule):
                 output=func_out,
             )
 
-            return FunctionCallingResults(
-                usage=usage,
-                results=[output],
-                prompt=messages
-            )
+            return FunctionCallingResults(usage=usage, results=[output], prompt=messages)
 
     async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
         if len(messages) == 0:
@@ -262,11 +253,7 @@ class BaseFunctionCallingModule(BaseModule):
                 )
                 results.append(output)
 
-            return FunctionCallingResults(
-                usage=usage,
-                results=results,
-                prompt=messages
-            )
+            return FunctionCallingResults(usage=usage, results=results, prompt=messages)
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
             funcname = response_message.function_call.name
@@ -280,11 +267,7 @@ class BaseFunctionCallingModule(BaseModule):
                 output=func_out,
             )
 
-            return FunctionCallingResults(
-                usage=usage,
-                results=[output],
-                prompt=messages
-            )
+            return FunctionCallingResults(usage=usage, results=[output], prompt=messages)
 
 
 class OpenAIFunctionCallingModule(BaseModule):
@@ -418,7 +401,8 @@ class OpenAIFunctionCallingModule(BaseModule):
         results = []
         for batch in batches:
             async_processes = [
-                self.arun(prompt, init_conversation) for prompt, init_conversation in batch
+                self.arun(prompt=prompt, init_conversation=init_conversation)
+                for prompt, init_conversation in batch
             ]
             results.extend(await asyncio.gather(*async_processes))
         return results

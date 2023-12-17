@@ -10,6 +10,20 @@ Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way
 ## as needed
 - chroma or qdrant-client (for retrieval)
 
+# Contribution
+## Coding policy
+1. Sticking to simplicity : This library is motivated by simplifying architecture for readability. Thus multiple inheriting and nested inheriting should be avoided as much as possible for basic modules at least.
+2. Making responsibility Independent : The responsibility of each module must be closed into each module itself. It means a module is not allowed to affect other modules.
+3. Implementing minimum modules : The more functions each module has, the more complex the source code becomes. Langrila focuses on implementing minimum necessary functions in each module.
+
+## Branch management rule
+- Topic branch are checkout from develop branch.
+- Topic branch should be small.
+
+## Branch merging rule
+- topic branch -> develop branch (squash merge).
+- develop branch -> main branch (commit merge).
+
 # Installation
 ## clone
 ```
@@ -85,21 +99,68 @@ chat = OpenAIChatModule(
 
 ```
 
+## Vision model
+```python
+from PIL import Image
+
+# In this example, I use a picture of "osechi-ryori"
+image = Image.open("path/to/your/local/image/file")
+
+chat = OpenAIChatModule(
+    api_key_env_name="API_KEY",
+    model_name="gpt-4-vision-preview",
+)
+
+# stream, astream are also runnable
+prompt = "What kind of food is in the picture?"
+response = await chat(prompt, images=image, arun=True) # multiple image input is also allowed
+response.model_dump()
+
+>>> {'message': {'role': 'assistant',
+  'content': 'The image shows a traditional Japanese New Year\'s food called "osechi-ryori." It is typically presented in special boxes called "jubako," which are often lacquered and stacked for a beautiful presentation. Osechi-ryori consists of various dishes, each with a special meaning for the New Year. The foods are often colorful and include items such as sweet black soybeans (kuromame), fish cakes (kamaboko), simmered burdock root (kinpira gobo), marinated herring roe (kazunoko), and other delicacies like prawns, chestnuts, and sweet omelet (tamagoyaki). Each dish is chosen for its auspicious significance and is intended to bring good luck in the coming year.'},
+ 'usage': {'prompt_tokens': 101, 'completion_tokens': 159},
+ 'prompt': [{'role': 'user',
+   'content': [{'type': 'text',
+     'text': 'What kind of food is in the picture?'},
+    {'type': 'image_url',
+     'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...',
+      'detail': 'low'}}]}]}
+```
+
 ## Batch processing
 ```python
-messages = [
+prompts = [
     "Please give me only one advice to improve the quality of my sleep.", 
     "Please give me only one advice to improve my memory.",
     "Please give me only one advice on how to make exercise a habit.",
     "Please give me only one advice to help me not get bored with things so quickly." 
             ]
 
-await chat.abatch_run(messages, batch_size=4)
+await chat.abatch_run(prompts, batch_size=4)
 
 >>> [CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends.'}, usage=Usage(prompt_tokens=21, completion_tokens=23, total_tokens=44), prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve the quality of my sleep.'}]),
  CompletionResults(message={'role': 'assistant', 'content': 'One advice to improve memory is to practice regular physical exercise. Exercise has been shown to enhance memory and cognitive function by increasing blood flow to the brain and promoting the growth of new brain cells. Aim for at least 30 minutes of moderate-intensity exercise, such as brisk walking or jogging, most days of the week.'}, usage=Usage(prompt_tokens=18, completion_tokens=64, total_tokens=82), prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve my memory.'}]),
  CompletionResults(message={'role': 'assistant', 'content': "Start small and be consistent. Start with just a few minutes of exercise each day and gradually increase the duration and intensity over time. Consistency is key, so make it a priority to exercise at the same time every day or on specific days of the week. By starting small and being consistent, you'll be more likely to stick with it and make exercise a long-term habit."}, usage=Usage(prompt_tokens=21, completion_tokens=76, total_tokens=97), prompt=[{'role': 'user', 'content': 'Please give me only one advice on how to make exercise a habit.'}]),
  CompletionResults(message={'role': 'assistant', 'content': 'One advice to help you not get bored with things so quickly is to cultivate a sense of curiosity and explore new perspectives. Instead of approaching tasks or activities with a fixed mindset, try to approach them with an open mind and a desire to learn something new. Embrace the mindset of a beginner and seek out different ways to engage with the task at hand. By continuously seeking novelty and finding new angles to approach things, you can keep your interest alive and prevent boredom from setting in.'}, usage=Usage(prompt_tokens=24, completion_tokens=96, total_tokens=120), prompt=[{'role': 'user', 'content': 'Please give me only one advice to help me not get bored with things so quickly.'}])]
+```
+
+You can also run vision model with batch processing.
+
+```python
+prompts = [
+    "What is this image?",
+    "What is this image?",
+]
+
+images = [
+    image1, # PIL image of Osechi-ryori
+    image2, # PIL image of Mt.Fuji
+]
+
+response = await chat.abatch_run(prompts, images=images)
+
+>>> [CompletionResults(message={'role': 'assistant', 'content': 'The image shows a traditional Japanese New Year\'s food called "osechi-ryori." It is presented in special boxes called "jubako," which are often lacquered and stacked for the occasion. Osechi-ryori consists of various dishes, each with a special meaning for the New Year. The dishes are typically colorful and are made to be eaten over the first few days of the New Year, as it\'s considered good luck to not cook during that time. The food items are often sweet, sour, or dried, so they can last for several days without refrigeration.'}, usage=Usage(prompt_tokens=97, completion_tokens=120, total_tokens=217), prompt=[{'role': 'user', 'content': [{'type': 'text', 'text': 'What is this image?'}, {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...', 'detail': 'low'}}]}]),
+ CompletionResults(message={'role': 'assistant', 'content': "The image shows a scenic view of Mount Fuji, Japan's highest mountain, with its iconic snow-capped peak. In the foreground, there are lush green slopes, possibly covered with forests, and there are clouds surrounding the middle section of the mountain, adding to the dramatic effect of the scene. The clear blue sky above and the natural beauty suggest this might be a popular spot for sightseeing and photography."}, usage=Usage(prompt_tokens=97, completion_tokens=81, total_tokens=178), prompt=[{'role': 'user', 'content': [{'type': 'text', 'text': 'What is this image?'}, {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...', 'detail': 'low'}}]}])]
 ```
 
 ## Stream
@@ -198,7 +259,7 @@ formatter = OpenAIFunctionCallingModule(
 ```
 
 ## Conversation memory
-
+### For standard chat model
 ```python
 from langrila import JSONConversationMemory
 
@@ -232,6 +293,36 @@ response.model_dump()
   {'role': 'assistant',
    'content': 'Yes, I am familiar with Rude, who is a character in the popular video game Final Fantasy 7. Rude is a member of the Turks, an elite group of operatives working for the Shinra Electric Power Company. He is known for his bald head, sunglasses, and calm demeanor. Rude often partners with another Turk named Reno, and together they carry out various missions throughout the game.'},
   {'role': 'user', 'content': 'What does he think about Tifa?'}]}
+```
+### For vision chat model
+
+```python
+chat = OpenAIChatModule(
+    api_key_env_name="API_KEY",
+    model_name="gpt-4-vision-preview",
+    conversation_memory=JSONConversationMemory("./conversation_memory.json"),
+)
+
+prompt = "What kind of food is in the picture?"
+response = await chat(prompt, images=image, arun=True)
+
+prompt = "Why did Japanese start eating this at New Year's?"
+response = await chat(prompt, arun=True)
+response.model_dump()
+
+>>> {'message': {'role': 'assistant',
+  'content': "The tradition of eating osechi-ryori during the New Year's celebration in Japan has its origins in the Heian period (794-1185). The practice is deeply rooted in the Shinto belief of toshigami (year gods), who are said to visit during the New Year to bring blessings for the coming year. Preparing osechi-ryori is a way to honor these deities.\n\nThe specific dishes that make up osechi-ryori are chosen for their auspicious meanings and symbolism, which are meant to ensure good fortune, health, and prosperity in the new year. Each dish has a particular significance, such as happiness, fertility, longevity, and success.\n\nAnother practical reason for the development of osechi-ryori was the need to prepare food ahead of time. During the first few days of the New Year, it was traditionally believed that using a hearth or cooking would offend the visiting gods. Therefore, osechi-ryori dishes are made to last for several days without spoiling, allowing people to avoid cooking during this period and instead focus on the New Year's festivities and rituals.\n\nOver time, this practice has evolved, and while the traditional meanings remain, osechi-ryori has also become a special meal for families to enjoy together while celebrating the arrival of the New Year."},
+ 'usage': {'prompt_tokens': 248, 'completion_tokens': 273},
+ 'prompt': [{'role': 'user',
+   'content': [{'type': 'text',
+     'text': 'What kind of food is in the picture?'},
+    {'type': 'image_url',
+     'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...',
+      'detail': 'low'}}]},
+  {'role': 'assistant',
+   'content': 'The image shows a traditional Japanese New Year\'s food called "osechi-ryori." It is typically presented in special boxes called "jubako," which are often lacquered and stacked for a beautiful presentation. Osechi-ryori consists of various dishes, each with a special meaning for the New Year. Common items include sweet black soybeans (kuromame), which symbolize health; herring roe (kazunoko), which represents fertility; and shrimp, which are associated with long life. The food is colorful and arranged meticulously to celebrate the beginning of the new year with wishes for prosperity and happiness.'},
+  {'role': 'user',
+   'content': "Why did Japanese start eating this at New Year's?"}]}
 ```
 
 ## Conversation memory with Cosmos DB
