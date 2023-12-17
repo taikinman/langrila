@@ -1,3 +1,5 @@
+from typing import Any
+
 import tiktoken
 
 from ..base import BaseConversationLengthAdjuster
@@ -8,7 +10,6 @@ from ..utils import get_n_tokens
 class OldConversationTruncationModule(BaseConversationLengthAdjuster):
     """
     Adjust the number of tokens to be less than or equal to context_length, starting from the oldest message forward
-    FIXME : This is not working for gpt-4V. Image token is not allowed to be truncated.
     """
 
     def __init__(self, model_name: str, context_length: int):
@@ -37,7 +38,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
         return adjusted_messages[::-1]
 
     def adjust_message_length_and_update_total_tokens(
-        self, message: dict[str, str], total_n_tokens: int = 0
+        self, message: dict[str, Any], total_n_tokens: int = 0
     ) -> str:
         n_tokens = get_n_tokens(message, self.model_name)
         if total_n_tokens + n_tokens["total"] <= self.context_length:
@@ -48,12 +49,15 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                 self.context_length - total_n_tokens - n_tokens["other"], 0
             )  # available_n_tokens for content
             if available_n_tokens > 0:
-                message["content"] = self.truncate(message["content"], available_n_tokens)
-                total_n_tokens += available_n_tokens + n_tokens["other"]
-                print(
-                    "Input message is truncated because total length of messages exceeds context length."
-                )
-                return message, total_n_tokens
+                if isinstance(message["content"], str):
+                    message["content"] = self.truncate(message["content"], available_n_tokens)
+                    total_n_tokens += available_n_tokens + n_tokens["other"]
+                    print(
+                        "Input message is truncated because total length of messages exceeds context length."
+                    )
+                    return message, total_n_tokens
+                elif "vision" in self.model_name and isinstance(message["content"], list):
+                    return None, total_n_tokens  # truncate whole image
             else:
                 return None, total_n_tokens
 
