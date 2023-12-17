@@ -22,7 +22,7 @@ Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way
 
 ## Branch merging rule
 - topic branch -> develop branch (squash merge).
-- develop branch -> main branch (commit merge).
+- develop branch -> main branch (merge commit).
 
 # Installation
 ## clone
