@@ -58,6 +58,10 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     return message, total_n_tokens
                 elif "vision" in self.model_name and isinstance(message["content"], list):
                     return None, total_n_tokens  # truncate whole image
+                else:
+                    raise ValueError(
+                        f"message['content'] must be str or list, but {type(message['content'])} is given."
+                    )
             else:
                 return None, total_n_tokens
 
