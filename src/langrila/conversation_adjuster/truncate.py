@@ -8,6 +8,7 @@ from ..utils import get_n_tokens
 class OldConversationTruncationModule(BaseConversationLengthAdjuster):
     """
     Adjust the number of tokens to be less than or equal to context_length, starting from the oldest message forward
+    FIXME : This is not working for gpt-4V. Image token is not allowed to be truncated.
     """
 
     def __init__(self, model_name: str, context_length: int):
@@ -43,7 +44,9 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
             total_n_tokens += n_tokens["total"]
             return message, total_n_tokens
         else:
-            available_n_tokens = max(self.context_length - total_n_tokens - n_tokens["other"], 0) # available_n_tokens for content
+            available_n_tokens = max(
+                self.context_length - total_n_tokens - n_tokens["other"], 0
+            )  # available_n_tokens for content
             if available_n_tokens > 0:
                 message["content"] = self.truncate(message["content"], available_n_tokens)
                 total_n_tokens += available_n_tokens + n_tokens["other"]
