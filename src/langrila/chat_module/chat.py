@@ -1,5 +1,10 @@
 import asyncio
-from typing import Optional
+from copy import deepcopy
+from typing import Any, Optional
+
+import numpy as np
+from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
+from PIL import Image
 
 from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter, BaseModule
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
@@ -8,6 +13,70 @@ from ..model_config import _NEWER_MODEL_CONFIG, MODEL_CONFIG, MODEL_POINT
 from ..result import CompletionResults
 from ..usage import Usage
 from ..utils import get_async_client, get_client, get_n_tokens, get_token_limit, make_batch
+
+
+def completion(
+    client: OpenAI | AzureOpenAI,
+    model_name: str,
+    messages: Any,
+    max_tokens: int,
+    temperature: float,
+    top_p: float,
+    frequency_penalty: float,
+    presence_penalty: float,
+    stream: bool,
+    stop: Optional[str] = None,
+    **kwargs,
+):
+    params = dict(
+        model=model_name,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        top_p=top_p,
+        frequency_penalty=frequency_penalty,
+        presence_penalty=presence_penalty,
+        stop=stop,
+        stream=stream,
+        **kwargs,
+    )
+
+    if "vision" in model_name:
+        params.pop("stop")
+
+    return client.chat.completions.create(**params)
+
+
+async def acompletion(
+    client: AsyncOpenAI | AsyncAzureOpenAI,
+    model_name: str,
+    messages: Any,
+    max_tokens: int,
+    temperature: float,
+    top_p: float,
+    frequency_penalty: float,
+    presence_penalty: float,
+    stop: bool,
+    stream: bool,
+    **kwargs,
+):
+    params = dict(
+        model=model_name,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        top_p=top_p,
+        frequency_penalty=frequency_penalty,
+        presence_penalty=presence_penalty,
+        stop=stop,
+        stream=stream,
+        **kwargs,
+    )
+
+    if "vision" in model_name:
+        params.pop("stop")
+
+    return await client.chat.completions.create(**params)
 
 
 class BaseChatModule(BaseModule):
@@ -48,7 +117,8 @@ class BaseChatModule(BaseModule):
             self.seed = seed
             self.response_format = response_format
             self.additional_inputs["seed"] = seed
-            self.additional_inputs["response_format"] = response_format
+            if "vision" not in model_name:
+                self.additional_inputs["response_format"] = response_format
         else:
             # TODO : add logging message
             if seed:
@@ -78,8 +148,9 @@ class BaseChatModule(BaseModule):
             timeout=self.timeout,
         )
 
-        response = client.chat.completions.create(
-            model=self.model_name,
+        response = completion(
+            client=client,
+            model_name=self.model_name,
             messages=messages,
             temperature=0,
             max_tokens=self.max_tokens,
@@ -87,6 +158,7 @@ class BaseChatModule(BaseModule):
             frequency_penalty=0,
             presence_penalty=0,
             stop=None,
+            stream=False,
             **self.additional_inputs,
         )
 
@@ -96,7 +168,7 @@ class BaseChatModule(BaseModule):
         return CompletionResults(
             usage=usage,
             message={"role": "assistant", "content": response_message},
-            prompt=messages
+            prompt=deepcopy(messages),
         )
 
     async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
@@ -117,8 +189,9 @@ class BaseChatModule(BaseModule):
             timeout=self.timeout,
         )
 
-        response = await client.chat.completions.create(
-            model=self.model_name,
+        response = await acompletion(
+            client=client,
+            model_name=self.model_name,
             messages=messages,
             temperature=0,
             max_tokens=self.max_tokens,
@@ -126,6 +199,7 @@ class BaseChatModule(BaseModule):
             frequency_penalty=0,
             presence_penalty=0,
             stop=None,
+            stream=False,
             **self.additional_inputs,
         )
 
@@ -135,7 +209,7 @@ class BaseChatModule(BaseModule):
         return CompletionResults(
             usage=usage,
             message={"role": "assistant", "content": response_message},
-            prompt=messages
+            prompt=deepcopy(messages),
         )
 
     def stream(self, messages: list[dict[str, str]]) -> CompletionResults:
@@ -156,8 +230,9 @@ class BaseChatModule(BaseModule):
             timeout=self.timeout,
         )
 
-        response = client.chat.completions.create(
-            model=self.model_name,
+        response = completion(
+            client=client,
+            model_name=self.model_name,
             messages=messages,
             temperature=0,
             max_tokens=self.max_tokens,
@@ -184,12 +259,7 @@ class BaseChatModule(BaseModule):
             completion_tokens=get_n_tokens(response_message, self.model_name)["total"],
         )
 
-        yield CompletionResults(
-            usage=usage,
-            message=response_message,
-            prompt=messages
-        )
-
+        yield CompletionResults(usage=usage, message=response_message, prompt=deepcopy(messages))
 
     async def astream(self, messages: list[dict[str, str]]) -> CompletionResults:
         if len(messages) == 0:
@@ -209,8 +279,9 @@ class BaseChatModule(BaseModule):
             timeout=self.timeout,
         )
 
-        response = await client.chat.completions.create(
-            model=self.model_name,
+        response = await acompletion(
+            client=client,
+            model_name=self.model_name,
             messages=messages,
             temperature=0,
             max_tokens=self.max_tokens,
@@ -237,11 +308,7 @@ class BaseChatModule(BaseModule):
             completion_tokens=get_n_tokens(response_message, self.model_name)["total"],
         )
 
-        yield CompletionResults(
-            usage=usage,
-            message=response_message,
-            prompt=messages
-        )
+        yield CompletionResults(usage=usage, message=response_message, prompt=deepcopy(messages))
 
 
 class OpenAIChatModule(BaseModule):
@@ -306,7 +373,9 @@ class OpenAIChatModule(BaseModule):
     def run(
         self,
         prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
         init_conversation: Optional[list[dict[str, str]]] = None,
+        image_resolution: str = "low",
     ) -> CompletionResults:
         if self.conversation_memory is not None:
             messages: list[dict[str, str]] = self.conversation_memory.load()
@@ -316,7 +385,9 @@ class OpenAIChatModule(BaseModule):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt).as_user)
+        messages.append(
+            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
+        )
 
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
@@ -338,7 +409,9 @@ class OpenAIChatModule(BaseModule):
     def stream(
         self,
         prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
         init_conversation: Optional[list[dict[str, str]]] = None,
+        image_resolution: str = "low",
     ) -> CompletionResults:
         if self.conversation_memory is not None:
             messages: list[dict[str, str]] = self.conversation_memory.load()
@@ -348,7 +421,9 @@ class OpenAIChatModule(BaseModule):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt).as_user)
+        messages.append(
+            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
+        )
 
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
@@ -363,7 +438,9 @@ class OpenAIChatModule(BaseModule):
                 response_message_stream["content"] += chunk
 
                 if self.content_filter is not None:
-                    response_message_stream = self.content_filter.restore([response_message_stream])[0]
+                    response_message_stream = self.content_filter.restore(
+                        [response_message_stream]
+                    )[0]
 
                 yield response_message_stream["content"]
             elif isinstance(chunk, CompletionResults):
@@ -382,7 +459,9 @@ class OpenAIChatModule(BaseModule):
     async def astream(
         self,
         prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
         init_conversation: Optional[list[dict[str, str]]] = None,
+        image_resolution: str = "low",
     ) -> CompletionResults:
         if self.conversation_memory is not None:
             messages: list[dict[str, str]] = self.conversation_memory.load()
@@ -392,7 +471,9 @@ class OpenAIChatModule(BaseModule):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt).as_user)
+        messages.append(
+            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
+        )
 
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
@@ -407,7 +488,9 @@ class OpenAIChatModule(BaseModule):
                 response_message_stream["content"] += chunk
 
                 if self.content_filter is not None:
-                    response_message_stream = self.content_filter.restore([response_message_stream])[0]
+                    response_message_stream = self.content_filter.restore(
+                        [response_message_stream]
+                    )[0]
 
                 yield response_message_stream["content"]
             elif isinstance(chunk, CompletionResults):
@@ -426,7 +509,9 @@ class OpenAIChatModule(BaseModule):
     async def arun(
         self,
         prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
         init_conversation: Optional[list[dict[str, str]]] = None,
+        image_resolution: str = "low",
     ) -> CompletionResults:
         if self.conversation_memory is not None:
             messages: list[dict[str, str]] = self.conversation_memory.load()
@@ -436,7 +521,9 @@ class OpenAIChatModule(BaseModule):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt).as_user)
+        messages.append(
+            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
+        )
 
         if self.content_filter is not None:
             messages = await self.content_filter(messages, arun=True)
@@ -458,23 +545,36 @@ class OpenAIChatModule(BaseModule):
     async def abatch_run(
         self,
         prompts: list[str],
+        images: list[Image.Image | bytes | list[Image.Image, bytes]] | None = None,
         init_conversations: Optional[list[list[dict[str, str]]]] = None,
+        image_resolutions: str | list[str] = "low",
         batch_size: int = 4,
     ) -> list[CompletionResults]:
         if init_conversations is None:
             init_conversations = [None] * len(prompts)
 
+        if images is None:
+            images = [None] * len(prompts)
+
+        if isinstance(image_resolutions, str):
+            image_resolutions = [image_resolutions] * len(prompts)
+
         assert (
-            len(prompts) == len(init_conversations)
+            len(prompts) == len(init_conversations) == len(images)
         ), "Length of prompts, init_conversations, and function_message_list must be the same."
 
-        z = zip(prompts, init_conversations)
+        z = zip(prompts, init_conversations, images, image_resolutions)
         batches = make_batch(list(z), batch_size)
         results = []
         for batch in batches:
             async_processes = [
-                self.arun(prompt, init_conversation)
-                for prompt, init_conversation in batch
+                self.arun(
+                    prompt=prompt,
+                    images=_images,
+                    init_conversation=init_conversation,
+                    image_resolution=resolution,
+                )
+                for prompt, init_conversation, _images, resolution in batch
             ]
             results.extend(await asyncio.gather(*async_processes))
         return results
