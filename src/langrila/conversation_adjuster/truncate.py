@@ -1,3 +1,5 @@
+from typing import Any
+
 import tiktoken
 
 from ..base import BaseConversationLengthAdjuster
@@ -36,21 +38,30 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
         return adjusted_messages[::-1]
 
     def adjust_message_length_and_update_total_tokens(
-        self, message: dict[str, str], total_n_tokens: int = 0
+        self, message: dict[str, Any], total_n_tokens: int = 0
     ) -> str:
         n_tokens = get_n_tokens(message, self.model_name)
         if total_n_tokens + n_tokens["total"] <= self.context_length:
             total_n_tokens += n_tokens["total"]
             return message, total_n_tokens
         else:
-            available_n_tokens = max(self.context_length - total_n_tokens - n_tokens["other"], 0) # available_n_tokens for content
+            available_n_tokens = max(
+                self.context_length - total_n_tokens - n_tokens["other"], 0
+            )  # available_n_tokens for content
             if available_n_tokens > 0:
-                message["content"] = self.truncate(message["content"], available_n_tokens)
-                total_n_tokens += available_n_tokens + n_tokens["other"]
-                print(
-                    "Input message is truncated because total length of messages exceeds context length."
-                )
-                return message, total_n_tokens
+                if isinstance(message["content"], str):
+                    message["content"] = self.truncate(message["content"], available_n_tokens)
+                    total_n_tokens += available_n_tokens + n_tokens["other"]
+                    print(
+                        "Input message is truncated because total length of messages exceeds context length."
+                    )
+                    return message, total_n_tokens
+                elif "vision" in self.model_name and isinstance(message["content"], list):
+                    return None, total_n_tokens  # truncate whole image
+                else:
+                    raise ValueError(
+                        f"message['content'] must be str or list, but {type(message['content'])} is given."
+                    )
             else:
                 return None, total_n_tokens
 

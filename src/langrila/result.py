@@ -8,7 +8,7 @@ from .usage import Usage
 class CompletionResults(BaseModel):
     message: dict[str, str]
     usage: Usage
-    prompt: Optional[str|dict[str, str]|list[dict[str, str]]] = None
+    prompt: Any = None
 
 
 class ToolOutput(BaseModel):
@@ -21,7 +21,7 @@ class ToolOutput(BaseModel):
 class FunctionCallingResults(BaseModel):
     usage: Usage
     results: list[ToolOutput]
-    prompt: Optional[str|dict[str, str]|list[dict[str, str]]] = None
+    prompt: Optional[str | dict[str, str] | list[dict[str, str]]] = None
 
 
 class EmbeddingResults(BaseModel):
@@ -36,4 +36,3 @@ class RetrievalResult(BaseModel):
     metadatas: Optional[list[dict[str, Any]] | list[None]]
     similarities: list[float]
     usage: Usage
-
