@@ -1,0 +1,19 @@
+name: Feature proposal/request
+description: Submit a proposal/request for a new feature.
+labels: ['New Feature']
+
+body:
+- type: textarea
+  attributes:
+    label: Feature proposal/request
+    description: |
+      A clear and concise description of the feature you want or of the proposal that makes imker better tool.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Motivation
+    description: |
+      Please outline the motivation for the proposal/request. Is your feature request related to a problem? e.g., I'm always frustrated when [...].
+  validations:
+    required: true
