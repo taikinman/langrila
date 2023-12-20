@@ -140,10 +140,10 @@ def set_openai_envs(
         openai.organization = os.getenv(organization_id_env_name)
 
 
-def get_n_tokens(message: dict[str, str], model_name: str) -> int:
+def get_n_tokens(message: dict[str, str | list[dict[str, str|dict[str, str]]]] , model_name: str) -> int:
     """
     Return the number of tokens used by a list of messages.
-    Folked and edited from : https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
+    Forked and edited from : https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
     """
     try:
         encoding = tiktoken.encoding_for_model(model_name)
@@ -251,7 +251,7 @@ def calculate_high_resolution_image_tokens(image_size: tuple[int, int] | list[in
         short = int(short * 2048 / long)
         long = 2048
 
-    if short != 768:
+    if short > 768:
         long = int(long * 768 / short)
         short = 768
 

@@ -56,3 +56,4 @@ class Message(BaseModel):
             raise ValueError(
                 "image_resolution must be either 'low' or 'high' due to token management."
             )
+        return val
