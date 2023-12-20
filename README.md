@@ -17,12 +17,8 @@ Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way
 3. Implementing minimum modules : The more functions each module has, the more complex the source code becomes. Langrila focuses on implementing minimum necessary functions in each module.
 
 ## Branch management rule
-- Topic branch are checkout from develop branch.
+- Topic branch are checkout from main branch.
 - Topic branch should be small.
-
-## Branch merging rule
-- topic branch -> develop branch (squash merge).
-- develop branch -> main branch (merge commit).
 
 # Installation
 ## clone
