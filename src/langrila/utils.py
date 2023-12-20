@@ -251,7 +251,7 @@ def calculate_high_resolution_image_tokens(image_size: tuple[int, int] | list[in
         short = int(short * 2048 / long)
         long = 2048
 
-    if short != 768:
+    if short > 768:
         long = int(long * 768 / short)
         short = 768
 
