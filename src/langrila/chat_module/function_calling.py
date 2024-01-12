@@ -127,7 +127,7 @@ class BaseFunctionCallingModule(BaseModule):
         self.max_tokens = max_tokens
 
         self.additional_inputs = {}
-        if api_type == "openai" and model_name in _NEWER_MODEL_CONFIG.keys():
+        if model_name in _NEWER_MODEL_CONFIG.keys():
             self.seed = seed
             self.additional_inputs["seed"] = seed
             self.tool_configs = [f.model_dump() for f in tool_configs]
@@ -248,34 +248,41 @@ class BaseFunctionCallingModule(BaseModule):
             tool_calls = response_message.tool_calls
 
             results = []
-            for tool_call in tool_calls:
-                call_id = tool_call.id
-                funcname = tool_call.function.name
-                args = tool_call.function.arguments
-                func_out = self.tools[funcname](**json.loads(args))
-                output = ToolOutput(
-                    call_id=call_id,
-                    funcname=funcname,
-                    args=args,
-                    output=func_out,
-                )
-                results.append(output)
+            if tool_calls is not None:
+                for tool_call in tool_calls:
+                    call_id = tool_call.id
+                    funcname = tool_call.function.name
+                    args = tool_call.function.arguments
+                    func_out = self.tools[funcname](**json.loads(args))
+                    output = ToolOutput(
+                        call_id=call_id,
+                        funcname=funcname,
+                        args=args,
+                        output=func_out,
+                    )
+                    results.append(output)
 
             return FunctionCallingResults(usage=usage, results=results, prompt=messages)
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
-            funcname = response_message.function_call.name
-            args = response_message.function_call.arguments
-            func_out = self.tools[funcname](**json.loads(args))
+            function_call = response_message.function_call
 
-            output = ToolOutput(
-                call_id=None,
-                funcname=funcname,
-                args=args,
-                output=func_out,
-            )
+            output = []
+            if function_call is not None:
+                funcname = function_call.name
+                args = function_call.arguments
+                func_out = self.tools[funcname](**json.loads(args))
 
-            return FunctionCallingResults(usage=usage, results=[output], prompt=messages)
+                output += [
+                    ToolOutput(
+                        call_id=None,
+                        funcname=funcname,
+                        args=args,
+                        output=func_out,
+                    )
+                ]
+
+            return FunctionCallingResults(usage=usage, results=output, prompt=messages)
 
 
 class OpenAIFunctionCallingModule(BaseModule):
