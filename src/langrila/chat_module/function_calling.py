@@ -28,6 +28,7 @@ class ToolProperty(BaseModel):
 
         return v
 
+
 class ToolParameter(BaseModel):
     type: str = "object"
     properties: list[ToolProperty]
@@ -176,34 +177,41 @@ class BaseFunctionCallingModule(BaseModule):
             tool_calls = response_message.tool_calls
 
             results = []
-            for tool_call in tool_calls:
-                call_id = tool_call.id
-                funcname = tool_call.function.name
-                args = tool_call.function.arguments
-                func_out = self.tools[funcname](**json.loads(args))
-                output = ToolOutput(
-                    call_id=call_id,
-                    funcname=funcname,
-                    args=args,
-                    output=func_out,
-                )
-                results.append(output)
+            if tool_calls is not None:
+                for tool_call in tool_calls:
+                    call_id = tool_call.id
+                    funcname = tool_call.function.name
+                    args = tool_call.function.arguments
+                    func_out = self.tools[funcname](**json.loads(args))
+                    output = ToolOutput(
+                        call_id=call_id,
+                        funcname=funcname,
+                        args=args,
+                        output=func_out,
+                    )
+                    results.append(output)
 
             return FunctionCallingResults(usage=usage, results=results, prompt=messages)
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
-            funcname = response_message.function_call.name
-            args = response_message.function_call.arguments
-            func_out = self.tools[funcname](**json.loads(args))
+            function_call = response_message.function_call
 
-            output = ToolOutput(
-                call_id=None,
-                funcname=funcname,
-                args=args,
-                output=func_out,
-            )
+            output = []
+            if function_call is not None:
+                funcname = function_call.name
+                args = function_call.arguments
+                func_out = self.tools[funcname](**json.loads(args))
 
-            return FunctionCallingResults(usage=usage, results=[output], prompt=messages)
+                output += [
+                    ToolOutput(
+                        call_id=None,
+                        funcname=funcname,
+                        args=args,
+                        output=func_out,
+                    )
+                ]
+
+            return FunctionCallingResults(usage=usage, results=output, prompt=messages)
 
     async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
         if len(messages) == 0:
@@ -392,11 +400,7 @@ class OpenAIFunctionCallingModule(BaseModule):
         if init_conversations is None:
             init_conversations = [None] * len(prompts)
 
-        assert len(prompts) == len(
-            init_conversations
-        ), "Length of prompts and init_conversations must be the same."
-
-        z = zip(prompts, init_conversations)
+        z = zip(prompts, init_conversations, strict=True)
         batches = make_batch(list(z), batch_size)
         results = []
         for batch in batches:
