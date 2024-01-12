@@ -127,7 +127,7 @@ class BaseFunctionCallingModule(BaseModule):
         self.max_tokens = max_tokens
 
         self.additional_inputs = {}
-        if api_type == "openai" and model_name in _NEWER_MODEL_CONFIG.keys():
+        if model_name in _NEWER_MODEL_CONFIG.keys():
             self.seed = seed
             self.additional_inputs["seed"] = seed
             self.tool_configs = [f.model_dump() for f in tool_configs]
