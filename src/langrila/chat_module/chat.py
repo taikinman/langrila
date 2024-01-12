@@ -113,7 +113,7 @@ class BaseChatModule(BaseModule):
         self.deployment_id_env_name = deployment_id_env_name
 
         self.additional_inputs = {}
-        if api_type == "openai" and model_name in _NEWER_MODEL_CONFIG.keys():
+        if model_name in _NEWER_MODEL_CONFIG.keys():
             self.seed = seed
             self.response_format = response_format
             self.additional_inputs["seed"] = seed
@@ -559,11 +559,7 @@ class OpenAIChatModule(BaseModule):
         if isinstance(image_resolutions, str):
             image_resolutions = [image_resolutions] * len(prompts)
 
-        assert (
-            len(prompts) == len(init_conversations) == len(images)
-        ), "Length of prompts, init_conversations, and function_message_list must be the same."
-
-        z = zip(prompts, init_conversations, images, image_resolutions)
+        z = zip(prompts, init_conversations, images, image_resolutions, strict=True)
         batches = make_batch(list(z), batch_size)
         results = []
         for batch in batches:
