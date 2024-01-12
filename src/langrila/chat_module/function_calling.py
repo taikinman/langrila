@@ -282,7 +282,7 @@ class BaseFunctionCallingModule(BaseModule):
                     )
                 ]
 
-            return FunctionCallingResults(usage=usage, results=[output], prompt=messages)
+            return FunctionCallingResults(usage=usage, results=output, prompt=messages)
 
 
 class OpenAIFunctionCallingModule(BaseModule):
