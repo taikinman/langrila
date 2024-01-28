@@ -13,7 +13,9 @@ class OpenAIEmbeddingModule(BaseModule):
         self,
         api_key_env_name: str,
         organization_id_env_name: Optional[str] = None,
-        model_name: str = "text-embedding-ada-002",
+        model_name: str = "text-embedding-3-small",
+        dimensions: int | None = None,
+        user: str | None = None,
         api_type: Optional[str] = "openai",
         api_version: Optional[str] = None,
         endpoint_env_name: Optional[str] = None,
@@ -32,6 +34,12 @@ class OpenAIEmbeddingModule(BaseModule):
         self.max_retries = max_retries
         self.timeout = timeout
         self.batch_size = batch_size
+
+        self.additional_params = {}
+        if dimensions is not None:
+            self.additional_params["dimensions"] = dimensions
+        if user is not None:
+            self.additional_params["user"] = user
 
     def run(self, text: str | list[str]) -> EmbeddingResults:
         client = get_client(
@@ -53,7 +61,7 @@ class OpenAIEmbeddingModule(BaseModule):
         embeddings = []
         total_usage = Usage()
         for batch in make_batch(text, batch_size=self.batch_size):
-            response = embedder.create(input=batch, model=self.model_name)
+            response = embedder.create(input=batch, model=self.model_name, **self.additional_params)
             embeddings.extend([e.embedding for e in response.data])
             total_usage += response.usage
 
