@@ -3,17 +3,18 @@ from typing import Optional
 from openai.resources.embeddings import Embeddings
 
 from ..base import BaseModule
+from ..model_config import _NEWER_EMBEDDING_CONFIG, EMBEDDING_CONFIG
 from ..result import EmbeddingResults
 from ..usage import Usage
 from ..utils import get_async_client, get_client, make_batch
-from ..model_config import _NEWER_EMBEDDING_CONFIG
+
 
 class OpenAIEmbeddingModule(BaseModule):
     def __init__(
         self,
         api_key_env_name: str,
         organization_id_env_name: Optional[str] = None,
-        model_name: str = "text-embedding-3-small",
+        model_name: str = "text-embedding-ada-002",
         dimensions: int | None = None,
         user: str | None = None,
         api_type: Optional[str] = "openai",
@@ -24,6 +25,16 @@ class OpenAIEmbeddingModule(BaseModule):
         timeout: int = 60,
         batch_size: int = 10,
     ):
+        assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
+        if api_type == "azure":
+            assert (
+                api_version and endpoint_env_name and deployment_id_env_name
+            ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified for Azure API."
+
+        assert (
+            model_name in EMBEDDING_CONFIG.keys()
+        ), f"model_name must be one of {', '.join(sorted(EMBEDDING_CONFIG.keys()))}."
+
         self.api_key_env_name = api_key_env_name
         self.organization_id_env_name = organization_id_env_name
         self.model_name = model_name
@@ -95,7 +106,9 @@ class OpenAIEmbeddingModule(BaseModule):
         embeddings = []
         total_usage = Usage()
         for batch in make_batch(text, batch_size=self.batch_size):
-            response = await embedder.create(input=batch, model=self.model_name, **self.additional_params)
+            response = await embedder.create(
+                input=batch, model=self.model_name, **self.additional_params
+            )
             embeddings.extend([e.embedding for e in response.data])
             total_usage += response.usage
 
