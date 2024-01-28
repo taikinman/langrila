@@ -74,7 +74,7 @@ For newest model released on 2023/11/6.
 ```python
 chat = OpenAIChatModule(
     api_key_env_name = "API_KEY", # env variable name
-    model_name="gpt-4-1106-preview", # you can specify newest model
+    model_name="gpt-4-0125-preview", # you can specify newest model
     timeout=60, 
     max_retries=2, 
     # seed=42, # as needed
@@ -342,6 +342,45 @@ chat = OpenAIChatModule(
     endpoint_env_name="ENDPOINT", # env variable name
 )
 ```
+
+## Embedding
+```python
+from langrila import OpenAIEmbeddingModule
+
+embedder = OpenAIEmbeddingModule(
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="text-embedding-ada-002",
+)
+
+message = "Please give me only one advice to improve the quality of my sleep."
+
+results = embedder(message)
+results.model_dump()
+
+>>> {'text': ['Please give me only one advice to improve the quality of my sleep.'],
+ 'embeddings': [[-0.010138720273971558,
+   0.03176884725689888,
+   0.025842785835266113,
+   -0.02733718417584896,
+   0.009971244260668755,
+   ...]],
+ 'usage': {'prompt_tokens': 14, 'completion_tokens': 0}}
+```
+
+For 3rd generation embedding model.
+```python
+embedder = OpenAIEmbeddingModule(
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="text-embedding-3-small", # or large
+    dimensions = 512
+)
+
+message = "Please give me only one advice to improve the quality of my sleep."
+
+results = embedder(message)
+
+```
+
 
 ## Assembling module for specific use case
 ### Using prompt template

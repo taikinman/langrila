@@ -83,11 +83,7 @@ MODEL_POINT = {
     "gpt-3.5-turbo-16k": "gpt-3.5-turbo-16k-0613",
 }
 
-EMBEDDING_CONFIG = {
-    "text-embedding-ada-002": {
-        "max_tokens": 8192,
-        "prompt_cost_per_token": 0.0000001,
-    },
+_NEWER_EMBEDDING_CONFIG = {
     "text-embedding-3-small": {
         "max_tokens": 8192,
         "prompt_cost_per_token": 0.00000002,
@@ -98,6 +94,17 @@ EMBEDDING_CONFIG = {
     },
 }
 
+_OLDER_EMBEDDING_CONFIG = {
+    "text-embedding-ada-002": {
+        "max_tokens": 8192,
+        "prompt_cost_per_token": 0.0000001,
+    },
+}
+
+
+EMBEDDING_CONFIG = {}
+EMBEDDING_CONFIG.update(_OLDER_EMBEDDING_CONFIG)
+EMBEDDING_CONFIG.update(_NEWER_EMBEDDING_CONFIG)
 
 MODEL_CONFIG = {}
 MODEL_CONFIG.update(_OLDER_MODEL_CONFIG)

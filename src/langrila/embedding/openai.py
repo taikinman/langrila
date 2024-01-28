@@ -6,7 +6,7 @@ from ..base import BaseModule
 from ..result import EmbeddingResults
 from ..usage import Usage
 from ..utils import get_async_client, get_client, make_batch
-
+from ..model_config import _NEWER_EMBEDDING_CONFIG
 
 class OpenAIEmbeddingModule(BaseModule):
     def __init__(
@@ -37,7 +37,10 @@ class OpenAIEmbeddingModule(BaseModule):
 
         self.additional_params = {}
         if dimensions is not None:
-            self.additional_params["dimensions"] = dimensions
+            if model_name in _NEWER_EMBEDDING_CONFIG:
+                self.additional_params["dimensions"] = dimensions
+            else:
+                print(f"Warning: dimensions is not supported for {model_name}. It will be ignored.")
         if user is not None:
             self.additional_params["user"] = user
 
