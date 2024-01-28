@@ -70,7 +70,7 @@ response.model_dump()
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
 
-For newest model released on 2023/11/6.
+For newest model released on 2024/01/25.
 ```python
 chat = OpenAIChatModule(
     api_key_env_name = "API_KEY", # env variable name
