@@ -35,6 +35,8 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
 
                 if message is not None:
                     adjusted_messages.append(message)
+                else:
+                    break
         return adjusted_messages[::-1]
 
     def adjust_message_length_and_update_total_tokens(
