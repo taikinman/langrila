@@ -55,7 +55,7 @@ _NEWER_MODEL_CONFIG = {
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
     },
-    "gpt-4-1106-vision-preview": {
+    "gpt-4-vision-preview": {
         "max_tokens": 128000,
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
@@ -78,7 +78,8 @@ MODEL_POINT = {
     "gpt-4": "gpt-4-0613",
     "gpt-4-32k": "gpt-4-32k-0613",
     "gpt-4-128k": "gpt-4-1106-preview",
-    "gpt-4-vision": "gpt-4-1106-vision-preview",
+    "gpt-4-vision": "gpt-4-vision-preview",
+    "gpt-4-vision-1106-preview": "gpt-4-vision-preview",
     "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
     "gpt-3.5-turbo-16k": "gpt-3.5-turbo-16k-0613",
 }
