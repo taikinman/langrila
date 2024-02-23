@@ -343,6 +343,24 @@ chat = OpenAIChatModule(
 )
 ```
 
+## Conversation memory with Amazon S3
+
+```python
+from langrila import OpenAIChatModule
+from langrila.memory.s3 import S3ConversationMemory
+
+# S3ConversationMemory utilizes `boto3.client("s3")` for its operations.
+# configuration and credentials are handled in the same manner.
+chat = OpenAIChatModule(
+    api_key_env_name="API_KEY", # env variable name
+    model_name="gpt-3.5-turbo-16k-0613",
+    conversation_memory=S3ConversationMemory(
+        bucket="S3_BUCKET_NAME",
+        object_key="OBJECT_KEY", # "PREFIX/OBJECT_KEY" for using prefix
+    )
+)
+```
+
 ## Embedding
 ```python
 from langrila import OpenAIEmbeddingModule
