@@ -375,7 +375,7 @@ class OpenAIFunctionCallingModule(BaseModule):
                 ]
 
         for result in response.results:
-            messages.append(Message(content=result.output, name=result.funcname).as_function)
+            messages.append(Message(content=str(result.output), name=result.funcname).as_function)
 
         if self.conversation_memory is not None:
             self.conversation_memory.store(messages)
@@ -411,7 +411,7 @@ class OpenAIFunctionCallingModule(BaseModule):
                 ]
 
         for result in response.results:
-            messages.append(Message(content=result.output, name=result.funcname).as_function)
+            messages.append(Message(content=str(result.output), name=result.funcname).as_function)
 
         if self.conversation_memory is not None:
             self.conversation_memory.store(messages)
