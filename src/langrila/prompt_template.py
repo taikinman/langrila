@@ -37,7 +37,7 @@ class PromptTemplate(BaseModel):
 
         pattern = re.compile(odd_repeat_pattern("{") + "[a-zA-Z0-9_]+" + odd_repeat_pattern("}"))
         pattern_sub = re.compile("{|}")
-        found_args = set([pattern_sub.sub("", m.group()) for m in pattern.finditer(template)])
+        found_args = set([pattern_sub.sub("", m) for m in pattern.findall(template)])
         input_args = set(args.keys())
         if found_args != input_args:
             if found_args:
