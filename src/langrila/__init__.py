@@ -8,6 +8,7 @@ from .chat_module.function_calling import (
     ToolProperty,
 )
 from .embedding.openai import OpenAIEmbeddingModule
+from .memory.in_memory import InMemoryConversationMemory
 from .memory.json import JSONConversationMemory
 from .message import Message
 from .prompt_template import PromptTemplate
