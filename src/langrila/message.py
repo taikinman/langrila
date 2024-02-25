@@ -8,6 +8,7 @@ from .utils import encode_image
 
 class Message(BaseModel):
     content: str
+    name: Optional[str] = None
     images: Any | list[Any] | None = None
     image_resolution: str | None = None
 
@@ -34,21 +35,27 @@ class Message(BaseModel):
                         },
                     }
                 )
-            return {"role": "user", "content": content}
+            return {"role": "user", "content": content} | ({"name": self.name} if self.name else {})
         else:
-            return {"role": "user", "content": self.content}
+            return {"role": "user", "content": self.content} | (
+                {"name": self.name} if self.name else {}
+            )
 
     @property
     def as_assistant(self):
         return {"role": "assistant", "content": self.content}
 
-    @property
-    def as_tool(self):
-        return {"role": "tool", "content": self.content}
+    # @property
+    # def as_tool(self):
+    #     return {"role": "tool", "content": self.content}
 
     @property
     def as_function(self):
-        return {"role": "function", "content": self.content}
+        return {
+            "role": "function",
+            "name": self.name,
+            "content": self.content,
+        }
 
     @field_validator("image_resolution")
     def check_image_resolution_value(cls, val):

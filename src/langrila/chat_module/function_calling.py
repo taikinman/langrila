@@ -4,7 +4,7 @@ from typing import Callable, Optional
 
 from pydantic import BaseModel, field_validator
 
-from ..base import BaseConversationLengthAdjuster, BaseFilter, BaseModule
+from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter, BaseModule
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import Message
 from ..model_config import _NEWER_MODEL_CONFIG, _OLDER_MODEL_CONFIG, MODEL_CONFIG, MODEL_POINT
@@ -302,6 +302,7 @@ class OpenAIFunctionCallingModule(BaseModule):
         max_retries: int = 2,
         seed: Optional[int] = None,
         context_length: Optional[int] = None,
+        conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
     ) -> None:
@@ -343,13 +344,17 @@ class OpenAIFunctionCallingModule(BaseModule):
             else conversation_length_adjuster
         )
         self.content_filter = content_filter
+        self.conversation_memory = conversation_memory
 
     def run(
         self,
         prompt: str,
         init_conversation: Optional[list[dict[str, str]]] = None,
     ) -> FunctionCallingResults:
-        messages: list[dict[str, str]] = []
+        if self.conversation_memory is not None:
+            messages: list[dict[str, str]] = self.conversation_memory.load()
+        else:
+            messages = []
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -369,6 +374,14 @@ class OpenAIFunctionCallingModule(BaseModule):
                     0
                 ]
 
+        if self.conversation_memory is not None:
+            for result in response.results:
+                messages.append(
+                    Message(content=str(result.output), name=result.funcname).as_function
+                )
+
+            self.conversation_memory.store(messages)
+
         return response
 
     async def arun(
@@ -376,7 +389,10 @@ class OpenAIFunctionCallingModule(BaseModule):
         prompt: str,
         init_conversation: Optional[list[dict[str, str]]] = None,
     ) -> FunctionCallingResults:
-        messages: list[dict[str, str]] = []
+        if self.conversation_memory is not None:
+            messages: list[dict[str, str]] = self.conversation_memory.load()
+        else:
+            messages = []
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -395,6 +411,14 @@ class OpenAIFunctionCallingModule(BaseModule):
                 response.results[i].args = self.content_filter.restore([response.results[i].args])[
                     0
                 ]
+
+        if self.conversation_memory is not None:
+            for result in response.results:
+                messages.append(
+                    Message(content=str(result.output), name=result.funcname).as_function
+                )
+
+            self.conversation_memory.store(messages)
 
         return response
 
