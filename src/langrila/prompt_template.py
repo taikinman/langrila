@@ -32,9 +32,12 @@ class PromptTemplate(BaseModel):
 
     @staticmethod
     def _check_args(template, args):
-        pattern_args = re.compile(r"{[a-zA-Z0-9_]+}")
+        def odd_repeat_pattern(s):
+            return f"(?<!{s}){s}(?:{s}{s})*(?!{s})"
+
+        pattern = re.compile(odd_repeat_pattern("{") + "[a-zA-Z0-9_]+" + odd_repeat_pattern("}"))
         pattern_sub = re.compile("{|}")
-        found_args = {pattern_sub.sub("", a) for a in pattern_args.findall(template)}
+        found_args = set([pattern_sub.sub("", m) for m in pattern.findall(template)])
         input_args = set(args.keys())
         if found_args != input_args:
             if found_args:
@@ -47,6 +50,4 @@ class PromptTemplate(BaseModel):
             else:
                 _input_args = "{}"
 
-            raise ValueError(
-                f"Template has args {_found_args} but {_input_args} were input"
-            )
+            raise ValueError(f"Template has args {_found_args} but {_input_args} were input")
