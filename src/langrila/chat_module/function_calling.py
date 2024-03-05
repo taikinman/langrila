@@ -90,7 +90,7 @@ class BaseFunctionCallingModule(BaseModule):
         model_name: str,
         tools: list[Callable],
         tool_configs: list[ToolConfig],
-        tool_choice: str = "auto",
+        # tool_choice: str = "auto",
         api_type: str = "openai",
         api_version: Optional[str] = None,
         endpoint_env_name: Optional[str] = None,
@@ -123,7 +123,7 @@ class BaseFunctionCallingModule(BaseModule):
             len(_tool_names_from_config ^ set(self.tools.keys())) == 0
         ), f"tool names in tool_configs must be the same as the function names in tools. tool names in tool_configs: {_tool_names_from_config}, function names in tools: {set(self.tools.keys())}"
 
-        self.tool_choice = tool_choice
+        # self.tool_choice = tool_choice
         self.max_tokens = max_tokens
 
         self.additional_inputs = {}
@@ -132,7 +132,7 @@ class BaseFunctionCallingModule(BaseModule):
             self.additional_inputs["seed"] = seed
             self.tool_configs = [f.model_dump() for f in tool_configs]
             self.additional_inputs["tools"] = self.tool_configs
-            self.additional_inputs["tool_choice"] = self.tool_choice
+            # self.additional_inputs["tool_choice"] = self.tool_choice
         else:
             if seed:
                 print(
@@ -140,9 +140,18 @@ class BaseFunctionCallingModule(BaseModule):
                 )
             self.tool_configs = [f.model_dump()["function"] for f in tool_configs]
             self.additional_inputs["functions"] = self.tool_configs
-            self.additional_inputs["function_call"] = self.tool_choice
+            # self.additional_inputs["function_call"] = self.tool_choice
 
-    def run(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+    def _set_tool_choice(self, tool_choice: str = "auto"):
+        if self.model_name in _NEWER_MODEL_CONFIG.keys():
+            self.additional_inputs["tool_choice"] = tool_choice if tool_choice == "auto" else {"type": "function", "function": {"name": tool_choice}}
+        else:
+            self.additional_inputs["function_call"] = tool_choice
+
+
+    def run(self, messages: list[dict[str, str]], tool_choice: str = "auto") -> FunctionCallingResults:
+        self._set_tool_choice(tool_choice)
+
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
@@ -213,7 +222,9 @@ class BaseFunctionCallingModule(BaseModule):
 
             return FunctionCallingResults(usage=usage, results=output, prompt=messages)
 
-    async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+    async def arun(self, messages: list[dict[str, str]], tool_choice: str = "auto") -> FunctionCallingResults:
+        self._set_tool_choice(tool_choice)
+
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
@@ -350,6 +361,7 @@ class OpenAIFunctionCallingModule(BaseModule):
         self,
         prompt: str,
         init_conversation: Optional[list[dict[str, str]]] = None,
+        tool_choice: str = "auto",
     ) -> FunctionCallingResults:
         if self.conversation_memory is not None:
             messages: list[dict[str, str]] = self.conversation_memory.load()
@@ -366,7 +378,7 @@ class OpenAIFunctionCallingModule(BaseModule):
 
         messages = self.conversation_length_adjuster(messages)
 
-        response = self.function_calling_model(messages)
+        response = self.function_calling_model(messages, tool_choice=tool_choice)
 
         if self.content_filter is not None:
             for i, r in enumerate(response.results):
@@ -388,6 +400,7 @@ class OpenAIFunctionCallingModule(BaseModule):
         self,
         prompt: str,
         init_conversation: Optional[list[dict[str, str]]] = None,
+        tool_choice: str = "auto",
     ) -> FunctionCallingResults:
         if self.conversation_memory is not None:
             messages: list[dict[str, str]] = self.conversation_memory.load()
@@ -404,7 +417,7 @@ class OpenAIFunctionCallingModule(BaseModule):
 
         messages = self.conversation_length_adjuster(messages)
 
-        response = await self.function_calling_model(messages, arun=True)
+        response = await self.function_calling_model(messages, tool_choice=tool_choice, arun=True)
 
         if self.content_filter is not None:
             for i, r in enumerate(response.results):
