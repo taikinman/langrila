@@ -377,10 +377,8 @@ class OpenAIChatModule(BaseModule):
         init_conversation: Optional[list[dict[str, str]]] = None,
         image_resolution: str = "low",
     ) -> CompletionResults:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
+
+        messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -392,17 +390,17 @@ class OpenAIChatModule(BaseModule):
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
 
-        messages = self.conversation_length_adjuster(messages)
+        messages_adjusted = self.conversation_length_adjuster.run(messages)
 
-        response = self.chat_model(messages)
+        response = self.chat_model.run(messages_adjusted)
 
         if self.content_filter is not None:
-            response.message = self.content_filter.restore([response.message])[0]
+            response.message = self.restore_content_filter([response.message])[0]
 
         messages.append(response.message)
 
         if self.conversation_memory is not None:
-            self.conversation_memory.store(messages)
+            self.save_conversation(messages)
 
         return response
 
@@ -413,10 +411,7 @@ class OpenAIChatModule(BaseModule):
         init_conversation: Optional[list[dict[str, str]]] = None,
         image_resolution: str = "low",
     ) -> CompletionResults:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
+        messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -426,11 +421,11 @@ class OpenAIChatModule(BaseModule):
         )
 
         if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
+            messages = self.apply_content_filter(messages)
 
-        messages = self.conversation_length_adjuster(messages)
+        messages_adjusted = self.conversation_length_adjuster.run(messages)
 
-        response = self.chat_model.stream(messages)
+        response = self.chat_model.stream(messages_adjusted)
 
         response_message_stream = {"role": "assistant", "content": ""}
         for chunk in response:
@@ -438,19 +433,19 @@ class OpenAIChatModule(BaseModule):
                 response_message_stream["content"] += chunk
 
                 if self.content_filter is not None:
-                    response_message_stream = self.content_filter.restore(
+                    response_message_stream = self.restore_content_filter(
                         [response_message_stream]
                     )[0]
 
                 yield response_message_stream["content"]
             elif isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
-                    chunk.message = self.content_filter.restore([chunk.message])[0]
+                    chunk.message = self.restore_content_filter([chunk.message])[0]
 
                 messages.append(chunk.message)
 
                 if self.conversation_memory is not None:
-                    self.conversation_memory.store(messages)
+                    self.save_conversation(messages)
 
                 yield chunk
             else:
@@ -463,10 +458,7 @@ class OpenAIChatModule(BaseModule):
         init_conversation: Optional[list[dict[str, str]]] = None,
         image_resolution: str = "low",
     ) -> CompletionResults:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
+        messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -476,11 +468,11 @@ class OpenAIChatModule(BaseModule):
         )
 
         if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
+            messages = self.apply_content_filter(messages)
 
-        messages = self.conversation_length_adjuster(messages)
+        messages_adjusted = self.conversation_length_adjuster.run(messages)
 
-        response = self.chat_model.astream(messages)
+        response = self.chat_model.astream(messages_adjusted)
 
         response_message_stream = {"role": "assistant", "content": ""}
         async for chunk in response:
@@ -488,19 +480,19 @@ class OpenAIChatModule(BaseModule):
                 response_message_stream["content"] += chunk
 
                 if self.content_filter is not None:
-                    response_message_stream = self.content_filter.restore(
+                    response_message_stream = self.restore_content_filter(
                         [response_message_stream]
                     )[0]
 
                 yield response_message_stream["content"]
             elif isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
-                    chunk.message = self.content_filter.restore([chunk.message])[0]
+                    chunk.message = self.restore_content_filter([chunk.message])[0]
 
                 messages.append(chunk.message)
 
                 if self.conversation_memory is not None:
-                    self.conversation_memory.store(messages)
+                    self.save_conversation(messages)
 
                 yield chunk
             else:
@@ -513,10 +505,7 @@ class OpenAIChatModule(BaseModule):
         init_conversation: Optional[list[dict[str, str]]] = None,
         image_resolution: str = "low",
     ) -> CompletionResults:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
+        messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -526,19 +515,19 @@ class OpenAIChatModule(BaseModule):
         )
 
         if self.content_filter is not None:
-            messages = await self.content_filter(messages, arun=True)
+            messages = self.apply_content_filter(messages)
 
-        messages = self.conversation_length_adjuster(messages)
+        messages_adjusted = self.conversation_length_adjuster.run(messages)
 
-        response = await self.chat_model(messages, arun=True)
+        response = await self.chat_model.arun(messages_adjusted)
 
         if self.content_filter is not None:
-            response.message = self.content_filter.restore([response.message])[0]
+            response.message = self.restore_content_filter([response.message])[0]
 
         messages.append(response.message)
 
         if self.conversation_memory is not None:
-            self.conversation_memory.store(messages)
+            self.save_conversation(messages)
 
         return response
 

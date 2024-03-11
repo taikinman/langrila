@@ -363,10 +363,7 @@ class OpenAIFunctionCallingModule(BaseModule):
         init_conversation: Optional[list[dict[str, str]]] = None,
         tool_choice: str = "auto",
     ) -> FunctionCallingResults:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
+        messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -374,15 +371,15 @@ class OpenAIFunctionCallingModule(BaseModule):
         messages.append(Message(content=prompt).as_user)
 
         if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
+            messages = self.apply_content_filter(messages)
 
-        messages = self.conversation_length_adjuster(messages)
+        messages_adjusted = self.conversation_length_adjuster.run(messages)
 
-        response = self.function_calling_model(messages, tool_choice=tool_choice)
+        response = self.function_calling_model.run(messages_adjusted, tool_choice=tool_choice)
 
         if self.content_filter is not None:
             for i, r in enumerate(response.results):
-                response.results[i].args = self.content_filter.restore([response.results[i].args])[
+                response.results[i].args = self.restore_content_filter([response.results[i].args])[
                     0
                 ]
 
@@ -392,7 +389,7 @@ class OpenAIFunctionCallingModule(BaseModule):
                     Message(content=str(result.output), name=result.funcname).as_function
                 )
 
-            self.conversation_memory.store(messages)
+            self.save_conversation(messages)
 
         return response
 
@@ -402,10 +399,7 @@ class OpenAIFunctionCallingModule(BaseModule):
         init_conversation: Optional[list[dict[str, str]]] = None,
         tool_choice: str = "auto",
     ) -> FunctionCallingResults:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
+        messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -413,15 +407,15 @@ class OpenAIFunctionCallingModule(BaseModule):
         messages.append(Message(content=prompt).as_user)
 
         if self.content_filter is not None:
-            messages = await self.content_filter(messages, arun=True)
+            messages = self.apply_content_filter(messages)
 
-        messages = self.conversation_length_adjuster(messages)
+        messages_adjusted = self.conversation_length_adjuster.run(messages)
 
-        response = await self.function_calling_model(messages, tool_choice=tool_choice, arun=True)
+        response = await self.function_calling_model.arun(messages_adjusted, tool_choice=tool_choice)
 
         if self.content_filter is not None:
             for i, r in enumerate(response.results):
-                response.results[i].args = self.content_filter.restore([response.results[i].args])[
+                response.results[i].args = self.restore_content_filter([response.results[i].args])[
                     0
                 ]
 
@@ -431,7 +425,7 @@ class OpenAIFunctionCallingModule(BaseModule):
                     Message(content=str(result.output), name=result.funcname).as_function
                 )
 
-            self.conversation_memory.store(messages)
+            self.save_conversation(messages)
 
         return response
 

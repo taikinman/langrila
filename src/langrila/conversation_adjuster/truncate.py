@@ -33,10 +33,12 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     message, total_n_tokens
                 )
 
-                if message is not None:
+                if message:
                     adjusted_messages.append(message)
-                else:
+
+                if message is None:
                     break
+
         return adjusted_messages[::-1]
 
     def adjust_message_length_and_update_total_tokens(
@@ -59,7 +61,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     )
                     return message, total_n_tokens
                 elif "vision" in self.model_name and isinstance(message["content"], list):
-                    return None, total_n_tokens  # truncate whole image
+                    return "", total_n_tokens  # truncate whole image
                 else:
                     raise ValueError(
                         f"message['content'] must be str or list, but {type(message['content'])} is given."
