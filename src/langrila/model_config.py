@@ -45,6 +45,11 @@ _OLDER_MODEL_CONFIG = {
 }
 
 _NEWER_MODEL_CONFIG = {
+    "gpt-4-turbo-2024-04-09": {
+        "max_tokens": 128000,
+        "prompt_cost_per_token": 0.00001,
+        "completion_cost_per_token": 0.00003,
+    },
     "gpt-4-0125-preview": {
         "max_tokens": 128000,
         "prompt_cost_per_token": 0.00001,
@@ -73,7 +78,7 @@ _NEWER_MODEL_CONFIG = {
 }
 
 MODEL_POINT = {
-    "gpt-4-turbo": "gpt-4-0125-preview",
+    "gpt-4-turbo": "gpt-4-turbo-2024-04-09",
     "gpt-4-turbo-preview": "gpt-4-0125-preview",
     "gpt-4": "gpt-4-0613",
     "gpt-4-32k": "gpt-4-32k-0613",
