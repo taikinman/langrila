@@ -38,18 +38,13 @@ _OLDER_MODEL_CONFIG = {
         "completion_cost_per_token": 0.000004,
     },
     "gpt-3.5-turbo-instruct": {
-        "max_tokens": 8192,
+        "max_tokens": 4096,
         "prompt_cost_per_token": 0.0000015,
         "completion_cost_per_token": 0.000002,
     },
 }
 
 _NEWER_MODEL_CONFIG = {
-    "gpt-4-turbo-2024-04-09": {
-        "max_tokens": 128000,
-        "prompt_cost_per_token": 0.00001,
-        "completion_cost_per_token": 0.00003,
-    },
     "gpt-4-0125-preview": {
         "max_tokens": 128000,
         "prompt_cost_per_token": 0.00001,
@@ -60,13 +55,8 @@ _NEWER_MODEL_CONFIG = {
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
     },
-    "gpt-4-vision-preview": {
-        "max_tokens": 128000,
-        "prompt_cost_per_token": 0.00001,
-        "completion_cost_per_token": 0.00003,
-    },
     "gpt-3.5-turbo-0125": {
-        "max_tokens": 16384,  # TODO : check after release
+        "max_tokens": 16384,
         "prompt_cost_per_token": 0.0000005,
         "completion_cost_per_token": 0.0000015,
     },
@@ -77,7 +67,26 @@ _NEWER_MODEL_CONFIG = {
     },
 }
 
+_VISION_MODEL = {
+    "gpt-4o-2024-05-13": {
+        "max_tokens": 128000,
+        "prompt_cost_per_token": 0.000005,
+        "completion_cost_per_token": 0.000015,
+    },
+    "gpt-4-turbo-2024-04-09": {
+        "max_tokens": 128000,
+        "prompt_cost_per_token": 0.00001,
+        "completion_cost_per_token": 0.00003,
+    },
+    "gpt-4-vision-preview": {
+        "max_tokens": 128000,
+        "prompt_cost_per_token": 0.00001,
+        "completion_cost_per_token": 0.00003,
+    },
+}
+
 MODEL_POINT = {
+    "gpt-4o": "gpt-4o-2024-05-13",
     "gpt-4-turbo": "gpt-4-turbo-2024-04-09",
     "gpt-4-turbo-preview": "gpt-4-0125-preview",
     "gpt-4": "gpt-4-0613",
@@ -85,9 +94,10 @@ MODEL_POINT = {
     "gpt-4-128k": "gpt-4-1106-preview",
     "gpt-4-vision": "gpt-4-vision-preview",
     "gpt-4-vision-1106-preview": "gpt-4-vision-preview",
-    "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
+    "gpt-3.5-turbo": "gpt-3.5-turbo-0125",
     "gpt-3.5-turbo-16k": "gpt-3.5-turbo-16k-0613",
 }
+
 
 _NEWER_EMBEDDING_CONFIG = {
     "text-embedding-3-small": {
@@ -115,8 +125,10 @@ EMBEDDING_CONFIG.update(_NEWER_EMBEDDING_CONFIG)
 MODEL_CONFIG = {}
 MODEL_CONFIG.update(_OLDER_MODEL_CONFIG)
 MODEL_CONFIG.update(_NEWER_MODEL_CONFIG)
+MODEL_CONFIG.update(_VISION_MODEL)
 
 _MODEL_POINT_CONFIG = {
+    "gpt-4o": MODEL_CONFIG[MODEL_POINT["gpt-4o"]],
     "gpt-4-turbo": MODEL_CONFIG[MODEL_POINT["gpt-4-turbo"]],
     "gpt-4": MODEL_CONFIG[MODEL_POINT["gpt-4"]],
     "gpt-4-32k": MODEL_CONFIG[MODEL_POINT["gpt-4-32k"]],

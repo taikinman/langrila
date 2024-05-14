@@ -10,7 +10,7 @@ import tiktoken
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from PIL import Image
 
-from .model_config import _TILE_SIZE, _TOKENS_PER_TILE, MODEL_CONFIG
+from .model_config import _TILE_SIZE, _TOKENS_PER_TILE, _VISION_MODEL, MODEL_CONFIG
 
 MODEL_ZOO = set(MODEL_CONFIG.keys())
 
@@ -140,7 +140,9 @@ def set_openai_envs(
         openai.organization = os.getenv(organization_id_env_name)
 
 
-def get_n_tokens(message: dict[str, str | list[dict[str, str|dict[str, str]]]] , model_name: str) -> int:
+def get_n_tokens(
+    message: dict[str, str | list[dict[str, str | dict[str, str]]]], model_name: str
+) -> int:
     """
     Return the number of tokens used by a list of messages.
     Forked and edited from : https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
@@ -167,7 +169,7 @@ def get_n_tokens(message: dict[str, str | list[dict[str, str|dict[str, str]]]] ,
     # num_tokens += tokens_per_message
     for key, value in message.items():
         if key == "content":
-            if "vision" in model_name and isinstance(value, list):
+            if model_name in _VISION_MODEL and isinstance(value, list):
                 for item in value:  # value type is list[dict[str, str|dict[str, str]]
                     if item["type"] == "text":
                         n_content_tokens += len(encoding.encode(item["text"]))

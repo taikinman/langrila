@@ -9,7 +9,7 @@ from PIL import Image
 from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter, BaseModule
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import Message
-from ..model_config import _NEWER_MODEL_CONFIG, MODEL_CONFIG, MODEL_POINT
+from ..model_config import _OLDER_MODEL_CONFIG, _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
 from ..result import CompletionResults
 from ..usage import Usage
 from ..utils import get_async_client, get_client, get_n_tokens, get_token_limit, make_batch
@@ -41,7 +41,7 @@ def completion(
         **kwargs,
     )
 
-    if "vision" in model_name:
+    if model_name in _VISION_MODEL:
         params.pop("stop")
 
     return client.chat.completions.create(**params)
@@ -73,7 +73,7 @@ async def acompletion(
         **kwargs,
     )
 
-    if "vision" in model_name:
+    if model_name in _VISION_MODEL:
         params.pop("stop")
 
     return await client.chat.completions.create(**params)
@@ -113,11 +113,12 @@ class BaseChatModule(BaseModule):
         self.deployment_id_env_name = deployment_id_env_name
 
         self.additional_inputs = {}
-        if model_name in _NEWER_MODEL_CONFIG.keys():
+        if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
             self.response_format = response_format
             self.additional_inputs["seed"] = seed
-            if "vision" not in model_name:
+
+            if model_name not in _VISION_MODEL:
                 self.additional_inputs["response_format"] = response_format
         else:
             # TODO : add logging message
@@ -377,7 +378,6 @@ class OpenAIChatModule(BaseModule):
         init_conversation: Optional[list[dict[str, str]]] = None,
         image_resolution: str = "low",
     ) -> CompletionResults:
-
         messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:

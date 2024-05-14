@@ -42,6 +42,36 @@ poetry add --editable /path/to/langrila
 1. Pre-configure environment variables to use OpenAI API or Azure OpenAI Service.
 
 ## Basic usage
+### Supported models
+- Chat models
+    - gpt-3.5-turbo-0301
+    - gpt-3.5-turbo-0613
+    - gpt-3.5-turbo-16k-0613
+    - gpt-3.5-turbo-instruct
+    - gpt-3.5-turbo-1106
+    - gpt-3.5-turbo-0125
+    - gpt-4-0314
+    - gpt-4-0613
+    - gpt-4-32k-0314
+    - gpt-4-32k-0613
+    - gpt-4-1106-preview
+    - gpt-4-vision-preview
+    - gpt-4-0125-preview
+    - gpt-4-turbo-2024-04-09
+    - gpt-4o-2024-05-13
+
+- Embedding models
+    - text-embedding-ada-002
+    - text-embedding-3-small
+    - text-embedding-3-large
+
+### Aliases
+```
+{'gpt-4o': 'gpt-4o-2024-05-13',
+ 'gpt-4-turbo': 'gpt-4-turbo-2024-04-09',
+ 'gpt-3.5-turbo': 'gpt-3.5-turbo-0125'}
+```
+ 
 ### For OpenAI
 ```python
 from langrila import OpenAIChatModule
@@ -68,18 +98,6 @@ response.model_dump()
  'usage': {'prompt_tokens': 21, 'completion_tokens': 23},
  'prompt': [{'role': 'user',
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
-```
-
-For newest model released on 2024/01/25.
-```python
-chat = OpenAIChatModule(
-    api_key_env_name = "API_KEY", # env variable name
-    model_name="gpt-4-0125-preview", # you can specify newest model
-    timeout=60, 
-    max_retries=2, 
-    # seed=42, # as needed
-    # response_format={"type":"json_object"} # as needed
-)
 ```
 
 ### For Azure
