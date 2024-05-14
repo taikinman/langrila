@@ -15,6 +15,16 @@ from .model_config import _TILE_SIZE, _TOKENS_PER_TILE, _VISION_MODEL, MODEL_CON
 MODEL_ZOO = set(MODEL_CONFIG.keys())
 
 
+def get_encoding(model_name: str):
+    try:
+        encoding = tiktoken.encoding_for_model(model_name)
+    except KeyError:
+        print("Warning: model not found. Using o200k_base encoding.")
+        encoding = tiktoken.get_encoding("o200k_base")
+
+    return encoding
+
+
 def get_client(
     api_key_env_name: str,
     api_version: Optional[str] = None,
@@ -147,11 +157,8 @@ def get_n_tokens(
     Return the number of tokens used by a list of messages.
     Forked and edited from : https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
     """
-    try:
-        encoding = tiktoken.encoding_for_model(model_name)
-    except KeyError:
-        # print("Warning: model not found. Using cl100k_base encoding.")
-        encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = get_encoding(model_name)
+
     if model_name in MODEL_ZOO:
         if model_name == "gpt-3.5-turbo-0301":
             tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
