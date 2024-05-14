@@ -4,7 +4,7 @@ import tiktoken
 
 from ..base import BaseConversationLengthAdjuster
 from ..model_config import _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
-from ..utils import get_n_tokens
+from ..utils import get_encoding, get_n_tokens
 
 
 class OldConversationTruncationModule(BaseConversationLengthAdjuster):
@@ -23,6 +23,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
 
         self.model_name = model_name
         self.context_length = context_length
+        self.encoding = get_encoding(self.model_name)
 
     def run(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         adjusted_messages: list[dict[str, str]] = []
@@ -70,13 +71,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                 return None, total_n_tokens
 
     def truncate(self, text: str, n_tokens: int) -> str:
-        try:
-            TOKENIZER = tiktoken.encoding_for_model(self.model_name)
-        except KeyError:
-            print("Warning: model not found. Using cl100k_base encoding.")
-            TOKENIZER = tiktoken.get_encoding("cl100k_base")
-
         if n_tokens > 0:
-            return TOKENIZER.decode(TOKENIZER.encode(text)[-n_tokens:])
+            return self.encoding.decode(self.encoding.encode(text)[-n_tokens:])
         else:
             return ""
