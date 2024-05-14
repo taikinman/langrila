@@ -3,7 +3,7 @@ from typing import Any
 import tiktoken
 
 from ..base import BaseConversationLengthAdjuster
-from ..model_config import MODEL_CONFIG, MODEL_POINT
+from ..model_config import _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
 from ..utils import get_n_tokens
 
 
@@ -60,7 +60,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                         "Input message is truncated because total length of messages exceeds context length."
                     )
                     return message, total_n_tokens
-                elif "vision" in self.model_name and isinstance(message["content"], list):
+                elif self.model_name in _VISION_MODEL and isinstance(message["content"], list):
                     return "", total_n_tokens  # truncate whole image
                 else:
                     raise ValueError(

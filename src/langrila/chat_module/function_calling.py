@@ -127,7 +127,7 @@ class BaseFunctionCallingModule(BaseModule):
         self.max_tokens = max_tokens
 
         self.additional_inputs = {}
-        if model_name in _NEWER_MODEL_CONFIG.keys():
+        if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
             self.additional_inputs["seed"] = seed
             self.tool_configs = [f.model_dump() for f in tool_configs]
@@ -143,13 +143,18 @@ class BaseFunctionCallingModule(BaseModule):
             # self.additional_inputs["function_call"] = self.tool_choice
 
     def _set_tool_choice(self, tool_choice: str = "auto"):
-        if self.model_name in _NEWER_MODEL_CONFIG.keys():
-            self.additional_inputs["tool_choice"] = tool_choice if tool_choice == "auto" else {"type": "function", "function": {"name": tool_choice}}
+        if self.model_name not in _OLDER_MODEL_CONFIG.keys():
+            self.additional_inputs["tool_choice"] = (
+                tool_choice
+                if tool_choice == "auto"
+                else {"type": "function", "function": {"name": tool_choice}}
+            )
         else:
             self.additional_inputs["function_call"] = tool_choice
 
-
-    def run(self, messages: list[dict[str, str]], tool_choice: str = "auto") -> FunctionCallingResults:
+    def run(
+        self, messages: list[dict[str, str]], tool_choice: str = "auto"
+    ) -> FunctionCallingResults:
         self._set_tool_choice(tool_choice)
 
         if len(messages) == 0:
@@ -181,7 +186,7 @@ class BaseFunctionCallingModule(BaseModule):
         usage = Usage()
         usage += response.usage
 
-        if self.model_name in _NEWER_MODEL_CONFIG.keys():
+        if self.model_name not in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
             tool_calls = response_message.tool_calls
 
@@ -201,6 +206,7 @@ class BaseFunctionCallingModule(BaseModule):
                     results.append(output)
 
             return FunctionCallingResults(usage=usage, results=results, prompt=messages)
+
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
             function_call = response_message.function_call
@@ -222,7 +228,12 @@ class BaseFunctionCallingModule(BaseModule):
 
             return FunctionCallingResults(usage=usage, results=output, prompt=messages)
 
-    async def arun(self, messages: list[dict[str, str]], tool_choice: str = "auto") -> FunctionCallingResults:
+        else:
+            raise ValueError(f"model_name {self.model_name} is not supported.")
+
+    async def arun(
+        self, messages: list[dict[str, str]], tool_choice: str = "auto"
+    ) -> FunctionCallingResults:
         self._set_tool_choice(tool_choice)
 
         if len(messages) == 0:
@@ -254,7 +265,7 @@ class BaseFunctionCallingModule(BaseModule):
         usage = Usage()
         usage += response.usage
 
-        if self.model_name in _NEWER_MODEL_CONFIG.keys():
+        if self.model_name not in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
             tool_calls = response_message.tool_calls
 
@@ -274,6 +285,7 @@ class BaseFunctionCallingModule(BaseModule):
                     results.append(output)
 
             return FunctionCallingResults(usage=usage, results=results, prompt=messages)
+        
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
             function_call = response_message.function_call
@@ -294,6 +306,9 @@ class BaseFunctionCallingModule(BaseModule):
                 ]
 
             return FunctionCallingResults(usage=usage, results=output, prompt=messages)
+
+        else:
+            raise ValueError(f"model_name {self.model_name} is not supported.")
 
 
 class OpenAIFunctionCallingModule(BaseModule):
@@ -411,7 +426,9 @@ class OpenAIFunctionCallingModule(BaseModule):
 
         messages_adjusted = self.conversation_length_adjuster.run(messages)
 
-        response = await self.function_calling_model.arun(messages_adjusted, tool_choice=tool_choice)
+        response = await self.function_calling_model.arun(
+            messages_adjusted, tool_choice=tool_choice
+        )
 
         if self.content_filter is not None:
             for i, r in enumerate(response.results):
