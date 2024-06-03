@@ -2,7 +2,7 @@ import base64
 import io
 import math
 import os
-from typing import Optional, Union
+from typing import Any, Generator, Iterable, Optional
 
 import numpy as np
 import openai
@@ -217,10 +217,24 @@ def get_token_limit(model_name: str):
         )
 
 
-def make_batch(iterable, batch_size=1):
+def make_batch(
+    iterable: Iterable[Any], batch_size: int = 1, overlap: int = 0
+) -> Generator[Iterable[Any], None, None]:
+    if overlap >= batch_size:
+        raise ValueError("overlap must be less than batch_size")
+
     length = len(iterable)
-    for ndx in range(0, length, batch_size):
-        yield iterable[ndx : min(ndx + batch_size, length)]
+
+    st: int = 0
+    while st < length:
+        en = min(st + batch_size, length)
+        batch = iterable[st:en]
+        yield batch
+
+        if en == length:
+            break
+
+        st += batch_size - overlap
 
 
 def pil2bytes(image: Image.Image) -> bytes:
