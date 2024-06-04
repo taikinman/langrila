@@ -2,14 +2,14 @@ from typing import Optional
 
 from openai.resources.embeddings import Embeddings
 
-from ..base import BaseModule
 from ..model_config import _NEWER_EMBEDDING_CONFIG, EMBEDDING_CONFIG
 from ..result import EmbeddingResults
 from ..usage import Usage
 from ..utils import get_async_client, get_client, make_batch
+from .base import BaseEmbeddingModule
 
 
-class OpenAIEmbeddingModule(BaseModule):
+class OpenAIEmbeddingModule(BaseEmbeddingModule):
     def __init__(
         self,
         api_key_env_name: str,
