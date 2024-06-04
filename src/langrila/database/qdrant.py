@@ -1,132 +1,307 @@
-from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-import numpy as np
-from qdrant_client import QdrantClient, models
-from qdrant_client.conversions import common_types as types
+from qdrant_client import AsyncQdrantClient, QdrantClient, models
 from qdrant_client.models import Distance, VectorParams
 
 from ..base import BaseModule
 from ..result import RetrievalResult
+from .base import (
+    BaseLocalCollectionModule,
+    BaseLocalRetrievalModule,
+    BaseRemoteCollectionModule,
+    BaseRemoteRetrievalModule,
+)
 
 
-class QdrantLocalCollectionModule(BaseModule):
+class QdrantCollectionMixin(object):
+    def glob(self, client: QdrantClient) -> list[str]:
+        return [
+            c.name for c in client.get_collections().collections if self.collection_name in c.name
+        ]
+
+    def _exists(self, client: QdrantClient, collection_name: str) -> bool:
+        return client.collection_exists(collection_name=collection_name)
+
+    def _create_collection(self, client: QdrantClient, collection_name: str, **kwargs) -> None:
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+                size=self.vector_size,
+                distance=self.distance,
+                on_disk=self.on_disk,
+            ),
+            **kwargs,
+        )
+
+    def _upsert(
+        self,
+        client: QdrantClient,
+        collection_name: str,
+        ids: list[str | int],
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, str]],
+    ) -> None:
+        client.upsert(
+            collection_name=collection_name,
+            points=models.Batch(
+                ids=ids,
+                vectors=embeddings,
+                payloads=metadatas,
+            ),
+        )
+
+        return
+
+    def _delete(self, client: QdrantClient, collection_name: str) -> None:
+        client.delete_collection(collection_name=collection_name)
+
+
+class QdrantLocalCollectionModule(QdrantCollectionMixin, BaseLocalCollectionModule):
     def __init__(
         self,
         persistence_directory: str,
         collection_name: str,
-        embedder: Optional[BaseModule] = None,
+        vector_size: int,
+        distance: Distance = Distance.COSINE,
+        embedder: BaseModule | None = None,
+        logger: Any | None = None,
+        on_disk: bool = False,
     ):
-        self.embedder = embedder
-        self.persistence_directory = Path(persistence_directory)
-        self.collection_name = collection_name
-
-    def run(
-        self,
-        documents: list[str],
-        metadatas: Optional[list[dict[str, str]]]=None,
-        embeddings: Optional[list[list[float]]] = None,
-    ) -> None:
-        if embeddings is None:
-            if self.embedder is not None:
-                embeddings = np.array(self.embedder(documents).embeddings)
-            else:
-                raise AttributeError(
-                    "attribute embedder must be the instance of the class inheriting BaseModule."
-                )
-
-        if not isinstance(embeddings, np.ndarray):
-            embeddings = np.array(embeddings)
-
-        client = QdrantClient(path=self.persistence_directory)
-        client.recreate_collection(
-            collection_name=self.collection_name,
-            vectors_config=VectorParams(size=embeddings.shape[1], distance=Distance.COSINE),
+        super().__init__(
+            persistence_directory=persistence_directory,
+            collection_name=collection_name,
+            embedder=embedder,
+            logger=logger,
         )
+        self.vector_size = vector_size
+        self.distance = distance
+        self.on_disk = on_disk
 
-        client.upload_records(
-            collection_name=self.collection_name,
-            records=[
-                models.Record(
-                    id=idx,
-                    vector=embeddings[idx].tolist(),
-                    payload={"document": doc, "metadata": metadatas[idx]},
-                )
-                if metadatas is not None
-                else models.Record(
-                    id=idx,
-                    vector=embeddings[idx].tolist(),
-                    payload={"document": doc, "metadata": None},
-                )
-                for idx, doc in enumerate(documents)
-            ],
-        )
+    def get_client(self) -> QdrantClient:
+        return QdrantClient(path=self.persistence_directory)
 
     def as_retriever(
         self,
         n_results: int = 4,
-        threshold_similarity: float = 0.8,
-        with_vectors: bool = True,
+        score_threshold: float = 0.8,
     ) -> "QdrantLocalRetrievalModule":
         return QdrantLocalRetrievalModule(
             embedder=self.embedder,
             persistence_directory=self.persistence_directory,
             collection_name=self.collection_name,
             n_results=n_results,
-            threshold_similarity=threshold_similarity,
-            with_vectors=with_vectors,
+            score_threshold=score_threshold,
+            logger=self.logger,
         )
 
 
-class QdrantLocalRetrievalModule(BaseModule):
+class QdrantRemoteCollectionModule(QdrantCollectionMixin, BaseRemoteCollectionModule):
     def __init__(
         self,
-        embedder: BaseModule,
+        url: str,
+        collection_name: str,
+        vector_size: int,
+        port: str = "6333",
+        distance: Distance = Distance.COSINE,
+        embedder: BaseModule | None = None,
+        logger: Any | None = None,
+        on_disk: bool = False,
+    ):
+        super().__init__(
+            collection_name=collection_name,
+            embedder=embedder,
+            logger=logger,
+            url=url,
+            port=port,
+        )
+        self.vector_size = vector_size
+        self.distance = distance
+        self.on_disk = on_disk
+
+    def get_client(self) -> QdrantClient:
+        """
+        override to return the remote client
+        """
+        return QdrantClient(url=self.url, port=self.port)
+
+    def get_async_client(self) -> AsyncQdrantClient:
+        return AsyncQdrantClient(url=self.url, port=self.port)
+
+    async def _aexists(self, client: AsyncQdrantClient, collection_name: str) -> bool:
+        return await client.collection_exists(collection_name=collection_name)
+
+    async def _acreate_collection(
+        self, client: AsyncQdrantClient, collection_name: str, **kwargs
+    ) -> None:
+        await client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+                size=self.vector_size,
+                distance=self.distance,
+                on_disk=self.on_disk,
+            ),
+            **kwargs,
+        )
+
+    async def _aupsert(
+        self,
+        client: AsyncQdrantClient,
+        collection_name: str,
+        ids: list[str | int],
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, str]],
+    ) -> None:
+        await client.upsert(
+            collection_name=collection_name,
+            points=models.Batch(
+                ids=ids,
+                vectors=embeddings,
+                payloads=metadatas,
+            ),
+        )
+
+        return
+
+    def as_retriever(
+        self,
+        n_results: int = 4,
+        score_threshold: float = 0.8,
+    ) -> "QdrantRemoteRetrievalModule":
+        return QdrantRemoteRetrievalModule(
+            embedder=self.embedder,
+            url=self.url,
+            port=self.port,
+            collection_name=self.collection_name,
+            n_results=n_results,
+            score_threshold=score_threshold,
+            logger=self.logger,
+        )
+
+
+class QdrantRetrievalMixin(object):
+    def glob(self, client: QdrantClient) -> list[str]:
+        return [
+            c.name for c in client.get_collections().collections if self.collection_name in c.name
+        ]
+
+    def _retrieve(
+        self,
+        client: QdrantClient | AsyncQdrantClient,
+        collection_name: str,
+        query_vector: list[float],
+        n_results: int,
+        score_threshold: float,
+        filter: Any | None = None,
+        **kwargs,
+    ) -> RetrievalResult:
+        retrieved = client.search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            query_filter=filter,
+            score_threshold=score_threshold,
+            with_vectors=False,
+            limit=n_results,
+            **kwargs,
+        )
+
+        ids = [r.id for r in retrieved]
+        scores = [r.score for r in retrieved]
+        documents = [r.payload["document"] for r in retrieved]
+        metadatas = [r.payload["metadata"] for r in retrieved]
+        collections = [r.payload["collection"] for r in retrieved]
+
+        return RetrievalResult(
+            ids=ids,
+            scores=scores,
+            documents=documents,
+            metadatas=metadatas,
+            collections=collections,
+        )
+
+    async def _aretrieve(
+        self,
+        client: QdrantClient | AsyncQdrantClient,
+        collection_name: str,
+        query_vector: list[float],
+        n_results: int,
+        score_threshold: float,
+        filter: Any | None = None,
+        **kwargs,
+    ) -> RetrievalResult:
+        retrieved = await client.search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            query_filter=filter,
+            score_threshold=score_threshold,
+            with_vectors=False,
+            limit=n_results,
+            **kwargs,
+        )
+
+        ids = [r.id for r in retrieved]
+        scores = [r.score for r in retrieved]
+        documents = [r.payload["document"] for r in retrieved]
+        metadatas = [r.payload["metadata"] for r in retrieved]
+        collections = [r.payload["collection"] for r in retrieved]
+
+        return RetrievalResult(
+            ids=ids,
+            scores=scores,
+            documents=documents,
+            metadatas=metadatas,
+            collections=collections,
+        )
+
+
+class QdrantLocalRetrievalModule(QdrantRetrievalMixin, BaseLocalRetrievalModule):
+    def __init__(
+        self,
         persistence_directory: str,
         collection_name: str,
+        embedder: BaseModule | None = None,
         n_results: int = 4,
-        threshold_similarity: float = 0.8,
-        with_vectors: bool = True,
+        score_threshold: float = 0.8,
+        logger: Any | None = None,
     ):
-        assert isinstance(
-            embedder, BaseModule
-        ), "embedder must be the instance of the class inheriting BaseModule."
-        self.embedder = embedder
-        self.n_results = n_results
-        self.threshold_similarity = threshold_similarity
-        self.persistence_directory = persistence_directory
-        self.collection_name = collection_name
-        self.n_results = n_results
-        self.with_vectors = with_vectors
-
-    def run(self, query: str, filter: Optional[types.Filter] = None):
-        client = QdrantClient(path=self.persistence_directory)
-
-        embed = self.embedder(query)
-
-        retrieved = client.search(
-            collection_name=self.collection_name,
-            query_vector=embed.embeddings[0],
-            query_filter=filter,
-            score_threshold=self.threshold_similarity,
-            with_vectors=self.with_vectors,
-            limit=self.n_results,
+        super().__init__(
+            persistence_directory=persistence_directory,
+            collection_name=collection_name,
+            embedder=embedder,
+            n_results=n_results,
+            score_threshold=score_threshold,
+            logger=logger,
         )
 
-        results = RetrievalResult(
-            ids=[r.id for r in retrieved],
-            similarities=[r.score for r in retrieved],
-            documents=[r.payload["document"] for r in retrieved],
-            metadatas=[r.payload["metadata"] for r in retrieved],
-            usage=embed.usage,
+    def get_client(self) -> QdrantClient:
+        return QdrantClient(path=self.persistence_directory)
+
+
+class QdrantRemoteRetrievalModule(QdrantRetrievalMixin, BaseRemoteRetrievalModule):
+    def __init__(
+        self,
+        url: str,
+        collection_name: str,
+        port: str = "6333",
+        embedder: BaseModule | None = None,
+        n_results: int = 4,
+        score_threshold: float = 0.8,
+        logger: Any | None = None,
+    ):
+        super().__init__(
+            collection_name=collection_name,
+            embedder=embedder,
+            n_results=n_results,
+            score_threshold=score_threshold,
+            logger=logger,
+            url=url,
+            port=port,
         )
 
-        # results = {
-        #     "ids": [r.id for r in retrieved],
-        #     "distances": [1 - r.score for r in retrieved],
-        #     "documents": [r.payload["document"] for r in retrieved],
-        #     "metadatas": [r.payload["metadata"] for r in retrieved],
-        # }
+    def get_client(self) -> QdrantClient:
+        """
+        override to return the remote client
+        """
+        return QdrantClient(url=self.url, port=self.port)
 
-        return results
-
+    def get_async_client(self) -> AsyncQdrantClient:
+        return AsyncQdrantClient(url=self.url, port=self.port)

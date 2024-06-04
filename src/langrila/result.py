@@ -34,5 +34,6 @@ class RetrievalResult(BaseModel):
     ids: list[int | str]
     documents: list[str]
     metadatas: Optional[list[dict[str, Any]] | list[None]]
-    similarities: list[float]
-    usage: Usage
+    scores: list[float]
+    collections: list[str]
+    usage: Usage = Usage(prompt_tokens=0, completion_tokens=0)
