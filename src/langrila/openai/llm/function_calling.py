@@ -4,19 +4,27 @@ from typing import Callable, Optional
 
 from pydantic import BaseModel, field_validator
 
-from ..base import (
+from ...base import (
     BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
     BaseFunctionCallingModule,
-    BaseModule,
+    BaseMessage,
 )
+from ...llm_wrapper import FunctionCallingWrapperModule
+from ...mixin import ConversationMixin, FilterMixin
+from ...result import FunctionCallingResults, ToolOutput
+from ...usage import Usage
+from ...utils import make_batch
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
-from ..message import Message
-from ..model_config import _NEWER_MODEL_CONFIG, _OLDER_MODEL_CONFIG, MODEL_CONFIG, MODEL_POINT
-from ..result import FunctionCallingResults, ToolOutput
-from ..usage import Usage
-from ..utils import get_async_client, get_client, get_token_limit, make_batch
+from ..message import OpenAIMessage
+from ..model_config import (
+    _NEWER_MODEL_CONFIG,
+    _OLDER_MODEL_CONFIG,
+    MODEL_CONFIG,
+    MODEL_POINT,
+)
+from ..openai_utils import get_async_client, get_client, get_token_limit
 
 
 class ToolProperty(BaseModel):
@@ -313,7 +321,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             raise ValueError(f"model_name {self.model_name} is not supported.")
 
 
-class OpenAIFunctionCallingModule(BaseFunctionCallingModule):
+class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
     def __init__(
         self,
         api_key_env_name: str,
@@ -350,7 +358,7 @@ class OpenAIFunctionCallingModule(BaseFunctionCallingModule):
         ), f"max_tokens({max_tokens}) + context_length({context_length}) must be less than or equal to the token limit of the model ({token_lim})."
         assert context_length > 0, "context_length must be positive."
 
-        self.function_calling_model = FunctionCallingCoreModule(
+        function_calling_model = FunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,
             api_type=api_type,
@@ -366,87 +374,23 @@ class OpenAIFunctionCallingModule(BaseFunctionCallingModule):
             seed=seed,
         )
 
-        self.conversation_length_adjuster = (
+        conversation_length_adjuster = (
             OldConversationTruncationModule(model_name=model_name, context_length=context_length)
             if conversation_length_adjuster is None
             else conversation_length_adjuster
         )
-        self.content_filter = content_filter
-        self.conversation_memory = conversation_memory
+        content_filter = content_filter
+        conversation_memory = conversation_memory
 
-    def run(
-        self,
-        prompt: str,
-        init_conversation: Optional[list[dict[str, str]]] = None,
-        tool_choice: str = "auto",
-    ) -> FunctionCallingResults:
-        messages = self.load_conversation()
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        messages.append(Message(content=prompt).as_user)
-
-        if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
-
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = self.function_calling_model.run(messages_adjusted, tool_choice=tool_choice)
-
-        if self.content_filter is not None:
-            for i, r in enumerate(response.results):
-                response.results[i].args = self.restore_content_filter([response.results[i].args])[
-                    0
-                ]
-
-        if self.conversation_memory is not None:
-            for result in response.results:
-                messages.append(
-                    Message(content=str(result.output), name=result.funcname).as_function
-                )
-
-            self.save_conversation(messages)
-
-        return response
-
-    async def arun(
-        self,
-        prompt: str,
-        init_conversation: Optional[list[dict[str, str]]] = None,
-        tool_choice: str = "auto",
-    ) -> FunctionCallingResults:
-        messages = self.load_conversation()
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        messages.append(Message(content=prompt).as_user)
-
-        if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
-
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = await self.function_calling_model.arun(
-            messages_adjusted, tool_choice=tool_choice
+        super().__init__(
+            function_calling_model=function_calling_model,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
-        if self.content_filter is not None:
-            for i, r in enumerate(response.results):
-                response.results[i].args = self.restore_content_filter([response.results[i].args])[
-                    0
-                ]
-
-        if self.conversation_memory is not None:
-            for result in response.results:
-                messages.append(
-                    Message(content=str(result.output), name=result.funcname).as_function
-                )
-
-            self.save_conversation(messages)
-
-        return response
+    def _get_client_message_type(self) -> type[BaseMessage]:
+        return OpenAIMessage
 
     async def abatch_run(
         self,

@@ -2,9 +2,9 @@ from typing import Any
 
 import tiktoken
 
-from ..base import BaseConversationLengthAdjuster
+from ...base import BaseConversationLengthAdjuster
 from ..model_config import _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
-from ..utils import get_encoding, get_n_tokens
+from ..openai_utils import get_encoding, get_n_tokens
 
 
 class OldConversationTruncationModule(BaseConversationLengthAdjuster):

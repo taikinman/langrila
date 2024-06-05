@@ -3,9 +3,9 @@ from typing import Any, Optional
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
 from qdrant_client.models import Distance, VectorParams
 
-from ..base import BaseModule
 from ..result import RetrievalResult
 from .base import (
+    BaseEmbeddingModule,
     BaseLocalCollectionModule,
     BaseLocalRetrievalModule,
     BaseRemoteCollectionModule,
@@ -63,7 +63,7 @@ class QdrantLocalCollectionModule(QdrantCollectionMixin, BaseLocalCollectionModu
         collection_name: str,
         vector_size: int,
         distance: Distance = Distance.COSINE,
-        embedder: BaseModule | None = None,
+        embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         on_disk: bool = False,
     ):
@@ -103,7 +103,7 @@ class QdrantRemoteCollectionModule(QdrantCollectionMixin, BaseRemoteCollectionMo
         vector_size: int,
         port: str = "6333",
         distance: Distance = Distance.COSINE,
-        embedder: BaseModule | None = None,
+        embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         on_disk: bool = False,
     ):
@@ -258,7 +258,7 @@ class QdrantLocalRetrievalModule(QdrantRetrievalMixin, BaseLocalRetrievalModule)
         self,
         persistence_directory: str,
         collection_name: str,
-        embedder: BaseModule | None = None,
+        embedder: BaseEmbeddingModule | None = None,
         n_results: int = 4,
         score_threshold: float = 0.8,
         logger: Any | None = None,
@@ -282,7 +282,7 @@ class QdrantRemoteRetrievalModule(QdrantRetrievalMixin, BaseRemoteRetrievalModul
         url: str,
         collection_name: str,
         port: str = "6333",
-        embedder: BaseModule | None = None,
+        embedder: BaseEmbeddingModule | None = None,
         n_results: int = 4,
         score_threshold: float = 0.8,
         logger: Any | None = None,

@@ -2,11 +2,12 @@ from typing import Optional
 
 from openai.resources.embeddings import Embeddings
 
-from ..model_config import _NEWER_EMBEDDING_CONFIG, EMBEDDING_CONFIG
+from ..base import BaseEmbeddingModule
 from ..result import EmbeddingResults
 from ..usage import Usage
-from ..utils import get_async_client, get_client, make_batch
-from .base import BaseEmbeddingModule
+from ..utils import make_batch
+from .model_config import _NEWER_EMBEDDING_CONFIG, EMBEDDING_CONFIG
+from .openai_utils import get_async_client, get_client
 
 
 class OpenAIEmbeddingModule(BaseEmbeddingModule):

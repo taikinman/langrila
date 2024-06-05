@@ -1,16 +1,22 @@
 from typing import Any, Optional
 
-import numpy as np
-from pydantic import BaseModel, field_validator
-
-from .utils import encode_image
+from ..base import BaseMessage
+from ..utils import encode_image
 
 
-class Message(BaseModel):
-    content: str
-    name: Optional[str] = None
-    images: Any | list[Any] | None = None
-    image_resolution: str | None = None
+class OpenAIMessage(BaseMessage):
+    def __init__(
+        self,
+        content: str,
+        name: Optional[str] = None,
+        images: Any | list[Any] | None = None,
+        image_resolution: str | None = None,
+    ):
+        super().__init__(content=content, images=images)
+        self._valid_image_resolution_value(image_resolution)
+
+        self.name = name
+        self.image_resolution = image_resolution
 
     @property
     def as_system(self):
@@ -57,10 +63,9 @@ class Message(BaseModel):
             "content": self.content,
         }
 
-    @field_validator("image_resolution")
-    def check_image_resolution_value(cls, val):
-        if val not in ["low", "high"]:
-            raise ValueError(
-                "image_resolution must be either 'low' or 'high' due to token management."
-            )
-        return val
+    def _valid_image_resolution_value(self, image_resolution: str) -> None:
+        if image_resolution:
+            if image_resolution not in ["low", "high"]:
+                raise ValueError(
+                    "image_resolution must be either 'low' or 'high' due to token management."
+                )

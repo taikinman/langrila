@@ -1,8 +1,7 @@
-import asyncio
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator
 
-from .result import CompletionResults, FunctionCallingResults
+from .result import CompletionResults, EmbeddingResults, FunctionCallingResults
 
 
 class BaseChatModule(ABC):
@@ -21,23 +20,6 @@ class BaseChatModule(ABC):
     ) -> AsyncGenerator[CompletionResults, None]:
         raise NotImplementedError
 
-    def load_conversation(self) -> list[dict[str, str]]:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
-
-        return messages
-
-    def save_conversation(self, messages: list[dict[str, str]]) -> None:
-        self.conversation_memory.store(messages)
-
-    def apply_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.apply(messages)
-
-    def restore_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.restore(messages)
-
 
 class BaseFunctionCallingModule(ABC):
     @abstractmethod
@@ -47,60 +29,20 @@ class BaseFunctionCallingModule(ABC):
     async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
         raise NotImplementedError
 
-    def load_conversation(self) -> list[dict[str, str]]:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
 
-        return messages
-
-    def save_conversation(self, messages: list[dict[str, str]]) -> None:
-        self.conversation_memory.store(messages)
-
-    def apply_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.apply(messages)
-
-    def restore_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.restore(messages)
-
-
-class BaseModule(ABC):
+class BaseEmbeddingModule(ABC):
     @abstractmethod
-    def run(self, *args, **kwargs):
+    def run(self, text: str | list[str]) -> EmbeddingResults:
         raise NotImplementedError
 
-    async def arun(self, *args, **kwargs):
+    async def arun(self, text: str | list[str]) -> EmbeddingResults:
         raise NotImplementedError
-
-    def stream(self, *args, **kwargs):
-        raise NotImplementedError
-
-    async def astream(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def __call__(self, *args, **kwargs):
-        _async = kwargs.pop("arun", False)
-        _stream = kwargs.pop("stream", False)
-        if _async:
-            if _stream:
-                return self.astream(*args, **kwargs)
-            else:
-                return asyncio.create_task(self.arun(*args, **kwargs))
-        else:
-            if _stream:
-                return self.stream(*args, **kwargs)
-            else:
-                return self.run(*args, **kwargs)
 
 
 class BaseConversationLengthAdjuster(ABC):
     @abstractmethod
     def run(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         raise NotImplementedError
-
-    def __call__(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.run(messages)
 
 
 class BaseFilter(ABC):
@@ -124,3 +66,28 @@ class BaseConversationMemory(ABC):
     @abstractmethod
     def load(self, path: str):
         raise NotImplementedError
+
+
+class BaseMessage(ABC):
+    def __init__(self, content: str, images: Any | list[Any] | None = None, **kwargs):
+        self.content = content
+        self.images = images
+
+    @property
+    @abstractmethod
+    def as_system(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def as_user(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def as_assistant(self):
+        raise NotImplementedError
+
+    # @property
+    # def as_tool(self):
+    #     return {"role": "tool", "content": self.content}

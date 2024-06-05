@@ -4,7 +4,7 @@ from itertools import cycle
 from pathlib import Path
 from typing import Any, Generator, Optional
 
-from ..base import BaseModule
+from ..base import BaseEmbeddingModule
 from ..logger import DefaultLogger
 from ..result import EmbeddingResults, RetrievalResult
 from ..usage import Usage
@@ -15,7 +15,7 @@ class _BaseCollectionModule(ABC):
     def __init__(
         self,
         collection_name: str,
-        embedder: BaseModule = None,
+        embedder: BaseEmbeddingModule = None,
         logger: Any | None = None,
     ):
         self.embedder = embedder
@@ -293,7 +293,7 @@ class _BaseRetrievalModule(ABC):
     def __init__(
         self,
         collection_name: str,
-        embedder: BaseModule = None,
+        embedder: BaseEmbeddingModule = None,
         logger: Any | None = None,
         n_results: int = 4,
         score_threshold: float = 0.8,
@@ -454,7 +454,7 @@ class BaseLocalCollectionModule(_BaseCollectionModule):
         self,
         persistence_directory: str,
         collection_name: str,
-        embedder: BaseModule = None,
+        embedder: BaseEmbeddingModule = None,
         logger: Any | None = None,
     ):
         self.persistence_directory = Path(persistence_directory)
@@ -467,7 +467,7 @@ class BaseRemoteCollectionModule(_BaseCollectionModule):
         url: str,
         collection_name: str,
         port: str = "6333",
-        embedder: BaseModule = None,
+        embedder: BaseEmbeddingModule = None,
         logger: Any | None = None,
     ):
         self.url = url
@@ -478,7 +478,7 @@ class BaseRemoteCollectionModule(_BaseCollectionModule):
 class BaseLocalRetrievalModule(_BaseRetrievalModule):
     def __init__(
         self,
-        embedder: BaseModule,
+        embedder: BaseEmbeddingModule,
         persistence_directory: str,
         collection_name: str,
         n_results: int = 4,
@@ -486,8 +486,8 @@ class BaseLocalRetrievalModule(_BaseRetrievalModule):
         logger: Any | None = None,
     ):
         assert isinstance(
-            embedder, BaseModule
-        ), "embedder must be the instance of the class inheriting BaseModule."
+            embedder, BaseEmbeddingModule
+        ), "embedder must be the instance of the class inheriting BaseEmbeddingModule."
 
         super().__init__(
             collection_name=collection_name,
@@ -502,7 +502,7 @@ class BaseLocalRetrievalModule(_BaseRetrievalModule):
 class BaseRemoteRetrievalModule(_BaseRetrievalModule):
     def __init__(
         self,
-        embedder: BaseModule,
+        embedder: BaseEmbeddingModule,
         url: str,
         collection_name: str,
         port: str = "6333",
@@ -511,8 +511,8 @@ class BaseRemoteRetrievalModule(_BaseRetrievalModule):
         logger: Any | None = None,
     ):
         assert isinstance(
-            embedder, BaseModule
-        ), "embedder must be the instance of the class inheriting BaseModule."
+            embedder, BaseEmbeddingModule
+        ), "embedder must be the instance of the class inheriting BaseEmbeddingModule."
 
         super().__init__(
             collection_name=collection_name,
