@@ -6,14 +6,19 @@ import numpy as np
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from PIL import Image
 
-from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter, BaseModule
+from ..base import (
+    BaseChatModule,
+    BaseConversationLengthAdjuster,
+    BaseConversationMemory,
+    BaseFilter,
+    BaseModule,
+)
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import Message
 from ..model_config import _OLDER_MODEL_CONFIG, _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
 from ..result import CompletionResults
 from ..usage import Usage
 from ..utils import get_async_client, get_client, get_n_tokens, get_token_limit, make_batch
-from .base import BaseChatModule
 
 
 def completion(
@@ -337,7 +342,7 @@ class ChatCoreModule(BaseChatModule):
                         )
 
 
-class OpenAIChatModule(BaseModule):
+class OpenAIChatModule(BaseChatModule):
     def __init__(
         self,
         api_key_env_name: str,

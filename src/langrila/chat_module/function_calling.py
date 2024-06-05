@@ -4,14 +4,19 @@ from typing import Callable, Optional
 
 from pydantic import BaseModel, field_validator
 
-from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter, BaseModule
+from ..base import (
+    BaseConversationLengthAdjuster,
+    BaseConversationMemory,
+    BaseFilter,
+    BaseFunctionCallingModule,
+    BaseModule,
+)
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import Message
 from ..model_config import _NEWER_MODEL_CONFIG, _OLDER_MODEL_CONFIG, MODEL_CONFIG, MODEL_POINT
 from ..result import FunctionCallingResults, ToolOutput
 from ..usage import Usage
 from ..utils import get_async_client, get_client, get_token_limit, make_batch
-from .base import BaseFunctionCallingModule
 
 
 class ToolProperty(BaseModel):
@@ -308,7 +313,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             raise ValueError(f"model_name {self.model_name} is not supported.")
 
 
-class OpenAIFunctionCallingModule(BaseModule):
+class OpenAIFunctionCallingModule(BaseFunctionCallingModule):
     def __init__(
         self,
         api_key_env_name: str,

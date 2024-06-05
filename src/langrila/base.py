@@ -1,5 +1,68 @@
 import asyncio
 from abc import ABC, abstractmethod
+from typing import AsyncGenerator, Generator
+
+from .result import CompletionResults, FunctionCallingResults
+
+
+class BaseChatModule(ABC):
+    @abstractmethod
+    def run(self, messages: list[dict[str, str]]) -> CompletionResults:
+        raise NotImplementedError
+
+    async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
+        raise NotImplementedError
+
+    def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
+        raise NotImplementedError
+
+    async def astream(
+        self, messages: list[dict[str, str]]
+    ) -> AsyncGenerator[CompletionResults, None]:
+        raise NotImplementedError
+
+    def load_conversation(self) -> list[dict[str, str]]:
+        if self.conversation_memory is not None:
+            messages: list[dict[str, str]] = self.conversation_memory.load()
+        else:
+            messages = []
+
+        return messages
+
+    def save_conversation(self, messages: list[dict[str, str]]) -> None:
+        self.conversation_memory.store(messages)
+
+    def apply_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+        return self.content_filter.apply(messages)
+
+    def restore_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+        return self.content_filter.restore(messages)
+
+
+class BaseFunctionCallingModule(ABC):
+    @abstractmethod
+    def run(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+        raise NotImplementedError
+
+    async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+        raise NotImplementedError
+
+    def load_conversation(self) -> list[dict[str, str]]:
+        if self.conversation_memory is not None:
+            messages: list[dict[str, str]] = self.conversation_memory.load()
+        else:
+            messages = []
+
+        return messages
+
+    def save_conversation(self, messages: list[dict[str, str]]) -> None:
+        self.conversation_memory.store(messages)
+
+    def apply_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+        return self.content_filter.apply(messages)
+
+    def restore_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+        return self.content_filter.restore(messages)
 
 
 class BaseModule(ABC):
@@ -30,23 +93,6 @@ class BaseModule(ABC):
             else:
                 return self.run(*args, **kwargs)
 
-    def load_conversation(self) -> list[dict[str, str]]:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
-
-        return messages
-
-    def save_conversation(self, messages: list[dict[str, str]]) -> None:
-        self.conversation_memory.store(messages)
-
-    def apply_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.apply(messages)
-
-    def restore_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.restore(messages)
-
 
 class BaseConversationLengthAdjuster(ABC):
     @abstractmethod
@@ -68,6 +114,7 @@ class BaseFilter(ABC):
     @abstractmethod
     def restore(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         raise NotImplementedError
+
 
 class BaseConversationMemory(ABC):
     @abstractmethod
