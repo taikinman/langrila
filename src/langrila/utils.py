@@ -15,7 +15,7 @@ from .model_config import _TILE_SIZE, _TOKENS_PER_TILE, _VISION_MODEL, MODEL_CON
 MODEL_ZOO = set(MODEL_CONFIG.keys())
 
 
-def get_encoding(model_name: str):
+def get_encoding(model_name: str) -> tiktoken.Encoding:
     try:
         encoding = tiktoken.encoding_for_model(model_name)
     except KeyError:
@@ -34,7 +34,7 @@ def get_client(
     api_type: Optional[str] = "openai",
     timeout: int = 60,
     max_retries: int = 5,
-):
+) -> OpenAI | AzureOpenAI:
     if api_type == "azure":
         assert (
             api_version and endpoint_env_name and deployment_id_env_name
@@ -72,7 +72,7 @@ def get_async_client(
     api_type: Optional[str] = "openai",
     timeout: int = 60,
     max_retries: int = 5,
-):
+) -> AsyncOpenAI | AsyncAzureOpenAI:
     if api_type == "azure":
         return AsyncAzureOpenAI(
             **get_openai_client_settings(
@@ -106,7 +106,7 @@ def get_openai_client_settings(
     deployment_id_env_name: Optional[str] = None,
     timeout: int = 60,
     max_retries: int = 5,
-) -> None:
+) -> dict[str, Any]:
     outputs = {}
     outputs["api_key"] = os.getenv(api_key_env_name)
 
@@ -152,7 +152,7 @@ def set_openai_envs(
 
 def get_n_tokens(
     message: dict[str, str | list[dict[str, str | dict[str, str]]]], model_name: str
-) -> int:
+) -> dict[str, int]:
     """
     Return the number of tokens used by a list of messages.
     Forked and edited from : https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
@@ -208,7 +208,7 @@ def get_n_tokens(
     return {"total": total_tokens, "content": n_content_tokens, "other": n_other_tokens}
 
 
-def get_token_limit(model_name: str):
+def get_token_limit(model_name: str) -> int:
     if model_name in MODEL_ZOO:
         return MODEL_CONFIG[model_name]["max_tokens"]
     else:
@@ -244,7 +244,7 @@ def pil2bytes(image: Image.Image) -> bytes:
     return image_bytes
 
 
-def encode_image(image):
+def encode_image(image: Image.Image | np.ndarray | bytes) -> str:
     if isinstance(image, Image.Image):
         image_bytes = pil2bytes(image)
         return base64.b64encode(image_bytes).decode("utf-8")
@@ -258,14 +258,14 @@ def encode_image(image):
         raise ValueError(f"Type of {type(image)} is not supported for image.")
 
 
-def decode_image(image_encoded):
+def decode_image(image_encoded: str) -> Image.Image:
     image_encoded_utf = image_encoded.encode("utf-8")
     image_bytes = base64.b64decode(image_encoded_utf)
     byteio = io.BytesIO(image_bytes)
     return Image.open(byteio)
 
 
-def calculate_high_resolution_image_tokens(image_size: tuple[int, int] | list[int, int]):
+def calculate_high_resolution_image_tokens(image_size: tuple[int, int] | list[int, int]) -> int:
     h, w = image_size
     short = min(h, w)
     long = max(h, w)
