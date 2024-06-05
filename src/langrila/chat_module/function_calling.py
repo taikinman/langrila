@@ -11,6 +11,7 @@ from ..model_config import _NEWER_MODEL_CONFIG, _OLDER_MODEL_CONFIG, MODEL_CONFI
 from ..result import FunctionCallingResults, ToolOutput
 from ..usage import Usage
 from ..utils import get_async_client, get_client, get_token_limit, make_batch
+from .base import BaseFunctionCallingModule
 
 
 class ToolProperty(BaseModel):
@@ -83,14 +84,13 @@ class ToolConfig(BaseModel):
         return v
 
 
-class BaseFunctionCallingModule(BaseModule):
+class FunctionCallingCoreModule(BaseFunctionCallingModule):
     def __init__(
         self,
         api_key_env_name: str,
         model_name: str,
         tools: list[Callable],
         tool_configs: list[ToolConfig],
-        # tool_choice: str = "auto",
         api_type: str = "openai",
         api_version: Optional[str] = None,
         endpoint_env_name: Optional[str] = None,
@@ -123,7 +123,6 @@ class BaseFunctionCallingModule(BaseModule):
             len(_tool_names_from_config ^ set(self.tools.keys())) == 0
         ), f"tool names in tool_configs must be the same as the function names in tools. tool names in tool_configs: {_tool_names_from_config}, function names in tools: {set(self.tools.keys())}"
 
-        # self.tool_choice = tool_choice
         self.max_tokens = max_tokens
 
         self.additional_inputs = {}
@@ -132,7 +131,6 @@ class BaseFunctionCallingModule(BaseModule):
             self.additional_inputs["seed"] = seed
             self.tool_configs = [f.model_dump() for f in tool_configs]
             self.additional_inputs["tools"] = self.tool_configs
-            # self.additional_inputs["tool_choice"] = self.tool_choice
         else:
             if seed:
                 print(
@@ -140,7 +138,6 @@ class BaseFunctionCallingModule(BaseModule):
                 )
             self.tool_configs = [f.model_dump()["function"] for f in tool_configs]
             self.additional_inputs["functions"] = self.tool_configs
-            # self.additional_inputs["function_call"] = self.tool_choice
 
     def _set_tool_choice(self, tool_choice: str = "auto"):
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():
@@ -285,7 +282,7 @@ class BaseFunctionCallingModule(BaseModule):
                     results.append(output)
 
             return FunctionCallingResults(usage=usage, results=results, prompt=messages)
-        
+
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
             function_call = response_message.function_call
@@ -348,7 +345,7 @@ class OpenAIFunctionCallingModule(BaseModule):
         ), f"max_tokens({max_tokens}) + context_length({context_length}) must be less than or equal to the token limit of the model ({token_lim})."
         assert context_length > 0, "context_length must be positive."
 
-        self.function_calling_model = BaseFunctionCallingModule(
+        self.function_calling_model = FunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,
             api_type=api_type,
