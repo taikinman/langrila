@@ -353,7 +353,6 @@ class OpenAIChatModule(BaseChatModule):
         deployment_id_env_name: Optional[str] = None,
         organization_id_env_name: Optional[str] = None,
         max_tokens: Optional[int] = 2048,
-        stop: Optional[str] = None,
         timeout: int = 60,
         max_retries: int = 2,
         seed: Optional[int] = None,
