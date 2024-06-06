@@ -69,9 +69,12 @@ class BaseConversationMemory(ABC):
 
 
 class BaseMessage(ABC):
-    def __init__(self, content: str, images: Any | list[Any] | None = None, **kwargs):
+    def __init__(
+        self, content: str, images: Any | list[Any] | None = None, name: str | None = None, **kwargs
+    ):
         self.content = content
         self.images = images
+        self.name = name
 
     @property
     @abstractmethod
@@ -86,6 +89,11 @@ class BaseMessage(ABC):
     @property
     @abstractmethod
     def as_assistant(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def as_function(self):
         raise NotImplementedError
 
     # @property
