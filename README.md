@@ -29,12 +29,39 @@ git clone git@github.com:taikinman/langrila.git
 ## pip
 ```
 cd langrila
-pip install -e .
+
+# For OpenAI
+pip install -e .[openai]
+
+# For Gemini
+pip install -e .[gemini]
+
+# For both
+pip install -e .[openai, gemini]
+
+# For OpenAI and Qdrant
+pip install -e .[openai, qdrant]
+
+# For All
+pip install -e .[all]
 ```
 
 ## poetry
 ```
-poetry add --editable /path/to/langrila
+# For OpenAI
+poetry add --editable /path/to/langrila/ --extras openai
+
+# For Gemini
+poetry add --editable /path/to/langrila/ --extras gemini
+
+# For both
+poetry add --editable /path/to/langrila/ --extras "openai gemini"
+
+# For OpenAI and Qdrant
+poetry add --editable /path/to/langrila/ --extras "openai qdrant"
+
+# For all extra dependencies
+poetry add --editable /path/to/langrila/ --extras all
 ```
 
 # Pre-requirement
