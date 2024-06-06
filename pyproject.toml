@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "langrila"
-version = "0.0.5"
+version = "0.0.6"
 description = "useful tool to use ChatGPT with OpenAI API or Azure"
 authors = ["taikinman <okipedia6161@gmail.com>"]
 readme = "README.md"

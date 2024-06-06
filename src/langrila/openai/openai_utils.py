@@ -7,9 +7,15 @@ import tiktoken
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 
 from ..utils import decode_image
-from .model_config import _TILE_SIZE, _TOKENS_PER_TILE, _VISION_MODEL, MODEL_CONFIG
+from .model_config import (
+    _TILE_SIZE,
+    _TOKENS_PER_TILE,
+    _VISION_MODEL,
+    EMBEDDING_CONFIG,
+    MODEL_CONFIG,
+)
 
-MODEL_ZOO = set(MODEL_CONFIG.keys())
+MODEL_ZOO = set(MODEL_CONFIG.keys()) | set(EMBEDDING_CONFIG.keys())
 
 
 def get_encoding(model_name: str) -> tiktoken.Encoding:
