@@ -4,6 +4,8 @@ from itertools import cycle
 from pathlib import Path
 from typing import Any, Generator, Optional
 
+from tqdm import tqdm
+
 from ..base import BaseEmbeddingModule
 from ..logger import DefaultLogger
 from ..result import EmbeddingResults, RetrievalResults
@@ -182,8 +184,9 @@ class _BaseCollectionModule(ABC):
 
         n_batches: int = math.ceil(len(documents) / batch_size)
 
-        for i, (doc_batch, metadata_batch, id_batch) in enumerate(
-            zip(documents_batch, metadatas_batch, ids_batch, strict=True)
+        for i, (doc_batch, metadata_batch, id_batch) in tqdm(
+            enumerate(zip(documents_batch, metadatas_batch, ids_batch, strict=True)),
+            total=n_batches,
         ):
             embedding_batch: EmbeddingResults = self.embedder.run(doc_batch)
 
@@ -194,11 +197,9 @@ class _BaseCollectionModule(ABC):
                     self._create_collection(
                         client=client, collection_name=collection_name, **kwargs
                     )
-                    self.logger.info(
-                        f"Create {n_batches} batches for collection {collection_name}."
-                    )
+                    self.logger.info(f"Create collection {collection_name}.")
 
-            self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
+            # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
             metadata_batch = [
                 {"metadata": metadata, "document": document, "collection": collection_name}
