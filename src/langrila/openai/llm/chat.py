@@ -13,7 +13,6 @@ from ...base import (
     BaseMessage,
 )
 from ...llm_wrapper import ChatWrapperModule
-from ...mixin import ConversationMixin, FilterMixin
 from ...result import CompletionResults
 from ...usage import Usage
 from ...utils import make_batch
@@ -263,7 +262,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                         response_message["content"] += chunk
                         yield CompletionResults(
                             usage=Usage(),
-                            message={"role": "assistant", "content": chunk},
+                            message=response_message,
                             prompt=[{}],
                         )
                     else:
@@ -325,7 +324,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                         response_message["content"] += chunk
                         yield CompletionResults(
                             usage=Usage(),
-                            message={"role": "assistant", "content": chunk},
+                            message=response_message,
                             prompt=[{}],
                         )
                     else:
