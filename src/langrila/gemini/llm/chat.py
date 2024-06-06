@@ -1,3 +1,4 @@
+import copy
 from typing import AsyncGenerator, Generator, Optional
 
 from google.generativeai.types.generation_types import GenerationConfig
@@ -52,7 +53,7 @@ class GeminiChatCoreModule(BaseChatModule):
                 prompt_tokens=model.count_tokens(messages).total_tokens,
                 completion_tokens=model.count_tokens(content.parts).total_tokens,
             ),
-            prompt=messages,
+            prompt=copy.deepcopy(messages),
         )
 
     async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
@@ -67,7 +68,7 @@ class GeminiChatCoreModule(BaseChatModule):
                 prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
                 completion_tokens=(await model.count_tokens_async(content.parts)).total_tokens,
             ),
-            prompt=messages,
+            prompt=copy.deepcopy(messages),
         )
 
     def stream(
