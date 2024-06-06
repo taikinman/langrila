@@ -128,15 +128,15 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             if isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
                     chunk.message = self.restore_content_filter([chunk.message])[0]
-
-                messages.append(chunk.message)
-
-                if self.conversation_memory is not None:
-                    self.save_conversation(messages)
-
                 yield chunk
+
             else:
                 raise AssertionError
+
+        messages.append(chunk.message)
+
+        if self.conversation_memory is not None:
+            self.save_conversation(messages)
 
     async def astream(
         self,
@@ -166,15 +166,14 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             if isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
                     chunk.message = self.restore_content_filter([chunk.message])[0]
-
-                messages.append(chunk.message)
-
-                if self.conversation_memory is not None:
-                    self.save_conversation(messages)
-
                 yield chunk
             else:
                 raise AssertionError
+
+        messages.append(chunk.message)
+
+        if self.conversation_memory is not None:
+            self.save_conversation(messages)
 
 
 class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
