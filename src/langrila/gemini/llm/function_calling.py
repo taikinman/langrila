@@ -160,8 +160,8 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
 
         return FunctionCallingResults(
             usage=Usage(
-                prompt_tokens=await (model.count_tokens_async(messages)).total_tokens,
-                completion_tokens=await (model.count_tokens_async(parts)).total_tokens,
+                prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
+                completion_tokens=(await model.count_tokens_async(parts)).total_tokens,
             ),
             results=results,
             prompt=messages,

@@ -1,14 +1,14 @@
 # Langri-La
-Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way. This library put emphasis on simple architecture for readability.
+Langrila is a useful tool to use API-based LLM in an easy way. This library put emphasis on simple architecture for readability.
 
 # Dependencies
 ## must
 - Python >=3.10,<3.13
-- openai
-- tiktoken
 
 ## as needed
-- chroma or qdrant-client (for retrieval)
+- openai and tiktoken for OpenAI API
+- google-generativeai for Gemini API
+- qdrant-client for retrieval
 
 # Contribution
 ## Coding policy
@@ -37,83 +37,127 @@ pip install -e .
 poetry add --editable /path/to/langrila
 ```
 
-# Usage example
-## Pre-requirement
+# Pre-requirement
 1. Pre-configure environment variables to use OpenAI API or Azure OpenAI Service.
 
-## Basic usage
-### Supported models
-- Chat models
-    - gpt-3.5-turbo-0301
-    - gpt-3.5-turbo-0613
-    - gpt-3.5-turbo-16k-0613
-    - gpt-3.5-turbo-instruct
-    - gpt-3.5-turbo-1106
-    - gpt-3.5-turbo-0125
-    - gpt-4-0314
-    - gpt-4-0613
-    - gpt-4-32k-0314
-    - gpt-4-32k-0613
-    - gpt-4-1106-preview
-    - gpt-4-vision-preview
-    - gpt-4-0125-preview
-    - gpt-4-turbo-2024-04-09
-    - gpt-4o-2024-05-13
+# Supported models for OpenAI
+## Chat models
+- gpt-3.5-turbo-0301
+- gpt-3.5-turbo-0613
+- gpt-3.5-turbo-16k-0613
+- gpt-3.5-turbo-instruct
+- gpt-3.5-turbo-1106
+- gpt-3.5-turbo-0125
+- gpt-4-0314
+- gpt-4-0613
+- gpt-4-32k-0314
+- gpt-4-32k-0613
+- gpt-4-1106-preview
+- gpt-4-vision-preview
+- gpt-4-0125-preview
+- gpt-4-turbo-2024-04-09
+- gpt-4o-2024-05-13
 
-- Embedding models
-    - text-embedding-ada-002
-    - text-embedding-3-small
-    - text-embedding-3-large
+## Embedding models
+- text-embedding-ada-002
+- text-embedding-3-small
+- text-embedding-3-large
 
-### Aliases
+## Aliases
 ```
 {'gpt-4o': 'gpt-4o-2024-05-13',
  'gpt-4-turbo': 'gpt-4-turbo-2024-04-09',
  'gpt-3.5-turbo': 'gpt-3.5-turbo-0125'}
 ```
- 
+
+# Supported models for Gemini
+## Chat models
+- gemini-1.5-pro
+- gemini-1.5-flash
+
+# Breaking changes
+#### v0.0.2 -> v0.0.3
+I have integrated gemini api into langrila on v0.0.3. When doing this, the modules for openai and azure openai should be separated from gemini's modules so that unnecessary dependencies won't happen while those components has the same interface. But migration is easy. Basically only thing to do is to change import modules level like `from langrila import OpenAIChatModule` to `from langrila.openai import OpenAIChatModule`. It's the same as other modules related to openai api.
+
+Second change point is return type of `stream()` and `astream()` method. From v0.0.3, all return types of all chunks is CompletionResults.
+
+Third point is the name of results class : `RetrievalResult` to `RetrievalResults`
+
+# Basic usage
+## Basic example
 ### For OpenAI
 ```python
-from langrila import OpenAIChatModule
+from langrila.openai import OpenAIChatModule
 
 # For conventional model
 chat = OpenAIChatModule(
     api_key_env_name = "API_KEY", # env variable name
-    model_name="gpt-3.5-turbo-16k-0613",
+    model_name="gpt-3.5-turbo-0125",
     # organization_id_env_name="ORGANIZATION_ID", # env variable name
-    timeout=60, 
-    max_retries=2, 
 )
 
-message = "Please give me only one advice to improve the quality of my sleep."
-response = chat(message)
+prompt = "Please give me only one advice to improve the quality of my sleep."
 
-# # for asynchronous processing
-# response = await chat(message, arun=True)
+# synchronous processing
+response = chat.run(prompt)
+
+# asynchronous processing
+response = await chat.arun(prompt)
 
 response.model_dump()
 
 >>> {'message': {'role': 'assistant',
-  'content': 'Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends.'},
- 'usage': {'prompt_tokens': 21, 'completion_tokens': 23},
+  'content': 'Establish a consistent bedtime routine and stick to it every night, including going to bed and waking up at the same time each day.'},
+ 'usage': {'prompt_tokens': 21, 'completion_tokens': 26},
  'prompt': [{'role': 'user',
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
 
 ### For Azure
+If you specify the arguments likes below, you can get the response from Azure OpenAI.
 ```python
 chat = OpenAIChatModule(
         api_key_env_name="AZURE_API_KEY", # env variable name
-        model_name="gpt-3.5-turbo-16k-0613",
+        model_name="gpt-3.5-turbo-0125",
         api_type="azure",
-        api_version="2023-07-01-preview", 
+        api_version="2024-05-01-preview", 
         deployment_id_env_name="DEPLOY_ID", # env variable name
         endpoint_env_name="ENDPOINT", # env variable name
     )
+```
 
+### For Gemini
+You can use gemini in the same interface.
+```python
+from langrila.gemini import GeminiChatModule
+
+chat = GeminiChatModule(
+    api_key_env_name="GEMINI_API_KEY",
+    model_name="gemini-1.5-flash",
+)
+
+prompt = "Please give me only one advice to improve the quality of my sleep."
+
+# synchronous processing
+response = chat.run(prompt)
+
+# asynchronous processing
+response = await chat.arun(prompt)
+
+response.model_dump()
+
+>>> {'message': {'role': 'model',
+  'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at the same time each day, even on weekends.** \n']},
+ 'usage': {'prompt_tokens': 15, 'completion_tokens': 26},
+ 'prompt': [{'role': 'user',
+   'parts': ['Please give me only one advice to improve the quality of my sleep.']},
+  {'role': 'model',
+   'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at the same time each day, even on weekends.** \n']}]}
 ```
 
 ## Vision model
+### For OpenAI
+You can pass image data to chat module. (For Azure OpenAI, only different from the arguments when instantiation of chat module)
 ```python
 from PIL import Image
 
@@ -122,26 +166,28 @@ image = Image.open("path/to/your/local/image/file")
 
 chat = OpenAIChatModule(
     api_key_env_name="API_KEY",
-    model_name="gpt-4-vision-preview",
+    model_name="gpt-4o-2024-05-13",
 )
 
 # stream, astream are also runnable
 prompt = "What kind of food is in the picture?"
-response = await chat(prompt, images=image, arun=True) # multiple image input is also allowed
-response.model_dump()
-
->>> {'message': {'role': 'assistant',
-  'content': 'The image shows a traditional Japanese New Year\'s food called "osechi-ryori." It is typically presented in special boxes called "jubako," which are often lacquered and stacked for a beautiful presentation. Osechi-ryori consists of various dishes, each with a special meaning for the New Year. The foods are often colorful and include items such as sweet black soybeans (kuromame), fish cakes (kamaboko), simmered burdock root (kinpira gobo), marinated herring roe (kazunoko), and other delicacies like prawns, chestnuts, and sweet omelet (tamagoyaki). Each dish is chosen for its auspicious significance and is intended to bring good luck in the coming year.'},
- 'usage': {'prompt_tokens': 101, 'completion_tokens': 159},
- 'prompt': [{'role': 'user',
-   'content': [{'type': 'text',
-     'text': 'What kind of food is in the picture?'},
-    {'type': 'image_url',
-     'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...',
-      'detail': 'low'}}]}]}
+response = await chat.arun(prompt, images=image) # multiple image input is also allowed
 ```
 
+### For Gemini
+```python
+chat = GeminiChatModule(
+    api_key_env_name="GEMINI_API_KEY",
+    model_name="gemini-1.5-flash",
+)
+
+response = await chat.arun(prompt, images=image) # or response = await chat.arun(prompt, images=image)
+response.model_dump()
+```
+
+
 ## Batch processing
+For optimization, you can process multiple prompts as batches.
 ```python
 prompts = [
     "Please give me only one advice to improve the quality of my sleep.", 
@@ -151,118 +197,118 @@ prompts = [
             ]
 
 await chat.abatch_run(prompts, batch_size=4)
-
->>> [CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends.'}, usage=Usage(prompt_tokens=21, completion_tokens=23, total_tokens=44), prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve the quality of my sleep.'}]),
- CompletionResults(message={'role': 'assistant', 'content': 'One advice to improve memory is to practice regular physical exercise. Exercise has been shown to enhance memory and cognitive function by increasing blood flow to the brain and promoting the growth of new brain cells. Aim for at least 30 minutes of moderate-intensity exercise, such as brisk walking or jogging, most days of the week.'}, usage=Usage(prompt_tokens=18, completion_tokens=64, total_tokens=82), prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve my memory.'}]),
- CompletionResults(message={'role': 'assistant', 'content': "Start small and be consistent. Start with just a few minutes of exercise each day and gradually increase the duration and intensity over time. Consistency is key, so make it a priority to exercise at the same time every day or on specific days of the week. By starting small and being consistent, you'll be more likely to stick with it and make exercise a long-term habit."}, usage=Usage(prompt_tokens=21, completion_tokens=76, total_tokens=97), prompt=[{'role': 'user', 'content': 'Please give me only one advice on how to make exercise a habit.'}]),
- CompletionResults(message={'role': 'assistant', 'content': 'One advice to help you not get bored with things so quickly is to cultivate a sense of curiosity and explore new perspectives. Instead of approaching tasks or activities with a fixed mindset, try to approach them with an open mind and a desire to learn something new. Embrace the mindset of a beginner and seek out different ways to engage with the task at hand. By continuously seeking novelty and finding new angles to approach things, you can keep your interest alive and prevent boredom from setting in.'}, usage=Usage(prompt_tokens=24, completion_tokens=96, total_tokens=120), prompt=[{'role': 'user', 'content': 'Please give me only one advice to help me not get bored with things so quickly.'}])]
-```
-
-You can also run vision model with batch processing.
-
-```python
-prompts = [
-    "What is this image?",
-    "What is this image?",
-]
-
-images = [
-    image1, # PIL image of Osechi-ryori
-    image2, # PIL image of Mt.Fuji
-]
-
-response = await chat.abatch_run(prompts, images=images)
-
->>> [CompletionResults(message={'role': 'assistant', 'content': 'The image shows a traditional Japanese New Year\'s food called "osechi-ryori." It is presented in special boxes called "jubako," which are often lacquered and stacked for the occasion. Osechi-ryori consists of various dishes, each with a special meaning for the New Year. The dishes are typically colorful and are made to be eaten over the first few days of the New Year, as it\'s considered good luck to not cook during that time. The food items are often sweet, sour, or dried, so they can last for several days without refrigeration.'}, usage=Usage(prompt_tokens=97, completion_tokens=120, total_tokens=217), prompt=[{'role': 'user', 'content': [{'type': 'text', 'text': 'What is this image?'}, {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...', 'detail': 'low'}}]}]),
- CompletionResults(message={'role': 'assistant', 'content': "The image shows a scenic view of Mount Fuji, Japan's highest mountain, with its iconic snow-capped peak. In the foreground, there are lush green slopes, possibly covered with forests, and there are clouds surrounding the middle section of the mountain, adding to the dramatic effect of the scene. The clear blue sky above and the natural beauty suggest this might be a popular spot for sightseeing and photography."}, usage=Usage(prompt_tokens=97, completion_tokens=81, total_tokens=178), prompt=[{'role': 'user', 'content': [{'type': 'text', 'text': 'What is this image?'}, {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...', 'detail': 'low'}}]}])]
 ```
 
 ## Stream
+### For OpenAI
 ```python
+from langrila.openai import OpenAIChatModule
+
+chat = OpenAIChatModule(
+    api_key_env_name = "API_KEY", # env variable name
+    model_name="gpt-3.5-turbo-0125",
+    # organization_id_env_name="ORGANIZATION_ID", # env variable name
+)
 
 prompt = "Please give me only one advice to improve the quality of my sleep."
-response = chat(prompt, stream=True)
+response = chat.stream(prompt)
+list(response)
 
-for c in response:
-    # print(c, end="\r") # for flush
-    print(c)
 
-# # For async process
-# response = chat(prompt, stream=True, arun=True)
+# For async process
+response = chat.astream(prompt)
+[r async for r in response]
 
-# async for c in response:
-#     print(c)
+>>> [CompletionResults(message={'role': 'assistant', 'content': ''}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': 'Establish'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': 'Establish a'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent bedtime'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent bedtime routine'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent bedtime routine and'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+...
+ CompletionResults(message={'role': 'assistant', 'content': "Establish a consistent bedtime routine and stick to it every night, even on weekends. This can help signal to your body that it's time to wind down and prepare for sleep."}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': "Establish a consistent bedtime routine and stick to it every night, even on weekends. This can help signal to your body that it's time to wind down and prepare for sleep."}, usage=Usage(prompt_tokens=21, completion_tokens=42, total_tokens=63), prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve the quality of my sleep.'}])] # at the end of stream, model returns entire response and usage
+```
 
->>> Establish
-Establish a
-Establish a consistent
-Establish a consistent sleep
-Establish a consistent sleep schedule
-Establish a consistent sleep schedule by
-Establish a consistent sleep schedule by going
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends.
-message={'role': 'assistant', 'content': 'Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends.'} usage=Usage(prompt_tokens=21, completion_tokens=30, total_tokens=51) prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve the quality of my sleep.'}] # return the CompletionResults instance at the end
+For Azure OpenAI, inteface is the same.
+
+### For Gemini
+```python
+from langrila.gemini import GeminiChatModule
+
+model_chat = GeminiChatModule(
+    api_key_env_name="GEMINI_API_KEY",
+    model_name="gemini-1.5-flash",
+)
+
+prompt = "Please give me only one advice to improve the quality of my sleep."
+
+response = model_chat.stream(prompt)
+list(response)
+
+# For async process
+response = model_chat.astream(prompt)
+[r async for r in response]
+
+
+>>> [CompletionResults(message={'role': 'model', 'parts': ['**']}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
+ CompletionResults(message={'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time']}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
+ CompletionResults(message={'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time each day, even on weekends.** \n']}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
+ CompletionResults(message={'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time each day, even on weekends.** \n']}, usage=Usage(prompt_tokens=15, completion_tokens=26, total_tokens=41), prompt=[{'role': 'user', 'parts': ['Please give me only one advice to improve the quality of my sleep.']}, {'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time each day, even on weekends.** \n']}])]
 ```
 
 ## Function Calling
 ### For OpenAI
 ```python
-from langrila import ToolConfig, ToolParameter, ToolProperty, OpenAIFunctionCallingModule
+from langrila.openai import OpenAIFunctionCallingModule, ToolConfig, ToolParameter, ToolProperty
+
 
 def get_weather(city: str, date: str) -> str:
     return f"The weather in {city} on {date} is sunny."
 
+
 tool_config = ToolConfig(
-            name="get_weather",
-            description="Get weather at current location.",
-            parameters=ToolParameter(
-                            properties=[
-                                ToolProperty(
-                                    name="city",
-                                    type="string",
-                                    description="City name"
-                                ),
-                                ToolProperty(
-                                    name="date",
-                                    type="string",
-                                    description="Date"
-                                )
-                            ],
-                            required=["city", "date"]
-                        )     
-                    )  
-
-                    
-client = OpenAIFunctionCallingModule(
-        api_key_env_name="API_KEY", 
-        model_name = "gpt-3.5-turbo-1106",
-        tools=[get_weather], 
-        tool_configs=[tool_config],
-        seed=42,
-    )
+    name="get_weather",
+    description="Get weather at current location.",
+    parameters=ToolParameter(
+        properties=[
+            ToolProperty(name="city", type="string", description="City name"),
+            ToolProperty(name="date", type="string", description="Date"),
+        ],
+        required=["city", "date"],
+    ),
+)
 
 
-response = await client("Please tell me the weather in Tokyo on 2023/12/13", arun=True)
+function_calling = OpenAIFunctionCallingModule(
+    api_key_env_name="API_KEY",
+    model_name="gpt-3.5-turbo-0125",
+    tools=[get_weather],
+    tool_configs=[tool_config],
+)
+
+response = await function_calling.arun("What is the weather in New York on 2022-01-01?")
 response.model_dump()
 
->>> {'usage': {'prompt_tokens': 71, 'completion_tokens': 24},
- 'results': [{'call_id': 'call_NRCqCcPhbRWygXq26h7Pll9n',
+>>> {'usage': {'prompt_tokens': 72, 'completion_tokens': 24},
+ 'results': [{'call_id': 'call_Yg5mU4wLX6nFkgVnlEaMp1mC',
    'funcname': 'get_weather',
-   'args': '{"city":"Tokyo","date":"2023/12/13"}',
-   'output': 'The weather in Tokyo on 2023/12/13 is sunny.'}],
+   'args': '{"city":"New York","date":"2022-01-01"}',
+   'output': 'The weather in New York on 2022-01-01 is sunny.'}],
  'prompt': [{'role': 'user',
-   'content': 'Please tell me the weather in Tokyo on 2023/12/13'}]}
+   'content': 'What is the weather in New York on 2022-01-01?'}]}
 
 ```
 
 ### For Azure
+Basically same interface with For OpenAI.
 ```python
-formatter = OpenAIFunctionCallingModule(
+function_calling = OpenAIFunctionCallingModule(
             api_key_env_name = "AZURE_API_KEY", # env variable name
-            model_name="gpt-3.5-turbo-16k-0613",
+            model_name="gpt-3.5-turbo-0125",
             api_type="azure", 
-            api_version="2023-07-01-preview",
+            api_version="2024-05-01-preview",
             endpoint_env_name="ENDPOINT", # env variable name
             deployment_id_env_name="DEPLOY_ID", # env variable name
             timeout=60,
@@ -272,106 +318,110 @@ formatter = OpenAIFunctionCallingModule(
         )
 ```
 
+### For Gemini
+For Gemini, only things you have to do is to replace module.
+```python
+from langrila.gemini import GeminiFunctionCallingModule, ToolConfig, ToolParameter, ToolProperty
+
+
+def get_weather(city: str, date: str) -> str:
+    return f"The weather in {city} on {date} is sunny."
+
+
+tool_config = ToolConfig(
+    name="get_weather",
+    description="Get weather at current location.",
+    parameters=ToolParameter(
+        properties=[
+            ToolProperty(name="city", type="string", description="City name"),
+            ToolProperty(name="date", type="string", description="Date"),
+        ],
+        required=["city", "date"],
+    ),
+)
+
+function_calling = GeminiFunctionCallingModule(
+    api_key_env_name="GEMINI_API_KEY",
+    model_name="gemini-1.5-flash",
+    tools=[get_weather],
+    tool_configs=[tool_config],
+)
+
+prompt = "What is the weather in New York on 2022-01-01?"
+response = await function_calling.arun(prompt)
+response.model_dump()
+
+>>> {'usage': {'prompt_tokens': 21, 'completion_tokens': 30},
+ 'results': [{'call_id': None,
+   'funcname': 'get_weather',
+   'args': '{"date": "2022-01-01", "city": "New York"}',
+   'output': 'The weather in New York on 2022-01-01 is sunny.'}],
+ 'prompt': [{'role': 'user',
+   'parts': ['What is the weather in New York on 2022-01-01?']}]}
+```
+
 ## Conversation memory
 ### For standard chat model
 ```python
 from langrila import JSONConversationMemory
 
 chat = OpenAIChatModule(
-    api_key_env_name = "API_KEY", # env variable name
-    model_name="gpt-3.5-turbo-16k-0613",
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="gpt-3.5-turbo-0125",
     conversation_memory=JSONConversationMemory("./conversation_memory.json"),
-    timeout=60, 
-    max_retries=2, 
+    timeout=60,
+    max_retries=2,
 )
 
 
 message = "Do you know Rude who is the character in Final Fantasy 7."
-response = chat(message)
+response = chat.run(message)
 response.model_dump()
 >>> {'message': {'role': 'assistant',
-  'content': 'Yes, I am familiar with Rude, who is a character in the popular video game Final Fantasy 7. Rude is a member of the Turks, an elite group of operatives working for the Shinra Electric Power Company. He is known for his bald head, sunglasses, and calm demeanor. Rude often partners with another Turk named Reno, and together they carry out various missions throughout the game.'},
- 'usage': {'prompt_tokens': 22, 'completion_tokens': 81},
+  'content': 'Yes, Rude is a character in Final Fantasy 7. He is a member of the Turks, a group of elite operatives working for the Shinra Electric Power Company. Rude is known for his calm and collected demeanor, as well as his impressive physical strength. He often works alongside his partner, Reno, and is skilled in hand-to-hand combat.'},
+ 'usage': {'prompt_tokens': 22, 'completion_tokens': 72},
  'prompt': [{'role': 'user',
    'content': 'Do you know Rude who is the character in Final Fantasy 7.'}]}
 
-
+# second prompt
 message = "What does he think about Tifa?"
-response = chat(message)
+response = chat.run(message)
 response.model_dump()
 >>> {'message': {'role': 'assistant',
-  'content': "Rude's thoughts and feelings about Tifa, another character in Final Fantasy 7, are not explicitly stated in the game. However, it is known that Rude respects Tifa as a formidable fighter and acknowledges her skills. In the game, Rude and Tifa have a few encounters where they engage in combat, but there is no indication of any personal feelings or opinions Rude may have towards Tifa beyond their professional interactions."},
- 'usage': {'prompt_tokens': 119, 'completion_tokens': 88},
+  'content': "In Final Fantasy 7, Rude is shown to have a respectful and professional relationship with Tifa Lockhart, one of the main protagonists of the game. While Rude is a member of the Turks and initially opposes Tifa and her allies, he does not harbor any personal animosity towards her. In fact, there are moments in the game where Rude shows a sense of admiration for Tifa's strength and determination. Overall, Rude's interactions with Tifa are characterized by mutual respect and a sense of professionalism."},
+ 'usage': {'prompt_tokens': 110, 'completion_tokens': 106},
  'prompt': [{'role': 'user',
    'content': 'Do you know Rude who is the character in Final Fantasy 7.'},
   {'role': 'assistant',
-   'content': 'Yes, I am familiar with Rude, who is a character in the popular video game Final Fantasy 7. Rude is a member of the Turks, an elite group of operatives working for the Shinra Electric Power Company. He is known for his bald head, sunglasses, and calm demeanor. Rude often partners with another Turk named Reno, and together they carry out various missions throughout the game.'},
+   'content': 'Yes, Rude is a character in Final Fantasy 7. He is a member of the Turks, a group of elite operatives working for the Shinra Electric Power Company. Rude is known for his calm and collected demeanor, as well as his impressive physical strength. He often works alongside his partner, Reno, and is skilled in hand-to-hand combat.'},
   {'role': 'user', 'content': 'What does he think about Tifa?'}]}
 ```
-### For vision chat model
 
+### Conversation memory with Cosmos DB
 ```python
-chat = OpenAIChatModule(
-    api_key_env_name="API_KEY",
-    model_name="gpt-4-vision-preview",
-    conversation_memory=JSONConversationMemory("./conversation_memory.json"),
-)
-
-prompt = "What kind of food is in the picture?"
-response = await chat(prompt, images=image, arun=True)
-
-prompt = "Why did Japanese start eating this at New Year's?"
-response = await chat(prompt, arun=True)
-response.model_dump()
-
->>> {'message': {'role': 'assistant',
-  'content': "The tradition of eating osechi-ryori during the New Year's celebration in Japan has its origins in the Heian period (794-1185). The practice is deeply rooted in the Shinto belief of toshigami (year gods), who are said to visit during the New Year to bring blessings for the coming year. Preparing osechi-ryori is a way to honor these deities.\n\nThe specific dishes that make up osechi-ryori are chosen for their auspicious meanings and symbolism, which are meant to ensure good fortune, health, and prosperity in the new year. Each dish has a particular significance, such as happiness, fertility, longevity, and success.\n\nAnother practical reason for the development of osechi-ryori was the need to prepare food ahead of time. During the first few days of the New Year, it was traditionally believed that using a hearth or cooking would offend the visiting gods. Therefore, osechi-ryori dishes are made to last for several days without spoiling, allowing people to avoid cooking during this period and instead focus on the New Year's festivities and rituals.\n\nOver time, this practice has evolved, and while the traditional meanings remain, osechi-ryori has also become a special meal for families to enjoy together while celebrating the arrival of the New Year."},
- 'usage': {'prompt_tokens': 248, 'completion_tokens': 273},
- 'prompt': [{'role': 'user',
-   'content': [{'type': 'text',
-     'text': 'What kind of food is in the picture?'},
-    {'type': 'image_url',
-     'image_url': {'url': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...',
-      'detail': 'low'}}]},
-  {'role': 'assistant',
-   'content': 'The image shows a traditional Japanese New Year\'s food called "osechi-ryori." It is typically presented in special boxes called "jubako," which are often lacquered and stacked for a beautiful presentation. Osechi-ryori consists of various dishes, each with a special meaning for the New Year. Common items include sweet black soybeans (kuromame), which symbolize health; herring roe (kazunoko), which represents fertility; and shrimp, which are associated with long life. The food is colorful and arranged meticulously to celebrate the beginning of the new year with wishes for prosperity and happiness.'},
-  {'role': 'user',
-   'content': "Why did Japanese start eating this at New Year's?"}]}
-```
-
-## Conversation memory with Cosmos DB
-
-```python
-from langrila import OpenAIChatModule
+from langrila.openai import OpenAIChatModule
 from langrila.memory.cosmos import CosmosConversationMemory
 
 chat = OpenAIChatModule(
-    api_key_env_name = "API_KEY", # env variable name
-    model_name="gpt-3.5-turbo-16k-0613",
+    ...
     conversation_memory=CosmosConversationMemory(
         endpoint_env_name = "COSMOS_ENDPOINT", # env variable names
         key_env_name = "COSMOS_KEY", 
         db_env_name = "COSMOS_DB_NAME", 
         container_env_name = "COSMOS_CONTAINER_NAME"
         ),
-    api_type="azure",
-    api_version="2023-07-01-preview", 
-    deployment_id_env_name="DEPLOY_ID", # env variable name
-    endpoint_env_name="ENDPOINT", # env variable name
 )
 ```
 
-## Conversation memory with Amazon S3
-
+### Conversation memory with Amazon S3
 ```python
-from langrila import OpenAIChatModule
+from langrila.openai import OpenAIChatModule
 from langrila.memory.s3 import S3ConversationMemory
 
 # S3ConversationMemory utilizes `boto3.client("s3")` for its operations.
 # configuration and credentials are handled in the same manner.
 chat = OpenAIChatModule(
-    api_key_env_name="API_KEY", # env variable name
-    model_name="gpt-3.5-turbo-16k-0613",
+    ...
     conversation_memory=S3ConversationMemory(
         bucket="S3_BUCKET_NAME",
         object_key="OBJECT_KEY", # "PREFIX/OBJECT_KEY" for using prefix
@@ -381,162 +431,81 @@ chat = OpenAIChatModule(
 
 ## Embedding
 ```python
-from langrila import OpenAIEmbeddingModule
+from langrila.openai import OpenAIEmbeddingModule
 
 embedder = OpenAIEmbeddingModule(
     api_key_env_name="API_KEY",  # env variable name
-    model_name="text-embedding-ada-002",
+    model_name="text-embedding-3-large",
 )
 
 message = "Please give me only one advice to improve the quality of my sleep."
 
-results = embedder(message)
+results = embedder.run(message)
 results.model_dump()
 
 >>> {'text': ['Please give me only one advice to improve the quality of my sleep.'],
- 'embeddings': [[-0.010138720273971558,
-   0.03176884725689888,
-   0.025842785835266113,
-   -0.02733718417584896,
-   0.009971244260668755,
+ 'embeddings': [[0.03542472422122955,
+   -0.019869724288582802,
+   -0.015472551807761192,
+   -0.021917158737778664,
+   0.017203938215970993,
+   0.010305874049663544,
+   0.019127702340483665,
    ...]],
  'usage': {'prompt_tokens': 14, 'completion_tokens': 0}}
 ```
 
-For 3rd generation embedding model.
+## PromptTemplate
+You can manage your prompt as a prompt template that is often used.
 ```python
-embedder = OpenAIEmbeddingModule(
-    api_key_env_name="API_KEY",  # env variable name
-    model_name="text-embedding-3-small", # or large
-    dimensions = 512
-)
+from langrila import PromptTemplate
 
-message = "Please give me only one advice to improve the quality of my sleep."
+template = PromptTemplate(
+    template="""# INSTRUCTIONS
+Please answer the following question written in the QUESTION section.
 
-results = embedder(message)
-
-```
-
-
-## Assembling module for specific use case
-### Using prompt template
-
-```python
-from langrila import BaseModule, OpenAIChatModule, PromptTemplate
-from typing import Optional
-        
-SAMPLE_TEMPLATE = """Please answer Yes or No to the following questions.
-
-[Question]
+# QUESTION
 {question}
 
-[Answer]
+# ANSWER
 """
-
-class TemplateChat(BaseModule):
-    def __init__(
-        self,
-        api_key_env_name: str,
-        model_name: str,
-        max_tokens: int = 2048,
-        timeout: int = 60,
-        max_retries: int = 2,
-        context_length: Optional[int] = None,
-    ):
-        self.chat = OpenAIChatModule(
-            api_key_env_name=api_key_env_name,
-            model_name=model_name,
-            max_tokens=max_tokens,
-            timeout=timeout,
-            max_retries=max_retries,
-            context_length=context_length,
-        )
-
-
-    def run(self, prompt: str, prompt_template: Optional[PromptTemplate] = None):
-        if isinstance(prompt_template, PromptTemplate):
-            prompt = prompt_template.set_args(question=prompt).format()
-        response = self.chat(prompt)
-        return response
-
-
-prompt_template = PromptTemplate(
-    template=SAMPLE_TEMPLATE,
 )
 
-chat = TemplateChat(
-    api_key_env_name="API_KEY", 
-    model_name = "gpt-3.5-turbo-1106",
-)
+question = "Do you know which is more popular in Japan, Takenoko-no-sato and Kinoko-no-yama?"
 
-prompt = "Are you GPT-4?"
-response = chat(prompt, prompt_template=prompt_template)
-response.model_dump()
+template.set_args(question=question)
 
->>> {'message': {'role': 'assistant', 'content': 'No'},
- 'usage': {'prompt_tokens': 30, 'completion_tokens': 1},
- 'prompt': [{'role': 'user',
-   'content': 'Please answer Yes or No to the following questions.\n\n[Question]\nAre you GPT-4?\n\n[Answer]\n'}]}
+print(template.format())
+
+>>> # INSTRUCTIONS
+Please answer the following question written in the QUESTION section.
+
+# QUESTION
+Do you know which is more popular in Japan, Takenoko-no-sato and Kinoko-no-yama?
+
+# ANSWER
 ```
 
-### Retrieval
-Now only Chroma and Qdrant are supported for basic retrieval.
+Also prompt template can load from text file.
 
-#### For Chroma
 ```python
-from langrila import OpenAIEmbeddingModule
-from langrila.database.chroma import ChromaCollectionModule, ChromaRetrievalModule
+template = PromptTemplate.from_text_file("./prompt_template.txt")
 
-#######################
-# create collection
-#######################
+question = "Do you know which is more popular in Japan, Takenoko-no-sato and Kinoko-no-yama?"
 
-embedder = OpenAIEmbeddingModule(
-        api_key_env_name="API_KEY", 
-    )
+template.set_args(question=question)
 
-collection = ChromaCollectionModule(
-    persistence_directory="chroma", 
-    collection_name="sample", 
-    embedder=embedder
-)
+print(template.format())
 
-documents = [
-    "Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.",
-    "LangChain is a framework for developing applications powered by language models.", 
-    "LlamaIndex (GPT Index) is a data framework for your LLM application."
-]
-
-collection(documents=documents)
-
-#######################
-# retrieval
-#######################
-
-# In the case collection was already instantiated
-# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.8)
-
-retriever = ChromaRetrievalModule(
-            embedder=embedder,
-            persistence_directory="chroma", 
-            collection_name="sample", 
-            n_results=2,
-            threshold_similarity=0.8,
-        )
-
-query = "What is Langrila?"
-retriever(query, where=None).model_dump()
-
->>> {'ids': ['0'],
- 'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
- 'metadatas': [None],
- 'similarities': [0.8371831512206707],
- 'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
+>>> # same output
 ```
 
-#### For Qdrant
+## Retrieval
+Now only Qdrant are supported for basic retrieval.
+
+### For Qdrant
 ```python
-from langrila import OpenAIEmbeddingModule
+from langrila.openai import OpenAIEmbeddingModule
 from langrila.database.qdrant import QdrantLocalCollectionModule, QdrantLocalRetrievalModule
 
 #######################
@@ -559,6 +528,8 @@ documents = [
     "LlamaIndex (GPT Index) is a data framework for your LLM application."
 ]
 
+# Collection limits the number of its records (<= 10000 records) to keep memory error away.
+# If you can include records over limitation, collection will be automatically divided into multiple collection.
 collection(documents=documents)
 
 #######################
@@ -576,6 +547,7 @@ retriever = QdrantLocalRetrievalModule(
             threshold_similarity=0.8,
         )
 
+# If multiple collections are available, search all collections and merge each results later, then return top-k results.
 query = "What is Langrila?"
 retriever(query, filter=None).model_dump()
 
@@ -588,72 +560,3 @@ retriever(query, filter=None).model_dump()
 
 ### Specific use case
 The library supports a variety of use cases by combining modules such as these and defining new modules. For example, the following is an example of a module that combines basic Retrieval and prompt templates. 
-
-```python
-from langrila import BaseModule, PromptTemplate
-from langrila.database.chroma import ChromaRetrievalModule
-
-
-class RetrievalChatWithTemplate(BaseModule):
-    def __init__(
-        self,
-        api_type: str = "azure",
-        api_version: str = "2023-07-01-preview",
-        api_version_embedding: str = "2023-05-15",
-        endpoint_env_name: str = "ENDPOINT",
-        api_key_env_name: str = "API_KEY",
-        deployment_id_env_name: str = "DEPLOY_ID",
-        deployment_id_name_embedding: str = "DEPLOY_ID_EMBEDDING",
-        max_tokens: int = 2048,
-        timeout: int = 60,
-        max_retries: int = 2,
-        context_length: int = None,
-        model_name="gpt-3.5-turbo-16k-0613",
-        path_to_index: str = "path-to-your-chroma-index",
-        index_collection_name: str = "your-collection-name"
-    ):
-        chatmodel_kwargs = {
-            "api_type": api_type,
-            "api_version": api_version,
-            "api_key_env_name": api_key_env_name,
-            "endpoint_env_name": endpoint_env_name,
-            "deployment_id_env_name": deployment_id_env_name,
-        }
-
-        embedding_kwargs = {
-            "api_type": api_type,
-            "api_version": api_version_embedding,
-            "api_key_env_name": api_key_env_name,
-            "endpoint_env_name": endpoint_env_name,
-            "deployment_id_env_name": deployment_id_name_embedding,
-            "model_name": "text-embedding-ada-002"
-        }
-
-        self.chat = OpenAIChatModule(
-            **chatmodel_kwargs,
-            max_tokens=max_tokens,
-            timeout=timeout,
-            max_retries=max_retries,
-            model_name=model_name,
-            context_length=context_length,
-            conversation_memory=None,
-        )
-
-        self.retriever = ChromaRetrievalModule(
-            embedder=OpenAIEmbeddingModule(**embedding_kwargs),
-            persistence_directory=path_to_index,
-            collection_name=index_collection_name,
-            n_results=5,
-            threshold_similarity=0.8,
-        )
-
-    def run(self, prompt: str, prompt_template: Optional[PromptTemplate] = None):
-        retrieval_results = self.retriever(prompt)
-        relevant_docs = "\n\n".join(retrieval_results.documents)
-
-        if isinstance(prompt_template, PromptTemplate):
-            prompt = prompt_template.set_args(relevant_docs=relevant_docs).format()
-
-        response = self.chat(prompt)
-        return response
-```

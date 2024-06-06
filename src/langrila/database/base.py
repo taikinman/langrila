@@ -6,12 +6,18 @@ from typing import Any, Generator, Optional
 
 from ..base import BaseEmbeddingModule
 from ..logger import DefaultLogger
-from ..result import EmbeddingResults, RetrievalResult
+from ..result import EmbeddingResults, RetrievalResults
 from ..usage import Usage
 from ..utils import make_batch
 
 
 class _BaseCollectionModule(ABC):
+    """
+    Base class for collection module.
+    Collection limits the number of its records (<= 10000 records) to keep memory error away.
+    If you can include records over limitation, collection will be automatically divided into multiple collection.
+    """
+
     def __init__(
         self,
         collection_name: str,
@@ -290,6 +296,11 @@ class _BaseCollectionModule(ABC):
 
 
 class _BaseRetrievalModule(ABC):
+    """
+    Search the most similar documents from the collection.
+    If multiple collections are available, search all collections and merge each results later, then return top-k results.
+    """
+
     def __init__(
         self,
         collection_name: str,
@@ -336,7 +347,7 @@ class _BaseRetrievalModule(ABC):
         score_threshold: float,
         filter: Any | None = None,
         **kwargs,
-    ) -> RetrievalResult:
+    ) -> RetrievalResults:
         raise NotImplementedError
 
     async def _aretrieve(
@@ -348,10 +359,10 @@ class _BaseRetrievalModule(ABC):
         score_threshold: float,
         filter: Any | None = None,
         **kwargs,
-    ) -> RetrievalResult:
+    ) -> RetrievalResults:
         raise NotImplementedError
 
-    def run(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResult:
+    def run(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
         client = self.get_client()
 
         embed: EmbeddingResults = self.embedder.run(query)
@@ -368,7 +379,7 @@ class _BaseRetrievalModule(ABC):
 
         for collection_name in collection_names:
             self.logger.info(f"Retrieve from {collection_name}...")
-            retrieved: RetrievalResult = self._retrieve(
+            retrieved: RetrievalResults = self._retrieve(
                 client=client,
                 collection_name=collection_name,
                 query_vector=embed.embeddings[0],
@@ -388,7 +399,7 @@ class _BaseRetrievalModule(ABC):
         sort_indices = sorted(range(len(scores)), key=scores.__getitem__, reverse=self.reverse)
 
         # top-k results
-        results = RetrievalResult(
+        results = RetrievalResults(
             ids=[ids[i] for i in sort_indices][: self.n_results],
             scores=[scores[i] for i in sort_indices][: self.n_results],
             documents=[documents[i] for i in sort_indices][: self.n_results],
@@ -399,7 +410,7 @@ class _BaseRetrievalModule(ABC):
 
         return results
 
-    async def arun(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResult:
+    async def arun(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
         client = self.get_async_client()
 
         embed: EmbeddingResults = await self.embedder.arun(query)
@@ -417,7 +428,7 @@ class _BaseRetrievalModule(ABC):
         # sweep all collections one by one to avoid memory error
         for collection_name in collection_names:
             self.logger.info(f"Retrieve from {collection_name}...")
-            retrieved: RetrievalResult = await self._aretrieve(
+            retrieved: RetrievalResults = await self._aretrieve(
                 client=client,
                 collection_name=collection_name,
                 query_vector=embed.embeddings[0],
@@ -437,7 +448,7 @@ class _BaseRetrievalModule(ABC):
         sort_indices = sorted(range(len(scores)), key=scores.__getitem__, reverse=True)
 
         # top-k results
-        results = RetrievalResult(
+        results = RetrievalResults(
             ids=[ids[i] for i in sort_indices][: self.n_results],
             scores=[scores[i] for i in sort_indices][: self.n_results],
             documents=[documents[i] for i in sort_indices][: self.n_results],

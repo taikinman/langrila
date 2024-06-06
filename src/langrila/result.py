@@ -30,7 +30,7 @@ class EmbeddingResults(BaseModel):
     usage: Usage
 
 
-class RetrievalResult(BaseModel):
+class RetrievalResults(BaseModel):
     ids: list[int | str]
     documents: list[str]
     metadatas: Optional[list[dict[str, Any]] | list[None]]
