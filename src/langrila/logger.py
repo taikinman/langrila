@@ -1,26 +1,39 @@
 import datetime
 import logging
 import os
+from pathlib import Path
 
 
-class Logger:
-    def __init__(self, path: str, name: str = "log", level: str = "DEBUG", include_timestamp: bool = False):
-        path_log = os.path.join(path, f"{name}.log")
-        if os.path.exists(path_log):
-            os.remove(path_log)
+class DefaultLogger:
+    def __init__(
+        self,
+        path: str | Path | None = None,
+        level: str = "DEBUG",
+        include_timestamp: bool = False,
+    ):
+        if path is not None:
+            path = Path(path)
+            if path.exists():
+                # recreate log file
+                os.remove(path)
 
-        if not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
+            path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.general_logger = logging.getLogger(path_log)
-        stream_handler = logging.StreamHandler()
-        file_general_handler = logging.FileHandler(path_log)
+            self.general_logger = logging.getLogger(path.as_posix())
+        else:
+            self.general_logger = logging.getLogger(__name__)
 
+        # clear handlers
         if len(self.general_logger.handlers) > 0:
             self.general_logger.handlers.clear()
 
+        stream_handler = logging.StreamHandler()
         self.general_logger.addHandler(stream_handler)
-        self.general_logger.addHandler(file_general_handler)
+
+        if path is not None:
+            file_general_handler = logging.FileHandler(path.as_posix())
+            self.general_logger.addHandler(file_general_handler)
+
         self.general_logger.setLevel(getattr(logging, level))
 
         self.include_timestamp = include_timestamp
@@ -68,8 +81,8 @@ class Logger:
             self.general_logger.debug(message)
 
     def _add_timestamp(self, message: str):
-        return f"[{self.now_string()}] {message}"
+        return f"[{self.now_string}] {message}"
 
-    @staticmethod
-    def now_string():
+    @property
+    def now_string(self):
         return str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

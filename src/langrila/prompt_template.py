@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, model_validator
@@ -7,6 +8,14 @@ from pydantic import BaseModel, model_validator
 class PromptTemplate(BaseModel):
     args: dict[str, Any] = {}
     template: str = ""
+
+    @staticmethod
+    def from_text_file(file_path: str | Path):
+        file_path = Path(file_path)
+
+        with open(file_path, "r") as f:
+            template = f.read()
+        return PromptTemplate(template=template)
 
     def format(self):
         self._check_args(self.template, self.args)

@@ -1,60 +1,48 @@
-import asyncio
 from abc import ABC, abstractmethod
+from typing import Any, AsyncGenerator, Generator
+
+from .result import CompletionResults, EmbeddingResults, FunctionCallingResults
 
 
-class BaseModule(ABC):
+class BaseChatModule(ABC):
     @abstractmethod
-    def run(self, *args, **kwargs):
+    def run(self, messages: list[dict[str, str]]) -> CompletionResults:
         raise NotImplementedError
 
-    async def arun(self, *args, **kwargs):
+    async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
         raise NotImplementedError
 
-    def stream(self, *args, **kwargs):
+    def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
         raise NotImplementedError
 
-    async def astream(self, *args, **kwargs):
+    async def astream(
+        self, messages: list[dict[str, str]]
+    ) -> AsyncGenerator[CompletionResults, None]:
         raise NotImplementedError
 
-    def __call__(self, *args, **kwargs):
-        _async = kwargs.pop("arun", False)
-        _stream = kwargs.pop("stream", False)
-        if _async:
-            if _stream:
-                return self.astream(*args, **kwargs)
-            else:
-                return asyncio.create_task(self.arun(*args, **kwargs))
-        else:
-            if _stream:
-                return self.stream(*args, **kwargs)
-            else:
-                return self.run(*args, **kwargs)
 
-    def load_conversation(self) -> list[dict[str, str]]:
-        if self.conversation_memory is not None:
-            messages: list[dict[str, str]] = self.conversation_memory.load()
-        else:
-            messages = []
+class BaseFunctionCallingModule(ABC):
+    @abstractmethod
+    def run(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+        raise NotImplementedError
 
-        return messages
+    async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+        raise NotImplementedError
 
-    def save_conversation(self, messages: list[dict[str, str]]) -> None:
-        self.conversation_memory.store(messages)
 
-    def apply_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.apply(messages)
+class BaseEmbeddingModule(ABC):
+    @abstractmethod
+    def run(self, text: str | list[str]) -> EmbeddingResults:
+        raise NotImplementedError
 
-    def restore_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.restore(messages)
+    async def arun(self, text: str | list[str]) -> EmbeddingResults:
+        raise NotImplementedError
 
 
 class BaseConversationLengthAdjuster(ABC):
     @abstractmethod
     def run(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         raise NotImplementedError
-
-    def __call__(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.run(messages)
 
 
 class BaseFilter(ABC):
@@ -69,6 +57,7 @@ class BaseFilter(ABC):
     def restore(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
         raise NotImplementedError
 
+
 class BaseConversationMemory(ABC):
     @abstractmethod
     def store(self, conversation_history: list[dict[str, str]]):
@@ -77,3 +66,36 @@ class BaseConversationMemory(ABC):
     @abstractmethod
     def load(self, path: str):
         raise NotImplementedError
+
+
+class BaseMessage(ABC):
+    def __init__(
+        self, content: str, images: Any | list[Any] | None = None, name: str | None = None, **kwargs
+    ):
+        self.content = content
+        self.images = images
+        self.name = name
+
+    @property
+    @abstractmethod
+    def as_system(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def as_user(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def as_assistant(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def as_function(self):
+        raise NotImplementedError
+
+    # @property
+    # def as_tool(self):
+    #     return {"role": "tool", "content": self.content}

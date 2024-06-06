@@ -1,18 +1,25 @@
 import asyncio
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any, AsyncGenerator, Generator, Optional
 
-import numpy as np
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from PIL import Image
 
-from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter, BaseModule
+from ...base import (
+    BaseChatModule,
+    BaseConversationLengthAdjuster,
+    BaseConversationMemory,
+    BaseFilter,
+    BaseMessage,
+)
+from ...llm_wrapper import ChatWrapperModule
+from ...result import CompletionResults
+from ...usage import Usage
+from ...utils import make_batch
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
-from ..message import Message
+from ..message import OpenAIMessage
 from ..model_config import _OLDER_MODEL_CONFIG, _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
-from ..result import CompletionResults
-from ..usage import Usage
-from ..utils import get_async_client, get_client, get_n_tokens, get_token_limit, make_batch
+from ..openai_utils import get_async_client, get_client, get_n_tokens, get_token_limit
 
 
 def completion(
@@ -79,7 +86,7 @@ async def acompletion(
     return await client.chat.completions.create(**params)
 
 
-class BaseChatModule(BaseModule):
+class OpenAIChatCoreModule(BaseChatModule):
     def __init__(
         self,
         api_key_env_name: str,
@@ -213,7 +220,7 @@ class BaseChatModule(BaseModule):
             prompt=deepcopy(messages),
         )
 
-    def stream(self, messages: list[dict[str, str]]) -> CompletionResults:
+    def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
@@ -251,18 +258,31 @@ class BaseChatModule(BaseModule):
                 delta = r.choices[0].delta
                 if delta is not None:
                     chunk = delta.content
-                    if chunk is not None and chunk != "":
+                    if chunk is not None:
                         response_message["content"] += chunk
-                        yield chunk
+                        yield CompletionResults(
+                            usage=Usage(),
+                            message=response_message,
+                            prompt=[{}],
+                        )
+                    else:
+                        # at the end of stream, return the whole message and usage
+                        usage = Usage(
+                            prompt_tokens=sum(
+                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
+                            ),
+                            completion_tokens=get_n_tokens(response_message, self.model_name)[
+                                "total"
+                            ],
+                        )
 
-        usage = Usage(
-            prompt_tokens=sum([get_n_tokens(m, self.model_name)["total"] for m in messages]),
-            completion_tokens=get_n_tokens(response_message, self.model_name)["total"],
-        )
+                        yield CompletionResults(
+                            usage=usage, message=response_message, prompt=deepcopy(messages)
+                        )
 
-        yield CompletionResults(usage=usage, message=response_message, prompt=deepcopy(messages))
-
-    async def astream(self, messages: list[dict[str, str]]) -> CompletionResults:
+    async def astream(
+        self, messages: list[dict[str, str]]
+    ) -> AsyncGenerator[CompletionResults, None]:
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
@@ -300,19 +320,30 @@ class BaseChatModule(BaseModule):
                 delta = r.choices[0].delta
                 if delta is not None:
                     chunk = delta.content
-                    if chunk is not None and chunk != "":
+                    if chunk is not None:
                         response_message["content"] += chunk
-                        yield chunk
+                        yield CompletionResults(
+                            usage=Usage(),
+                            message=response_message,
+                            prompt=[{}],
+                        )
+                    else:
+                        # at the end of stream, return the whole message and usage
+                        usage = Usage(
+                            prompt_tokens=sum(
+                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
+                            ),
+                            completion_tokens=get_n_tokens(response_message, self.model_name)[
+                                "total"
+                            ],
+                        )
 
-        usage = Usage(
-            prompt_tokens=sum([get_n_tokens(m, self.model_name)["total"] for m in messages]),
-            completion_tokens=get_n_tokens(response_message, self.model_name)["total"],
-        )
-
-        yield CompletionResults(usage=usage, message=response_message, prompt=deepcopy(messages))
+                        yield CompletionResults(
+                            usage=usage, message=response_message, prompt=deepcopy(messages)
+                        )
 
 
-class OpenAIChatModule(BaseModule):
+class OpenAIChatModule(ChatWrapperModule):
     def __init__(
         self,
         api_key_env_name: str,
@@ -348,7 +379,7 @@ class OpenAIChatModule(BaseModule):
         ), f"max_tokens({max_tokens}) + context_length({context_length}) must be less than or equal to the token limit of the model ({token_lim})."
         assert context_length > 0, "context_length must be positive."
 
-        self.chat_model = BaseChatModule(
+        chat_model = OpenAIChatCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,
             model_name=model_name,
@@ -363,173 +394,21 @@ class OpenAIChatModule(BaseModule):
             response_format=response_format,
         )
 
-        self.conversation_length_adjuster = (
+        conversation_length_adjuster = (
             OldConversationTruncationModule(model_name=model_name, context_length=context_length)
             if conversation_length_adjuster is None
             else conversation_length_adjuster
         )
-        self.conversation_memory = conversation_memory
-        self.content_filter = content_filter
 
-    def run(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, str]]] = None,
-        image_resolution: str = "low",
-    ) -> CompletionResults:
-        messages = self.load_conversation()
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        messages.append(
-            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
+        super().__init__(
+            chat_model=chat_model,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
-        if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
-
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = self.chat_model.run(messages_adjusted)
-
-        if self.content_filter is not None:
-            response.message = self.restore_content_filter([response.message])[0]
-
-        messages.append(response.message)
-
-        if self.conversation_memory is not None:
-            self.save_conversation(messages)
-
-        return response
-
-    def stream(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, str]]] = None,
-        image_resolution: str = "low",
-    ) -> CompletionResults:
-        messages = self.load_conversation()
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        messages.append(
-            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
-        )
-
-        if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
-
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = self.chat_model.stream(messages_adjusted)
-
-        response_message_stream = {"role": "assistant", "content": ""}
-        for chunk in response:
-            if isinstance(chunk, str):
-                response_message_stream["content"] += chunk
-
-                if self.content_filter is not None:
-                    response_message_stream = self.restore_content_filter(
-                        [response_message_stream]
-                    )[0]
-
-                yield response_message_stream["content"]
-            elif isinstance(chunk, CompletionResults):
-                if self.content_filter is not None:
-                    chunk.message = self.restore_content_filter([chunk.message])[0]
-
-                messages.append(chunk.message)
-
-                if self.conversation_memory is not None:
-                    self.save_conversation(messages)
-
-                yield chunk
-            else:
-                raise AssertionError
-
-    async def astream(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, str]]] = None,
-        image_resolution: str = "low",
-    ) -> CompletionResults:
-        messages = self.load_conversation()
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        messages.append(
-            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
-        )
-
-        if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
-
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = self.chat_model.astream(messages_adjusted)
-
-        response_message_stream = {"role": "assistant", "content": ""}
-        async for chunk in response:
-            if isinstance(chunk, str):
-                response_message_stream["content"] += chunk
-
-                if self.content_filter is not None:
-                    response_message_stream = self.restore_content_filter(
-                        [response_message_stream]
-                    )[0]
-
-                yield response_message_stream["content"]
-            elif isinstance(chunk, CompletionResults):
-                if self.content_filter is not None:
-                    chunk.message = self.restore_content_filter([chunk.message])[0]
-
-                messages.append(chunk.message)
-
-                if self.conversation_memory is not None:
-                    self.save_conversation(messages)
-
-                yield chunk
-            else:
-                raise AssertionError
-
-    async def arun(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, str]]] = None,
-        image_resolution: str = "low",
-    ) -> CompletionResults:
-        messages = self.load_conversation()
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        messages.append(
-            Message(content=prompt, images=images, image_resolution=image_resolution).as_user
-        )
-
-        if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
-
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = await self.chat_model.arun(messages_adjusted)
-
-        if self.content_filter is not None:
-            response.message = self.restore_content_filter([response.message])[0]
-
-        messages.append(response.message)
-
-        if self.conversation_memory is not None:
-            self.save_conversation(messages)
-
-        return response
+    def _get_client_message_type(self) -> type[BaseMessage]:
+        return OpenAIMessage
 
     async def abatch_run(
         self,
