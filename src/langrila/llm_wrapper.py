@@ -50,9 +50,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
 
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = self.chat_model.run(messages_adjusted)
+        if self.conversation_length_adjuster is not None:
+            messages_adjusted = self.conversation_length_adjuster.run(messages)
+            response = self.chat_model.run(messages_adjusted)
+        else:
+            response = self.chat_model.run(messages)
 
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
@@ -82,9 +84,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
 
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = await self.chat_model.arun(messages_adjusted)
+        if self.conversation_length_adjuster is not None:
+            messages_adjusted = self.conversation_length_adjuster.run(messages)
+            response = await self.chat_model.arun(messages_adjusted)
+        else:
+            response = await self.chat_model.arun(messages)
 
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
@@ -114,9 +118,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
 
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = self.chat_model.stream(messages_adjusted)
+        if self.conversation_length_adjuster is not None:
+            messages_adjusted = self.conversation_length_adjuster.run(messages)
+            response = self.chat_model.stream(messages_adjusted)
+        else:
+            response = self.chat_model.stream(messages)
 
         for chunk in response:
             if isinstance(chunk, CompletionResults):
@@ -150,9 +156,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
 
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-
-        response = self.chat_model.astream(messages_adjusted)
+        if self.conversation_length_adjuster is not None:
+            messages_adjusted = self.conversation_length_adjuster.run(messages)
+            response = self.chat_model.astream(messages_adjusted)
+        else:
+            response = self.chat_model.astream(messages)
 
         async for chunk in response:
             if isinstance(chunk, CompletionResults):
@@ -172,7 +180,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
 class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
     def __init__(
         self,
-        function_calling_model: BaseChatModule,
+        function_calling_model: BaseFunctionCallingModule,
         conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
@@ -203,8 +211,11 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             messages = self.apply_content_filter(messages)
 
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-        response = self.function_calling_model.run(messages_adjusted, **kwargs)
+        if self.conversation_length_adjuster is not None:
+            messages_adjusted = self.conversation_length_adjuster.run(messages)
+            response = self.function_calling_model.run(messages_adjusted, **kwargs)
+        else:
+            response = self.function_calling_model.run(messages, **kwargs)
 
         if self.content_filter is not None:
             for i, _ in enumerate(response.results):
@@ -239,8 +250,11 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             messages = self.apply_content_filter(messages)
 
-        messages_adjusted = self.conversation_length_adjuster.run(messages)
-        response = await self.function_calling_model.arun(messages_adjusted, **kwargs)
+        if self.conversation_length_adjuster is not None:
+            messages_adjusted = self.conversation_length_adjuster.run(messages)
+            response = await self.function_calling_model.arun(messages_adjusted, **kwargs)
+        else:
+            response = await self.function_calling_model.arun(messages, **kwargs)
 
         if self.content_filter is not None:
             for i, _ in enumerate(response.results):
