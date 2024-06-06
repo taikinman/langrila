@@ -65,7 +65,7 @@ poetry add --editable /path/to/langrila/ --extras all
 ```
 
 # Pre-requirement
-1. Pre-configure environment variables to use OpenAI API or Azure OpenAI Service.
+1. Pre-configure environment variables to use OpenAI API, Azure OpenAI Service or Gemini API.
 
 # Supported models for OpenAI
 ## Chat models
@@ -174,12 +174,10 @@ response = await chat.arun(prompt)
 response.model_dump()
 
 >>> {'message': {'role': 'model',
-  'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at the same time each day, even on weekends.** \n']},
+  'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at the same time every day, even on weekends.** \n']},
  'usage': {'prompt_tokens': 15, 'completion_tokens': 26},
  'prompt': [{'role': 'user',
-   'parts': ['Please give me only one advice to improve the quality of my sleep.']},
-  {'role': 'model',
-   'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at the same time each day, even on weekends.** \n']}]}
+   'parts': ['Please give me only one advice to improve the quality of my sleep.']}]}
 ```
 
 ## Vision model
