@@ -6,7 +6,7 @@ from .usage import Usage
 
 
 class CompletionResults(BaseModel):
-    message: dict[str, str]
+    message: dict[str, str | list[str]]
     usage: Usage
     prompt: Any = None
 
@@ -21,7 +21,7 @@ class ToolOutput(BaseModel):
 class FunctionCallingResults(BaseModel):
     usage: Usage
     results: list[ToolOutput]
-    prompt: Optional[str | dict[str, str] | list[dict[str, str]]] = None
+    prompt: Optional[str | dict[str, str | list[str]] | list[dict[str, str | list[str]]]] = None
 
 
 class EmbeddingResults(BaseModel):
