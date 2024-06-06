@@ -3,7 +3,7 @@ from typing import Any, Optional
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
 from qdrant_client.models import Distance, VectorParams
 
-from ..result import RetrievalResult
+from ..result import RetrievalResults
 from .base import (
     BaseEmbeddingModule,
     BaseLocalCollectionModule,
@@ -193,7 +193,7 @@ class QdrantRetrievalMixin(object):
         score_threshold: float,
         filter: Any | None = None,
         **kwargs,
-    ) -> RetrievalResult:
+    ) -> RetrievalResults:
         retrieved = client.search(
             collection_name=collection_name,
             query_vector=query_vector,
@@ -210,7 +210,7 @@ class QdrantRetrievalMixin(object):
         metadatas = [r.payload["metadata"] for r in retrieved]
         collections = [r.payload["collection"] for r in retrieved]
 
-        return RetrievalResult(
+        return RetrievalResults(
             ids=ids,
             scores=scores,
             documents=documents,
@@ -227,7 +227,7 @@ class QdrantRetrievalMixin(object):
         score_threshold: float,
         filter: Any | None = None,
         **kwargs,
-    ) -> RetrievalResult:
+    ) -> RetrievalResults:
         retrieved = await client.search(
             collection_name=collection_name,
             query_vector=query_vector,
@@ -244,7 +244,7 @@ class QdrantRetrievalMixin(object):
         metadatas = [r.payload["metadata"] for r in retrieved]
         collections = [r.payload["collection"] for r in retrieved]
 
-        return RetrievalResult(
+        return RetrievalResults(
             ids=ids,
             scores=scores,
             documents=documents,
