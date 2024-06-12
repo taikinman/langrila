@@ -37,10 +37,10 @@ pip install -e .[openai]
 pip install -e .[gemini]
 
 # For both
-pip install -e .[openai, gemini]
+pip install -e .[openai,gemini]
 
 # For OpenAI and Qdrant
-pip install -e .[openai, qdrant]
+pip install -e .[openai,qdrant]
 
 # For All
 pip install -e .[all]
