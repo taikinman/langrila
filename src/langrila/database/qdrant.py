@@ -23,12 +23,14 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         on_disk: bool = False,
+        limit_collection_size: int = 10000,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
             collection_name=collection_name,
             embedder=embedder,
             logger=logger,
+            limit_collection_size=limit_collection_size,
         )
         self.vector_size = vector_size
         self.distance = distance
@@ -104,6 +106,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         on_disk: bool = False,
+        limit_collection_size: int = 10000,
     ):
         self.vector_size = vector_size
         self.distance = distance
@@ -115,6 +118,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             logger=logger,
             url=url,
             port=port,
+            limit_collection_size=limit_collection_size,
         )
 
     def _glob(self, client: QdrantClient) -> list[str]:
@@ -234,6 +238,7 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         n_results: int = 4,
         score_threshold: float = 0.8,
         logger: Any | None = None,
+        ascending: bool = False,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -242,6 +247,7 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=logger,
+            ascending=ascending,
         )
 
     def get_client(self) -> QdrantClient:
@@ -297,6 +303,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         n_results: int = 4,
         score_threshold: float = 0.8,
         logger: Any | None = None,
+        ascending: bool = False,
     ):
         super().__init__(
             collection_name=collection_name,
@@ -306,6 +313,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             logger=logger,
             url=url,
             port=port,
+            ascending=ascending,
         )
 
     def get_client(self) -> QdrantClient:
