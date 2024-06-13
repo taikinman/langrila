@@ -49,6 +49,7 @@ class AbstractLocalCollectionModule(ABC):
         client: Any,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -127,6 +128,7 @@ class AbstractRemoteCollectionModule(ABC):
         client: Any,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -138,6 +140,7 @@ class AbstractRemoteCollectionModule(ABC):
         client: Any,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -188,6 +191,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
     def upsert(
         self,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -196,6 +200,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             client=client,
             collection_name=self.collection_name,
             ids=ids,
+            documents=documents,
             embeddings=embeddings,
             metadatas=metadatas,
         )
@@ -261,8 +266,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
             metadata_batch = [
-                {"metadata": metadata, "document": document, "collection": collection_name}
-                for metadata, document in zip(metadata_batch, doc_batch, strict=True)
+                {"metadata": metadata, "collection": collection_name} for metadata in metadata_batch
             ]
 
             n_retries = 0
@@ -272,6 +276,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
                         client=client,
                         collection_name=collection_name,
                         ids=id_batch,
+                        documents=doc_batch,
                         embeddings=embedding_batch.embeddings,
                         metadatas=metadata_batch,
                     )
@@ -321,6 +326,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
     async def aupsert(
         self,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -329,6 +335,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             client=client,
             collection_name=self.collection_name,
             ids=ids,
+            documents=documents,
             embeddings=embeddings,
             metadatas=metadatas,
         )
@@ -393,8 +400,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
             metadata_batch = [
-                {"metadata": metadata, "document": document, "collection": collection_name}
-                for metadata, document in zip(metadata_batch, doc_batch, strict=True)
+                {"metadata": metadata, "collection": collection_name} for metadata in metadata_batch
             ]
 
             n_retries = 0
@@ -404,6 +410,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                         client=client,
                         collection_name=collection_name,
                         ids=id_batch,
+                        documents=doc_batch,
                         embeddings=embedding_batch.embeddings,
                         metadatas=metadata_batch,
                     )

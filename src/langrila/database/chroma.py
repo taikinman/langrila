@@ -46,6 +46,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         client: ClientAPI,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -57,7 +58,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         self.collection.upsert(
             ids=[str(i) for i in ids],
             embeddings=embeddings,
-            documents=[metadata["document"] for metadata in metadatas],
+            documents=documents,
             metadatas=[metadata["metadata"] for metadata in metadatas],
         )
 

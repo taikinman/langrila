@@ -60,6 +60,7 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         client: QdrantClient,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -68,7 +69,9 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
             points=models.Batch(
                 ids=ids,
                 vectors=embeddings,
-                payloads=metadatas,
+                payloads=[
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
+                ],
             ),
         )
 
@@ -145,6 +148,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         client: QdrantClient,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -153,7 +157,9 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             points=models.Batch(
                 ids=ids,
                 vectors=embeddings,
-                payloads=metadatas,
+                payloads=[
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
+                ],
             ),
         )
 
@@ -190,6 +196,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         client: AsyncQdrantClient,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
     ) -> None:
@@ -198,7 +205,9 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             points=models.Batch(
                 ids=ids,
                 vectors=embeddings,
-                payloads=metadatas,
+                payloads=[
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
+                ],
             ),
         )
 
