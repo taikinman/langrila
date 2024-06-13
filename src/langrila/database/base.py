@@ -1,4 +1,5 @@
 import math
+import time
 from abc import ABC, abstractmethod
 from itertools import cycle
 from pathlib import Path
@@ -172,6 +173,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         self.embedder = embedder
         self.collection_name = collection_name
         self.logger = logger or DefaultLogger()
+        assert limit_collection_size % 100 == 0, "limit_collection_size must be multiple of 100."
         self.limit_collection_size: int = limit_collection_size
 
     def create_collection(self, suffix: str = "", **kwargs) -> None:
@@ -263,13 +265,24 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
                 for metadata, document in zip(metadata_batch, doc_batch, strict=True)
             ]
 
-            self._upsert(
-                client=client,
-                collection_name=collection_name,
-                ids=id_batch,
-                embeddings=embedding_batch.embeddings,
-                metadatas=metadata_batch,
-            )
+            n_retries = 0
+            while n_retries < 3:
+                try:
+                    self._upsert(
+                        client=client,
+                        collection_name=collection_name,
+                        ids=id_batch,
+                        embeddings=embedding_batch.embeddings,
+                        metadatas=metadata_batch,
+                    )
+                    break
+                except Exception as e:
+                    self.logger.error(f"Error: {e}")
+                    n_retries += 1
+                    time.sleep(10)
+
+                    if n_retries == 3:
+                        raise e
 
             total_idx += len(doc_batch)
 
@@ -384,13 +397,24 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                 for metadata, document in zip(metadata_batch, doc_batch, strict=True)
             ]
 
-            await self._aupsert(
-                client=client,
-                collection_name=collection_name,
-                ids=id_batch,
-                embeddings=embedding_batch.embeddings,
-                metadatas=metadata_batch,
-            )
+            n_retries = 0
+            while n_retries < 3:
+                try:
+                    await self._aupsert(
+                        client=client,
+                        collection_name=collection_name,
+                        ids=id_batch,
+                        embeddings=embedding_batch.embeddings,
+                        metadatas=metadata_batch,
+                    )
+                    break
+                except Exception as e:
+                    self.logger.error(f"Error: {e}")
+                    n_retries += 1
+                    time.sleep(10)
+
+                    if n_retries == 3:
+                        raise e
 
             total_idx += len(doc_batch)
 
