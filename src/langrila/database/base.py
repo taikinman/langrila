@@ -505,7 +505,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
             metadata_batch = [
-                {"metadata": metadata, "collection": collection_name} for metadata in metadata_batch
+                metadata | {"collection": collection_name} for metadata in metadata_batch
             ]
 
             n_retries = 0
