@@ -127,7 +127,7 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
     def as_retriever(
         self,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
     ) -> "QdrantLocalRetrievalModule":
         return QdrantLocalRetrievalModule(
             embedder=self.embedder,
@@ -354,7 +354,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
     def as_retriever(
         self,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
     ) -> "QdrantRemoteRetrievalModule":
         return QdrantRemoteRetrievalModule(
             embedder=self.embedder,
@@ -374,7 +374,7 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         collection_name: str,
         embedder: BaseEmbeddingModule | None = None,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
         logger: Any | None = None,
         ascending: bool = False,
     ):
@@ -439,7 +439,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         port: str = "6333",
         embedder: BaseEmbeddingModule | None = None,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
         logger: Any | None = None,
         ascending: bool = False,
         https: bool | None = None,
