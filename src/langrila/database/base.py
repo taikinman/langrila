@@ -375,9 +375,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             metadata for metadata in metadatas if "collection" in metadata or "document" in metadata
         ]
         if len(metadata_keys) > 0:
-            raise ValueError(
-                "The key 'collection' and 'document' are reserved and automatically included in metadata. Use another key."
-            )
+            raise ValueError("The key 'collection' and 'document' are reserved. Use another key.")
 
 
 class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollectionModule):
