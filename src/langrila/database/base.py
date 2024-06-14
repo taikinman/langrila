@@ -36,7 +36,10 @@ class AbstractLocalCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _create_collection(self, client: Any, collection_name: str, **kwargs) -> None:
+    def _create_collection(self, client: Any, collection_name: str) -> None:
+        """
+        create a collection
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -108,11 +111,17 @@ class AbstractRemoteCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _create_collection(self, client: Any, collection_name: str, **kwargs) -> None:
+    def _create_collection(self, client: Any, collection_name: str) -> None:
+        """
+        create a collection
+        """
         raise NotImplementedError
 
     @abstractmethod
-    async def _acreate_collection(self, client: Any, collection_name: str, **kwargs) -> None:
+    async def _acreate_collection(self, client: Any, collection_name: str) -> None:
+        """
+        create a collection
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -182,10 +191,10 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         assert limit_collection_size % 100 == 0, "limit_collection_size must be multiple of 100."
         self.limit_collection_size: int = limit_collection_size
 
-    def create_collection(self, suffix: str = "", **kwargs) -> None:
+    def create_collection(self, suffix: str = "") -> None:
         client = self.get_client()
         colelction_name = self.collection_name + suffix
-        self._create_collection(client=client, collection_name=colelction_name, **kwargs)
+        self._create_collection(client=client, collection_name=colelction_name)
 
     def exists(self) -> bool:
         client = self.get_client()
@@ -263,9 +272,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
                 suffix: str = f"_{collection_index}"
                 collection_name: str = self.collection_name + suffix
                 if not self._exists(client=client, collection_name=collection_name):
-                    self._create_collection(
-                        client=client, collection_name=collection_name, **kwargs
-                    )
+                    self._create_collection(client=client, collection_name=collection_name)
                     self.logger.info(f"Create collection {collection_name}.")
 
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
@@ -320,10 +327,10 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         self.logger = logger or DefaultLogger()
         self.limit_collection_size: int = limit_collection_size
 
-    async def acreate_collection(self, suffix: str = "", **kwargs) -> None:
+    async def acreate_collection(self, suffix: str = "") -> None:
         client = self.get_async_client()
         colelction_name = self.collection_name + suffix
-        await self._acreate_collection(client=client, collection_name=colelction_name, **kwargs)
+        await self._acreate_collection(client=client, collection_name=colelction_name)
 
     async def aexists(self) -> bool:
         client = self.get_async_client()
@@ -400,9 +407,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                 suffix: str = f"_{collection_index}"
                 collection_name: str = self.collection_name + suffix
                 if not await self._aexists(client=client, collection_name=collection_name):
-                    await self._acreate_collection(
-                        client=client, collection_name=collection_name, **kwargs
-                    )
+                    await self._acreate_collection(client=client, collection_name=collection_name)
                     self.logger.info(f"Create collection {collection_name}.")
 
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
