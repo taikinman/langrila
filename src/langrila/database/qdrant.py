@@ -29,7 +29,6 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]],
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        on_disk: bool = False,
         limit_collection_size: int = 10000,
         sparse_vectors_config: Optional[Mapping[str, types.SparseVectorParams]] = None,
         shard_number: Optional[int] = None,
@@ -144,12 +143,9 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         self,
         url: str,
         collection_name: str,
-        vector_size: int,
         port: str = "6333",
-        distance: Distance = Distance.COSINE,
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        on_disk: bool = False,
         limit_collection_size: int = 10000,
         https: bool | None = None,
         api_key_env_name: str | None = None,
@@ -171,10 +167,6 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         init_from: Optional[types.InitFrom] = None,
         timeout: Optional[int] = None,
     ):
-        self.vector_size = vector_size
-        self.distance = distance
-        self.on_disk = on_disk
-
         super().__init__(
             collection_name=collection_name,
             embedder=embedder,
