@@ -60,13 +60,13 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         **kwargs,
     ) -> None:
         if not hasattr(self, "collection"):
-            self.collection = client.get_collection(name=collection_name, metadata=self.metadata)
+            self.collection = client.get_collection(name=collection_name)
 
         self.collection.upsert(
             ids=[str(i) for i in ids],
             embeddings=embeddings,
             documents=documents,
-            metadatas=[metadata["metadata"] for metadata in metadatas],
+            metadatas=[m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)],
             **kwargs,
         )
 

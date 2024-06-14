@@ -300,6 +300,21 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
 
         if metadatas is None:
             metadatas = [{} for _ in range(len(documents))]
+        else:
+            # check if the key 'collection' or 'document' is included in metadatas
+            assert len(documents) == len(
+                metadatas
+            ), "The length of documents and metadatas must be the same."
+
+            metadata_keys = [
+                metadata
+                for metadata in metadatas
+                if "collection" in metadata or "document" in metadata
+            ]
+            if len(metadata_keys) > 0:
+                raise ValueError(
+                    "The key 'collection' and 'document' are reserved and automatically included in metadata. Use another key."
+                )
 
         length = len(documents)
         ids = []
@@ -336,7 +351,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
             metadata_batch = [
-                {"metadata": metadata, "collection": collection_name} for metadata in metadata_batch
+                metadata | {"collection": collection_name} for metadata in metadata_batch
             ]
 
             n_retries = 0
@@ -439,6 +454,21 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
 
         if metadatas is None:
             metadatas = [{} for _ in range(len(documents))]
+        else:
+            # check if the key 'collection' or 'document' is included in metadatas
+            assert len(documents) == len(
+                metadatas
+            ), "The length of documents and metadatas must be the same."
+
+            metadata_keys = [
+                metadata
+                for metadata in metadatas
+                if "collection" in metadata or "document" in metadata
+            ]
+            if len(metadata_keys) > 0:
+                raise ValueError(
+                    "The key 'collection' and 'document' are reserved and automatically included in metadata. Use another key."
+                )
 
         length = len(documents)
         ids = []

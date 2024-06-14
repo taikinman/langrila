@@ -237,7 +237,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,
@@ -295,7 +295,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,
@@ -411,7 +411,7 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         ids = [r.id for r in retrieved]
         scores = [r.score for r in retrieved]
         documents = [r.payload["document"] for r in retrieved]
-        metadatas = [r.payload["metadata"] for r in retrieved]
+        metadatas = [r.payload for r in retrieved]
         collections = [r.payload["collection"] for r in retrieved]
 
         return RetrievalResults(
@@ -518,7 +518,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         ids = [r.id for r in retrieved]
         scores = [r.score for r in retrieved]
         documents = [r.payload["document"] for r in retrieved]
-        metadatas = [r.payload["metadata"] for r in retrieved]
+        metadatas = [r.payload for r in retrieved]
         collections = [r.payload["collection"] for r in retrieved]
 
         return RetrievalResults(
