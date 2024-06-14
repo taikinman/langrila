@@ -66,7 +66,10 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
             ids=[str(i) for i in ids],
             embeddings=embeddings,
             documents=documents,
-            metadatas=[m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)],
+            metadatas=[
+                m | {"document": doc, "collection": collection_name}
+                for m, doc in zip(metadatas, documents, strict=True)
+            ],
             **kwargs,
         )
 

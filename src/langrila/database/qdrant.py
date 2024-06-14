@@ -106,7 +106,8 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
+                    m | {"document": doc, "collection": collection_name}
+                    for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,
@@ -237,7 +238,8 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
+                    m | {"document": doc, "collection": collection_name}
+                    for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,
@@ -295,7 +297,8 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
+                    m | {"document": doc, "collection": collection_name}
+                    for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,

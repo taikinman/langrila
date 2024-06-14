@@ -61,7 +61,7 @@ class AbstractLocalCollectionModule(ABC):
         **kwargs,
     ) -> None:
         """
-        upsert embeddings, documents and metadatas
+        upsert embeddings, documents and metadatas. document and collection are reserved keys and must be included in metadata.
         """
         raise NotImplementedError
 
@@ -185,7 +185,7 @@ class AbstractRemoteCollectionModule(ABC):
         **kwargs,
     ) -> None:
         """
-        upsert embeddings, documents and metadatas
+        upsert embeddings, documents and metadatas. document and collection are reserved keys and must be included in metadata.
         """
         raise NotImplementedError
 
@@ -262,6 +262,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         metadatas: list[dict[str, str]],
         **kwargs,
     ) -> None:
+        self._verify_metadata(metadatas)
         client = self.get_client()
         self._upsert(
             client=client,
@@ -302,19 +303,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             metadatas = [{} for _ in range(len(documents))]
         else:
             # check if the key 'collection' or 'document' is included in metadatas
-            assert len(documents) == len(
-                metadatas
-            ), "The length of documents and metadatas must be the same."
-
-            metadata_keys = [
-                metadata
-                for metadata in metadatas
-                if "collection" in metadata or "document" in metadata
-            ]
-            if len(metadata_keys) > 0:
-                raise ValueError(
-                    "The key 'collection' and 'document' are reserved and automatically included in metadata. Use another key."
-                )
+            self._verify_metadata(metadatas)
 
         length = len(documents)
         ids = []
@@ -350,10 +339,6 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
 
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
-            metadata_batch = [
-                metadata | {"collection": collection_name} for metadata in metadata_batch
-            ]
-
             n_retries = 0
             while n_retries < 3:
                 try:
@@ -381,6 +366,18 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             if total_idx >= self.limit_collection_size:
                 collection_index += 1
                 total_idx = 0
+
+    def _verify_metadata(self, metadatas: list[dict[str, str]]) -> None:
+        """
+        check if the key 'collection' or 'document' is included in metadatas
+        """
+        metadata_keys = [
+            metadata for metadata in metadatas if "collection" in metadata or "document" in metadata
+        ]
+        if len(metadata_keys) > 0:
+            raise ValueError(
+                "The key 'collection' and 'document' are reserved and automatically included in metadata. Use another key."
+            )
 
 
 class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollectionModule):
@@ -417,6 +414,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         metadatas: list[dict[str, str]],
         **kwargs,
     ) -> None:
+        self._verify_metadata(metadatas)
         client = self.get_async_client()
         await self._aupsert(
             client=client,
@@ -456,19 +454,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             metadatas = [{} for _ in range(len(documents))]
         else:
             # check if the key 'collection' or 'document' is included in metadatas
-            assert len(documents) == len(
-                metadatas
-            ), "The length of documents and metadatas must be the same."
-
-            metadata_keys = [
-                metadata
-                for metadata in metadatas
-                if "collection" in metadata or "document" in metadata
-            ]
-            if len(metadata_keys) > 0:
-                raise ValueError(
-                    "The key 'collection' and 'document' are reserved and automatically included in metadata. Use another key."
-                )
+            self._verify_metadata(metadatas)
 
         length = len(documents)
         ids = []
@@ -503,10 +489,6 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                     self.logger.info(f"Create collection {collection_name}.")
 
             # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
-
-            metadata_batch = [
-                metadata | {"collection": collection_name} for metadata in metadata_batch
-            ]
 
             n_retries = 0
             while n_retries < 3:
