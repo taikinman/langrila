@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "langrila"
-version = "0.0.7"
+version = "0.0.8"
 description = "useful tool to use API-based LLM"
 authors = ["taikinman <okipedia6161@gmail.com>"]
 readme = "README.md"
