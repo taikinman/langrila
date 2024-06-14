@@ -598,6 +598,7 @@ retriever = QdrantLocalRetrievalModule(
 # If multiple collections are available, search all collections and merge each results later, then return top-k results.
 query = "What is Langrila?"
 retriever.run(query, filter=None).model_dump()
+
 >>> {'ids': [0],
  'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
  'metadatas': [{'collection': 'sample_0',
