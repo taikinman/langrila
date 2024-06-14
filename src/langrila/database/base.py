@@ -44,6 +44,9 @@ class AbstractLocalCollectionModule(ABC):
 
     @abstractmethod
     def _exists(self, client: Any, collection_name: str) -> bool:
+        """
+        check if the collection exists
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -57,6 +60,9 @@ class AbstractLocalCollectionModule(ABC):
         metadatas: list[dict[str, str]],
         **kwargs,
     ) -> None:
+        """
+        upsert embeddings, documents and metadatas
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -79,6 +85,9 @@ class AbstractLocalCollectionModule(ABC):
         n_results: int,
         score_threshold: float,
     ):
+        """
+        return the retrieval module
+        """
         raise NotImplementedError
 
 
@@ -136,10 +145,16 @@ class AbstractRemoteCollectionModule(ABC):
 
     @abstractmethod
     def _exists(self, client: Any, collection_name: str) -> bool:
+        """
+        check if the collection exists
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def _aexists(self, client: Any, collection_name: str) -> bool:
+        """
+        check if the collection exists
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -153,6 +168,9 @@ class AbstractRemoteCollectionModule(ABC):
         metadatas: list[dict[str, str]],
         **kwargs,
     ) -> None:
+        """
+        upsert embeddings, documents and metadatas
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -166,6 +184,9 @@ class AbstractRemoteCollectionModule(ABC):
         metadatas: list[dict[str, str]],
         **kwargs,
     ) -> None:
+        """
+        upsert embeddings, documents and metadatas
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -202,6 +223,9 @@ class AbstractRemoteCollectionModule(ABC):
         n_results: int,
         score_threshold: float,
     ):
+        """
+        return the retrieval module
+        """
         raise NotImplementedError
 
 
