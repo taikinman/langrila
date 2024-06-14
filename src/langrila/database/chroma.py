@@ -49,6 +49,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(
@@ -60,6 +61,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
             embeddings=embeddings,
             documents=documents,
             metadatas=[metadata["metadata"] for metadata in metadatas],
+            **kwargs,
         )
 
         return

@@ -63,6 +63,7 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         client.upsert(
             collection_name=collection_name,
@@ -73,6 +74,7 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
                     m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
                 ],
             ),
+            **kwargs,
         )
 
         return
@@ -151,6 +153,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         client.upsert(
             collection_name=collection_name,
@@ -161,6 +164,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                     m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
                 ],
             ),
+            **kwargs,
         )
 
         return
@@ -199,6 +203,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         await client.upsert(
             collection_name=collection_name,
@@ -209,6 +214,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                     m | {"document": doc} for m, doc in zip(metadatas, documents, strict=False)
                 ],
             ),
+            **kwargs,
         )
 
         return

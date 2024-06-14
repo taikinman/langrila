@@ -52,6 +52,7 @@ class AbstractLocalCollectionModule(ABC):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         raise NotImplementedError
 
@@ -131,6 +132,7 @@ class AbstractRemoteCollectionModule(ABC):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         raise NotImplementedError
 
@@ -143,6 +145,7 @@ class AbstractRemoteCollectionModule(ABC):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         raise NotImplementedError
 
@@ -194,6 +197,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         client = self.get_client()
         self._upsert(
@@ -203,6 +207,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             documents=documents,
             embeddings=embeddings,
             metadatas=metadatas,
+            **kwargs,
         )
 
     def delete(self) -> None:
@@ -279,6 +284,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
                         documents=doc_batch,
                         embeddings=embedding_batch.embeddings,
                         metadatas=metadata_batch,
+                        **kwargs,
                     )
                     break
                 except Exception as e:
@@ -329,6 +335,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         client = self.get_async_client()
         await self._aupsert(
@@ -338,6 +345,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             documents=documents,
             embeddings=embeddings,
             metadatas=metadatas,
+            **kwargs,
         )
 
     async def adelete(self) -> None:
@@ -413,6 +421,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                         documents=doc_batch,
                         embeddings=embedding_batch.embeddings,
                         metadatas=metadata_batch,
+                        **kwargs,
                     )
                     break
                 except Exception as e:
