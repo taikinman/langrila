@@ -16,10 +16,12 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         self,
         persistence_directory: str,
         collection_name: str,
-        distance: str = "cosine",
+        metadata: dict[str, str] | None = None,
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         limit_collection_size: int = 10000,
+        tenant: str = DEFAULT_TENANT,
+        database: str = DEFAULT_DATABASE,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -28,7 +30,9 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
             logger=logger,
             limit_collection_size=limit_collection_size,
         )
-        self.distance = distance
+        self.metadata = metadata or {"hnsw:space": "cosine"}
+        self.tenant = tenant
+        self.database = database
 
     def _glob(self, client: ClientAPI) -> list[str]:
         return [c.name for c in client.list_collections() if self.collection_name in c.name]
@@ -36,10 +40,13 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
     def _exists(self, client: ClientAPI, collection_name: str) -> bool:
         return len([name for name in self._glob(client=client) if name == collection_name]) > 0
 
-    def _create_collection(self, client: ClientAPI, collection_name: str, **kwargs) -> None:
-        self.collection = client.create_collection(
-            name=collection_name, metadata={"hnsw:space": self.distance}, **kwargs
-        )
+    def _create_collection(self, client: ClientAPI, collection_name: str) -> None:
+        self.collection = client.create_collection(name=collection_name, metadata=self.metadata)
+
+    def _delete_record(self, client: ClientAPI, collection_name: str, ids: list[str | int]) -> None:
+        if not hasattr(self, "collection"):
+            self.collection = client.get_collection(name=collection_name)
+        self.collection.delete(ids=[str(i) for i in ids])
 
     def _upsert(
         self,
@@ -52,9 +59,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         **kwargs,
     ) -> None:
         if not hasattr(self, "collection"):
-            self.collection = client.get_collection(
-                name=collection_name, metadata={"hnsw:space": self.distance}
-            )
+            self.collection = client.get_collection(name=collection_name, metadata=self.metadata)
 
         self.collection.upsert(
             ids=[str(i) for i in ids],
@@ -70,7 +75,9 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         client.delete_collection(name=collection_name)
 
     def get_client(self) -> ClientAPI:
-        return chromadb.PersistentClient(path=self.persistence_directory.as_posix())
+        return chromadb.PersistentClient(
+            path=self.persistence_directory.as_posix(), tenant=self.tenant, database=self.database
+        )
 
     def as_retriever(
         self,
@@ -97,6 +104,8 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
         score_threshold: float = 0.5,
         logger: Any | None = None,
         ascending: bool = True,
+        tenant: str = DEFAULT_TENANT,
+        database: str = DEFAULT_DATABASE,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -107,9 +116,13 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
             logger=logger,
             ascending=ascending,
         )
+        self.tenant = tenant
+        self.database = database
 
     def get_client(self) -> ClientAPI:
-        return chromadb.PersistentClient(path=self.persistence_directory.as_posix())
+        return chromadb.PersistentClient(
+            path=self.persistence_directory.as_posix(), tenant=self.tenant, database=self.database
+        )
 
     def _glob(self, client: ClientAPI) -> list[str]:
         return [c.name for c in client.list_collections() if self.collection_name in c.name]

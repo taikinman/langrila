@@ -18,12 +18,23 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         self,
         persistence_directory: str,
         collection_name: str,
-        vector_size: int,
-        distance: Distance = Distance.COSINE,
+        vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]],
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         on_disk: bool = False,
         limit_collection_size: int = 10000,
+        sparse_vectors_config: Optional[Mapping[str, types.SparseVectorParams]] = None,
+        shard_number: Optional[int] = None,
+        sharding_method: Optional[types.ShardingMethod] = None,
+        replication_factor: Optional[int] = None,
+        write_consistency_factor: Optional[int] = None,
+        on_disk_payload: Optional[bool] = None,
+        hnsw_config: Optional[types.HnswConfigDiff] = None,
+        optimizers_config: Optional[types.OptimizersConfigDiff] = None,
+        wal_config: Optional[types.WalConfigDiff] = None,
+        quantization_config: Optional[types.QuantizationConfig] = None,
+        init_from: Optional[types.InitFrom] = None,
+        timeout: Optional[int] = None,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -32,9 +43,19 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
             logger=logger,
             limit_collection_size=limit_collection_size,
         )
-        self.vector_size = vector_size
-        self.distance = distance
-        self.on_disk = on_disk
+        self.vectors_config = vectors_config
+        self.sparse_vectors_config = sparse_vectors_config
+        self.shard_number = shard_number
+        self.sharding_method = sharding_method
+        self.replication_factor = replication_factor
+        self.write_consistency_factor = write_consistency_factor
+        self.on_disk_payload = on_disk_payload
+        self.hnsw_config = hnsw_config
+        self.optimizers_config = optimizers_config
+        self.wal_config = wal_config
+        self.quantization_config = quantization_config
+        self.init_from = init_from
+        self.timeout = timeout
 
     def _glob(self, client: QdrantClient) -> list[str]:
         return [
@@ -44,15 +65,22 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
     def _exists(self, client: QdrantClient, collection_name: str) -> bool:
         return client.collection_exists(collection_name=collection_name)
 
-    def _create_collection(self, client: QdrantClient, collection_name: str, **kwargs) -> None:
+    def _create_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.vector_size,
-                distance=self.distance,
-                on_disk=self.on_disk,
-            ),
-            **kwargs,
+            vectors_config=self.vectors_config,
+            sparse_vectors_config=self.sparse_vectors_config,
+            shard_number=self.shard_number,
+            sharding_method=self.sharding_method,
+            replication_factor=self.replication_factor,
+            write_consistency_factor=self.write_consistency_factor,
+            on_disk_payload=self.on_disk_payload,
+            hnsw_config=self.hnsw_config,
+            optimizers_config=self.optimizers_config,
+            wal_config=self.wal_config,
+            quantization_config=self.quantization_config,
+            init_from=self.init_from,
+            timeout=self.timeout,
         )
 
     def _upsert(
@@ -112,6 +140,25 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         logger: Any | None = None,
         on_disk: bool = False,
         limit_collection_size: int = 10000,
+        https: bool | None = None,
+        api_key_env_name: str | None = None,
+        host: str | None = None,
+        grpc_port: str | None = "6334",
+        grpc_options: Optional[dict[str, Any]] = None,
+        auth_token_provider: Union[Callable[[], str], Callable[[], Awaitable[str]]] | None = None,
+        vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]] = None,
+        sparse_vectors_config: Optional[Mapping[str, types.SparseVectorParams]] = None,
+        shard_number: Optional[int] = None,
+        sharding_method: Optional[types.ShardingMethod] = None,
+        replication_factor: Optional[int] = None,
+        write_consistency_factor: Optional[int] = None,
+        on_disk_payload: Optional[bool] = None,
+        hnsw_config: Optional[types.HnswConfigDiff] = None,
+        optimizers_config: Optional[types.OptimizersConfigDiff] = None,
+        wal_config: Optional[types.WalConfigDiff] = None,
+        quantization_config: Optional[types.QuantizationConfig] = None,
+        init_from: Optional[types.InitFrom] = None,
+        timeout: Optional[int] = None,
     ):
         self.vector_size = vector_size
         self.distance = distance
@@ -125,6 +172,25 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             port=port,
             limit_collection_size=limit_collection_size,
         )
+        self.https = https
+        self.api_key_env_name = api_key_env_name
+        self.host = host
+        self.grpc_port = grpc_port
+        self.grpc_options = grpc_options
+        self.auth_token_provider = auth_token_provider
+        self.vectors_config = vectors_config
+        self.sparse_vectors_config = sparse_vectors_config
+        self.shard_number = shard_number
+        self.sharding_method = sharding_method
+        self.replication_factor = replication_factor
+        self.write_consistency_factor = write_consistency_factor
+        self.on_disk_payload = on_disk_payload
+        self.hnsw_config = hnsw_config
+        self.optimizers_config = optimizers_config
+        self.wal_config = wal_config
+        self.quantization_config = quantization_config
+        self.init_from = init_from
+        self.timeout = timeout
 
     def _glob(self, client: QdrantClient) -> list[str]:
         return [
@@ -134,15 +200,22 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
     def _exists(self, client: QdrantClient, collection_name: str) -> bool:
         return client.collection_exists(collection_name=collection_name)
 
-    def _create_collection(self, client: QdrantClient, collection_name: str, **kwargs) -> None:
+    def _create_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.vector_size,
-                distance=self.distance,
-                on_disk=self.on_disk,
-            ),
-            **kwargs,
+            vectors_config=self.vectors_config,
+            sparse_vectors_config=self.sparse_vectors_config,
+            shard_number=self.shard_number,
+            sharding_method=self.sharding_method,
+            replication_factor=self.replication_factor,
+            write_consistency_factor=self.write_consistency_factor,
+            on_disk_payload=self.on_disk_payload,
+            hnsw_config=self.hnsw_config,
+            optimizers_config=self.optimizers_config,
+            wal_config=self.wal_config,
+            quantization_config=self.quantization_config,
+            init_from=self.init_from,
+            timeout=self.timeout,
         )
 
     def _upsert(
@@ -182,17 +255,22 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
     async def _aexists(self, client: AsyncQdrantClient, collection_name: str) -> bool:
         return await client.collection_exists(collection_name=collection_name)
 
-    async def _acreate_collection(
-        self, client: AsyncQdrantClient, collection_name: str, **kwargs
-    ) -> None:
+    async def _acreate_collection(self, client: AsyncQdrantClient, collection_name: str) -> None:
         await client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.vector_size,
-                distance=self.distance,
-                on_disk=self.on_disk,
-            ),
-            **kwargs,
+            vectors_config=self.vectors_config,
+            sparse_vectors_config=self.sparse_vectors_config,
+            shard_number=self.shard_number,
+            sharding_method=self.sharding_method,
+            replication_factor=self.replication_factor,
+            write_consistency_factor=self.write_consistency_factor,
+            on_disk_payload=self.on_disk_payload,
+            hnsw_config=self.hnsw_config,
+            optimizers_config=self.optimizers_config,
+            wal_config=self.wal_config,
+            quantization_config=self.quantization_config,
+            init_from=self.init_from,
+            timeout=self.timeout,
         )
 
     async def _aupsert(
@@ -223,10 +301,36 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         await client.delete_collection(collection_name=collection_name)
 
     def get_client(self) -> QdrantClient:
-        return QdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
+
+        self.client = QdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+        )
+        return self.client
 
     def get_async_client(self) -> AsyncQdrantClient:
-        return AsyncQdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
+
+        self.client = AsyncQdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+        )
+        return self.client
 
     def as_retriever(
         self,
@@ -319,6 +423,12 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         score_threshold: float = 0.8,
         logger: Any | None = None,
         ascending: bool = False,
+        https: bool | None = None,
+        api_key_env_name: str | None = None,
+        host: str | None = None,
+        grpc_port: str | None = "6334",
+        grpc_options: Optional[dict[str, Any]] = None,
+        auth_token_provider: Union[Callable[[], str], Callable[[], Awaitable[str]]] | None = None,
     ):
         super().__init__(
             collection_name=collection_name,
@@ -330,12 +440,44 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             port=port,
             ascending=ascending,
         )
+        self.https = https
+        self.api_key_env_name = api_key_env_name
+        self.host = host
+        self.grpc_port = grpc_port
+        self.grpc_options = grpc_options
+        self.auth_token_provider = auth_token_provider
 
     def get_client(self) -> QdrantClient:
-        return QdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
+
+        self.client = QdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+        )
+        return self.client
 
     def get_async_client(self) -> AsyncQdrantClient:
-        return AsyncQdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
+
+        self.client = AsyncQdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+        )
+        return self.client
 
     def _glob(self, client: QdrantClient) -> list[str]:
         return [
