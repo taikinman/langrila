@@ -71,7 +71,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
 
         return
 
-    def _delete(self, client: ClientAPI, collection_name: str) -> None:
+    def _delete_collection(self, client: ClientAPI, collection_name: str) -> None:
         client.delete_collection(name=collection_name)
 
     def get_client(self) -> ClientAPI:

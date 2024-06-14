@@ -107,8 +107,11 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
 
         return
 
-    def _delete(self, client: QdrantClient, collection_name: str) -> None:
+    def _delete_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.delete_collection(collection_name=collection_name)
+
+    def _delete_record(self, client: QdrantClient, collection_name: str, id: int | str) -> None:
+        client.delete(collection_name=collection_name, points_selector=[id])
 
     def get_client(self) -> QdrantClient:
         return QdrantClient(path=self.persistence_directory)
@@ -242,8 +245,11 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
 
         return
 
-    def _delete(self, client: QdrantClient, collection_name: str) -> None:
+    def _delete_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.delete_collection(collection_name=collection_name)
+
+    def _delete_record(self, client: QdrantClient, collection_name: str, id: int | str) -> None:
+        client.delete(collection_name=collection_name, points_selector=[id])
 
     async def _aglob(self, client: AsyncQdrantClient) -> list[str]:
         return [
@@ -297,8 +303,13 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
 
         return
 
-    async def _adelete(self, client: AsyncQdrantClient, collection_name: str) -> None:
+    async def _adelete_collection(self, client: AsyncQdrantClient, collection_name: str) -> None:
         await client.delete_collection(collection_name=collection_name)
+
+    async def _adelete_record(
+        self, client: QdrantClient, collection_name: str, id: int | str, **kwargs
+    ) -> None:
+        await client.delete(collection_name=collection_name, points_selector=[id], **kwargs)
 
     def get_client(self) -> QdrantClient:
         if hasattr(self, "client"):
