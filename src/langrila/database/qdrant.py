@@ -1,7 +1,15 @@
-from typing import Any, Optional
+import os
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Mapping,
+    Optional,
+    Union,
+)
 
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.conversions import common_types as types
 
 from ..result import RetrievalResults
 from .base import (

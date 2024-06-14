@@ -210,7 +210,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         self,
         persistence_directory: Path | str,
         collection_name: str,
-        embedder: BaseEmbeddingModule = None,
+        embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         limit_collection_size: int = 10000,
     ):

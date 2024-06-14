@@ -1,6 +1,7 @@
 from typing import Any
 
 import chromadb
+from chromadb import DEFAULT_DATABASE, DEFAULT_TENANT
 from chromadb.api import ClientAPI
 
 from ..result import RetrievalResults
