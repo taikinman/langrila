@@ -106,8 +106,7 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc, "collection": collection_name}
-                    for m, doc in zip(metadatas, documents, strict=True)
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,
@@ -238,8 +237,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc, "collection": collection_name}
-                    for m, doc in zip(metadatas, documents, strict=True)
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,
@@ -297,8 +295,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                 ids=ids,
                 vectors=embeddings,
                 payloads=[
-                    m | {"document": doc, "collection": collection_name}
-                    for m, doc in zip(metadatas, documents, strict=True)
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
             **kwargs,
@@ -415,7 +412,7 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         scores = [r.score for r in retrieved]
         documents = [r.payload["document"] for r in retrieved]
         metadatas = [r.payload for r in retrieved]
-        collections = [r.payload["collection"] for r in retrieved]
+        collections = [collection_name for _ in retrieved]
 
         return RetrievalResults(
             ids=ids,
@@ -522,7 +519,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         scores = [r.score for r in retrieved]
         documents = [r.payload["document"] for r in retrieved]
         metadatas = [r.payload for r in retrieved]
-        collections = [r.payload["collection"] for r in retrieved]
+        collections = [collection_name for _ in retrieved]
 
         return RetrievalResults(
             ids=ids,

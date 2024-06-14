@@ -601,8 +601,7 @@ retriever.run(query, filter=None).model_dump()
 
 >>> {'ids': [0],
  'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
- 'metadatas': [{'collection': 'sample_0',
-   'document': 'Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'}],
+ 'metadatas': [{'document': 'Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'}],
  'scores': [0.5303465176248179],
  'collections': ['sample_0'],
  'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
@@ -664,8 +663,7 @@ retriever.run(query, filter=None).model_dump()
 
 >>> {'ids': [0],
  'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
- 'metadatas': [{'collection': 'sample_0',
-   'document': 'Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'}],
+ 'metadatas': [{'document': 'Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'}],
  'scores': [0.46960276455443584],
  'collections': ['sample_0'],
  'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}

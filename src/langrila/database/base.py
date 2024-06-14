@@ -61,7 +61,7 @@ class AbstractLocalCollectionModule(ABC):
         **kwargs,
     ) -> None:
         """
-        upsert embeddings, documents and metadatas. document and collection are reserved keys and must be included in metadata.
+        upsert embeddings, documents and metadatas.
         """
         raise NotImplementedError
 
@@ -169,7 +169,7 @@ class AbstractRemoteCollectionModule(ABC):
         **kwargs,
     ) -> None:
         """
-        upsert embeddings, documents and metadatas
+        upsert embeddings, documents and metadatas.
         """
         raise NotImplementedError
 
@@ -185,7 +185,7 @@ class AbstractRemoteCollectionModule(ABC):
         **kwargs,
     ) -> None:
         """
-        upsert embeddings, documents and metadatas. document and collection are reserved keys and must be included in metadata.
+        upsert embeddings, documents and metadatas.
         """
         raise NotImplementedError
 
@@ -369,13 +369,11 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
 
     def _verify_metadata(self, metadatas: list[dict[str, str]]) -> None:
         """
-        check if the key 'collection' or 'document' is included in metadatas
+        check if the key 'document' is included in metadatas
         """
-        metadata_keys = [
-            metadata for metadata in metadatas if "collection" in metadata or "document" in metadata
-        ]
+        metadata_keys = [metadata for metadata in metadatas if "document" in metadata]
         if len(metadata_keys) > 0:
-            raise ValueError("The key 'collection' and 'document' are reserved. Use another key.")
+            raise ValueError("The key 'document' is reserved. Use another key.")
 
 
 class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollectionModule):
