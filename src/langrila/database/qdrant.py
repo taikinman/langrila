@@ -29,7 +29,6 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]],
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        limit_collection_size: int = 10000,
         sparse_vectors_config: Optional[Mapping[str, types.SparseVectorParams]] = None,
         shard_number: Optional[int] = None,
         sharding_method: Optional[types.ShardingMethod] = None,
@@ -48,7 +47,6 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
             collection_name=collection_name,
             embedder=embedder,
             logger=logger,
-            limit_collection_size=limit_collection_size,
         )
         self.vectors_config = vectors_config
         self.sparse_vectors_config = sparse_vectors_config
@@ -63,11 +61,6 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         self.quantization_config = quantization_config
         self.init_from = init_from
         self.timeout = timeout
-
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
 
     def _exists(self, client: QdrantClient, collection_name: str) -> bool:
         return client.collection_exists(collection_name=collection_name)
@@ -146,7 +139,6 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         port: str = "6333",
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        limit_collection_size: int = 10000,
         https: bool | None = None,
         api_key_env_name: str | None = None,
         host: str | None = None,
@@ -173,7 +165,6 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             logger=logger,
             url=url,
             port=port,
-            limit_collection_size=limit_collection_size,
         )
         self.https = https
         self.api_key_env_name = api_key_env_name
@@ -194,11 +185,6 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         self.quantization_config = quantization_config
         self.init_from = init_from
         self.timeout = timeout
-
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
 
     def _exists(self, client: QdrantClient, collection_name: str) -> bool:
         return client.collection_exists(collection_name=collection_name)
@@ -250,13 +236,6 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
 
     def _delete_record(self, client: QdrantClient, collection_name: str, id: int | str) -> None:
         client.delete(collection_name=collection_name, points_selector=[id])
-
-    async def _aglob(self, client: AsyncQdrantClient) -> list[str]:
-        return [
-            c.name
-            for c in (await client.get_collections()).collections
-            if self.collection_name in c.name
-        ]
 
     async def _aexists(self, client: AsyncQdrantClient, collection_name: str) -> bool:
         return await client.collection_exists(collection_name=collection_name)
@@ -383,11 +362,6 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
     def get_client(self) -> QdrantClient:
         return QdrantClient(path=self.persistence_directory)
 
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
-
     def _retrieve(
         self,
         client: QdrantClient,
@@ -490,11 +464,6 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         )
         return self.client
 
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
-
     def _retrieve(
         self,
         client: QdrantClient,
@@ -528,13 +497,6 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             metadatas=metadatas,
             collections=collections,
         )
-
-    async def _aglob(self, client: AsyncQdrantClient) -> list[str]:
-        return [
-            c.name
-            for c in (await client.get_collections()).collections
-            if self.collection_name in c.name
-        ]
 
     async def _aretrieve(
         self,

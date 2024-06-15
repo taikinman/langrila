@@ -1,37 +1,26 @@
 import math
 import time
 from abc import ABC, abstractmethod
-from itertools import cycle
 from pathlib import Path
-from typing import Any, Generator, Optional
+from typing import Any, Optional
 
 from tqdm import tqdm
 
 from ..base import BaseEmbeddingModule
 from ..logger import DefaultLogger
 from ..result import EmbeddingResults, RetrievalResults
-from ..usage import Usage
 from ..utils import make_batch
 
 
 class AbstractLocalCollectionModule(ABC):
     """
     Base class for collection module.
-    Collection limits the number of its records (<= 10000 records) to keep memory error away.
-    If you can include records over limitation, collection will be automatically divided into multiple collection.
     """
 
     @abstractmethod
     def get_client(self) -> Any:
         """
         return the client object
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _glob(self, client: Any) -> list[str] | Generator[str, None, None]:
-        """
-        return the list of collection names
         """
         raise NotImplementedError
 
@@ -94,8 +83,6 @@ class AbstractLocalCollectionModule(ABC):
 class AbstractRemoteCollectionModule(ABC):
     """
     Base class for collection module.
-    Collection limits the number of its records (<= 10000 records) to keep memory error away.
-    If you can include records over limitation, collection will be automatically divided into multiple collection.
     """
 
     @abstractmethod
@@ -109,23 +96,6 @@ class AbstractRemoteCollectionModule(ABC):
     def get_async_client(self) -> Any:
         """
         return the async client object
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _glob(self, client: Any) -> list[str] | Generator[str, None, None]:
-        """
-        return the list of collection names
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    async def _aglob(
-        self,
-        client: Any,
-    ) -> list[str] | Generator[str, None, None]:
-        """
-        return the list of collection names
         """
         raise NotImplementedError
 
@@ -236,19 +206,15 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         collection_name: str,
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        limit_collection_size: int = 10000,
     ):
         self.persistence_directory = Path(persistence_directory)
         self.embedder = embedder
         self.collection_name = collection_name
         self.logger = logger or DefaultLogger()
-        assert limit_collection_size % 100 == 0, "limit_collection_size must be multiple of 100."
-        self.limit_collection_size: int = limit_collection_size
 
-    def create_collection(self, suffix: str = "") -> None:
+    def create_collection(self) -> None:
         client = self.get_client()
-        colelction_name = self.collection_name + suffix
-        self._create_collection(client=client, collection_name=colelction_name)
+        self._create_collection(client=client, collection_name=self.collection_name)
 
     def exists(self) -> bool:
         client = self.get_client()
@@ -277,9 +243,8 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
     def delete_collection(self) -> None:
         client = self.get_client()
 
-        for collection_name in self._glob(client=client):
-            if self._exists(client=client, collection_name=collection_name):
-                self._delete_collection(client=client, collection_name=collection_name)
+        if self._exists(client=client, collection_name=self.collection_name):
+            self._delete_collection(client=client, collection_name=self.collection_name)
 
     def delete_record(self, id: int | str) -> None:
         client = self.get_client()
@@ -305,17 +270,9 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             # check if the key 'collection' or 'document' is included in metadatas
             self._verify_metadata(metadatas)
 
-        length = len(documents)
-        ids = []
-        _ = range(self.limit_collection_size)
-        for i in cycle(_):
-            ids.append(i)
-            if len(ids) >= length:
-                break
+        ids = [i for i in range(len(documents))]
 
         # batchfy due to memory usage
-        total_idx: int = 0
-        collection_index: int = 0
         batch_size: int = 100
 
         documents_batch = make_batch(documents, batch_size=batch_size)
@@ -324,27 +281,22 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
 
         n_batches: int = math.ceil(len(documents) / batch_size)
 
-        for i, (doc_batch, metadata_batch, id_batch) in tqdm(
-            enumerate(zip(documents_batch, metadatas_batch, ids_batch, strict=True)),
+        if not self._exists(client=client, collection_name=self.collection_name):
+            self._create_collection(client=client, collection_name=self.collection_name)
+            self.logger.info(f"Create collection {self.collection_name}.")
+
+        for doc_batch, metadata_batch, id_batch in tqdm(
+            zip(documents_batch, metadatas_batch, ids_batch, strict=True),
             total=n_batches,
         ):
             embedding_batch: EmbeddingResults = self.embedder.run(doc_batch)
-
-            if total_idx == 0:
-                suffix: str = f"_{collection_index}"
-                collection_name: str = self.collection_name + suffix
-                if not self._exists(client=client, collection_name=collection_name):
-                    self._create_collection(client=client, collection_name=collection_name)
-                    self.logger.info(f"Create collection {collection_name}.")
-
-            # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
             n_retries = 0
             while n_retries < 3:
                 try:
                     self._upsert(
                         client=client,
-                        collection_name=collection_name,
+                        collection_name=self.collection_name,
                         ids=id_batch,
                         documents=doc_batch,
                         embeddings=embedding_batch.embeddings,
@@ -359,13 +311,6 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
 
                     if n_retries == 3:
                         raise e
-
-            total_idx += len(doc_batch)
-
-            # collection size is limited to 10000 avoiding memory error
-            if total_idx >= self.limit_collection_size:
-                collection_index += 1
-                total_idx = 0
 
     def _verify_metadata(self, metadatas: list[dict[str, str]]) -> None:
         """
@@ -384,19 +329,16 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         port: str = "6333",
         embedder: BaseEmbeddingModule = None,
         logger: Any | None = None,
-        limit_collection_size: int = 10000,
     ):
         self.url = url
         self.port = port
         self.embedder = embedder
         self.collection_name = collection_name
         self.logger = logger or DefaultLogger()
-        self.limit_collection_size: int = limit_collection_size
 
-    async def acreate_collection(self, suffix: str = "") -> None:
+    async def acreate_collection(self) -> None:
         client = self.get_async_client()
-        colelction_name = self.collection_name + suffix
-        await self._acreate_collection(client=client, collection_name=colelction_name)
+        await self._acreate_collection(client=client, collection_name=self.collection_name)
 
     async def aexists(self) -> bool:
         client = self.get_async_client()
@@ -424,9 +366,8 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
 
     async def adelete_collection(self) -> None:
         client = self.get_async_client()
-        for collection_name in await self._aglob(client=client):
-            if await self._aexists(client=client, collection_name=collection_name):
-                await self._adelete_collection(client=client, collection_name=collection_name)
+        if await self._aexists(client=client, collection_name=self.collection_name):
+            await self._adelete_collection(client=client, collection_name=self.collection_name)
 
     async def adelete_record(self, id: int | str) -> None:
         client = self.get_async_client()
@@ -452,17 +393,9 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             # check if the key 'collection' or 'document' is included in metadatas
             self._verify_metadata(metadatas)
 
-        length = len(documents)
-        ids = []
-        _ = range(self.limit_collection_size)
-        for i in cycle(_):
-            ids.append(i)
-            if len(ids) >= length:
-                break
+        ids = [i for i in range(len(documents))]
 
         # batchfy due to memory usage
-        total_idx: int = 0
-        collection_index: int = 0
         batch_size: int = 100
 
         documents_batch = make_batch(documents, batch_size=batch_size)
@@ -471,27 +404,22 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
 
         n_batches: int = math.ceil(len(documents) / batch_size)
 
-        for i, (doc_batch, metadata_batch, id_batch) in tqdm(
-            enumerate(zip(documents_batch, metadatas_batch, ids_batch, strict=True)),
+        if not await self._aexists(client=client, collection_name=self.collection_name):
+            await self._acreate_collection(client=client, collection_name=self.collection_name)
+            self.logger.info(f"Create collection {self.collection_name}.")
+
+        for doc_batch, metadata_batch, id_batch in tqdm(
+            zip(documents_batch, metadatas_batch, ids_batch, strict=True),
             total=n_batches,
         ):
             embedding_batch: EmbeddingResults = await self.embedder.arun(doc_batch)
-
-            if total_idx == 0:
-                suffix: str = f"_{collection_index}"
-                collection_name: str = self.collection_name + suffix
-                if not await self._aexists(client=client, collection_name=collection_name):
-                    await self._acreate_collection(client=client, collection_name=collection_name)
-                    self.logger.info(f"Create collection {collection_name}.")
-
-            # self.logger.info(f"[batch {i+1}/{n_batches}] Upsert points...")
 
             n_retries = 0
             while n_retries < 3:
                 try:
                     await self._aupsert(
                         client=client,
-                        collection_name=collection_name,
+                        collection_name=self.collection_name,
                         ids=id_batch,
                         documents=doc_batch,
                         embeddings=embedding_batch.embeddings,
@@ -507,13 +435,6 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                     if n_retries == 3:
                         raise e
 
-            total_idx += len(doc_batch)
-
-            # collection size is limited to 10000 avoiding memory error
-            if total_idx >= self.limit_collection_size:
-                collection_index += 1
-                total_idx = 0
-
 
 class AbstractLocalRetrievalModule(ABC):
     @abstractmethod
@@ -521,10 +442,6 @@ class AbstractLocalRetrievalModule(ABC):
         """
         return the async client object
         """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _glob(self, client: Any) -> list[str] | Generator[str, None, None]:
         raise NotImplementedError
 
     @abstractmethod
@@ -551,14 +468,6 @@ class AbstractRemoteRetrievalModule(AbstractLocalRetrievalModule):
         """
         return the async client object
         """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _glob(self, client: Any) -> list[str] | Generator[str, None, None]:
-        raise NotImplementedError
-
-    @abstractmethod
-    async def _aglob(self, client: Any) -> list[str] | Generator[str, None, None]:
         raise NotImplementedError
 
     @abstractmethod
@@ -611,51 +520,19 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
         client = self.get_client()
 
         embed: EmbeddingResults = self.embedder.run(query)
-        usage: Usage = embed.usage
 
-        collection_names: list[str] | Generator[str, None, None]
-        collection_names = self._glob(client=client)
-
-        ids = []
-        scores = []
-        documents = []
-        metadatas = []
-        collections = []
-
-        for collection_name in collection_names:
-            self.logger.info(f"Retrieve from collection {collection_name}...")
-            retrieved: RetrievalResults = self._retrieve(
-                client=client,
-                collection_name=collection_name,
-                query_vector=embed.embeddings[0],
-                filter=filter,
-                n_results=self.n_results,
-                score_threshold=self.score_threshold,
-                **kwargs,
-            )
-
-            ids.extend(retrieved.ids)
-            scores.extend(retrieved.scores)
-            documents.extend(retrieved.documents)
-            metadatas.extend(retrieved.metadatas)
-            collections.extend(retrieved.collections)
-
-        self.logger.info("Sort results...")
-        sort_indices = sorted(
-            range(len(scores)), key=scores.__getitem__, reverse=not self.ascending
+        self.logger.info(f"Retrieve from collection {self.collection_name}...")
+        retrieved: RetrievalResults = self._retrieve(
+            client=client,
+            collection_name=self.collection_name,
+            query_vector=embed.embeddings[0],
+            filter=filter,
+            n_results=self.n_results,
+            score_threshold=self.score_threshold,
+            **kwargs,
         )
 
-        # top-k results
-        results = RetrievalResults(
-            ids=[ids[i] for i in sort_indices][: self.n_results],
-            scores=[scores[i] for i in sort_indices][: self.n_results],
-            documents=[documents[i] for i in sort_indices][: self.n_results],
-            metadatas=[metadatas[i] for i in sort_indices][: self.n_results],
-            collections=[collections[i] for i in sort_indices][: self.n_results],
-            usage=usage,
-        )
-
-        return results
+        return retrieved
 
 
 class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrievalModule):
@@ -683,49 +560,16 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         client = self.get_async_client()
 
         embed: EmbeddingResults = await self.embedder.arun(query)
-        usage: Usage = embed.usage
 
-        collection_names: list[str] | Generator[str, None, None]
-        collection_names = await self._aglob(client=client)
-
-        ids = []
-        scores = []
-        documents = []
-        metadatas = []
-        collections = []
-
-        # sweep all collections one by one to avoid memory error
-        for collection_name in collection_names:
-            self.logger.info(f"Retrieve from collection {collection_name}...")
-            retrieved: RetrievalResults = await self._aretrieve(
-                client=client,
-                collection_name=collection_name,
-                query_vector=embed.embeddings[0],
-                filter=filter,
-                n_results=self.n_results,
-                score_threshold=self.score_threshold,
-                **kwargs,
-            )
-
-            ids.extend(retrieved.ids)
-            scores.extend(retrieved.scores)
-            documents.extend(retrieved.documents)
-            metadatas.extend(retrieved.metadatas)
-            collections.extend(retrieved.collections)
-
-        self.logger.info("Sort results...")
-        sort_indices = sorted(
-            range(len(scores)), key=scores.__getitem__, reverse=not self.ascending
+        self.logger.info(f"Retrieve from collection {self.collection_name}...")
+        retrieved: RetrievalResults = await self._aretrieve(
+            client=client,
+            collection_name=self.collection_name,
+            query_vector=embed.embeddings[0],
+            filter=filter,
+            n_results=self.n_results,
+            score_threshold=self.score_threshold,
+            **kwargs,
         )
 
-        # top-k results
-        results = RetrievalResults(
-            ids=[ids[i] for i in sort_indices][: self.n_results],
-            scores=[scores[i] for i in sort_indices][: self.n_results],
-            documents=[documents[i] for i in sort_indices][: self.n_results],
-            metadatas=[metadatas[i] for i in sort_indices][: self.n_results],
-            collections=[collections[i] for i in sort_indices][: self.n_results],
-            usage=usage,
-        )
-
-        return results
+        return retrieved

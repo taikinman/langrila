@@ -20,7 +20,6 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         metadata: dict[str, str] | None = None,
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        limit_collection_size: int = 10000,
         tenant: str = DEFAULT_TENANT,
         database: str = DEFAULT_DATABASE,
     ):
@@ -29,17 +28,13 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
             collection_name=collection_name,
             embedder=embedder,
             logger=logger,
-            limit_collection_size=limit_collection_size,
         )
         self.metadata = metadata or {"hnsw:space": "cosine"}
         self.tenant = tenant
         self.database = database
 
-    def _glob(self, client: ClientAPI) -> list[str]:
-        return [c.name for c in client.list_collections() if self.collection_name in c.name]
-
     def _exists(self, client: ClientAPI, collection_name: str) -> bool:
-        return len([name for name in self._glob(client=client) if name == collection_name]) > 0
+        return len([c.name for c in client.list_collections() if c.name == collection_name]) > 0
 
     def _create_collection(self, client: ClientAPI, collection_name: str) -> None:
         self.collection = client.create_collection(name=collection_name, metadata=self.metadata)
@@ -125,9 +120,6 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
             path=self.persistence_directory.as_posix(), tenant=self.tenant, database=self.database
         )
 
-    def _glob(self, client: ClientAPI) -> list[str]:
-        return [c.name for c in client.list_collections() if self.collection_name in c.name]
-
     def _retrieve(
         self,
         client: ClientAPI,
@@ -138,9 +130,10 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
         filter: Any | None = None,
         **kwargs,
     ) -> RetrievalResults:
-        collection = client.get_collection(name=collection_name)
+        if not hasattr(self, "collection"):
+            self.collection = client.get_collection(name=collection_name)
 
-        retrieved = collection.query(
+        retrieved = self.collection.query(
             query_embeddings=query_vector,
             where=filter,
             include=["metadatas", "documents", "distances"],
