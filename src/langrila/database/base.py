@@ -73,7 +73,7 @@ class AbstractLocalCollectionModule(ABC):
         self,
         n_results: int,
         score_threshold: float,
-    ):
+    ) -> "BaseLocalRetrievalModule":
         """
         return the retrieval module
         """
@@ -192,7 +192,7 @@ class AbstractRemoteCollectionModule(ABC):
         self,
         n_results: int,
         score_threshold: float,
-    ):
+    ) -> "BaseRemoteRetrievalModule":
         """
         return the retrieval module
         """
