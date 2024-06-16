@@ -109,7 +109,7 @@ poetry add --editable /path/to/langrila/ --extras all
 <details>
 <summary>v0.0.7 -> v0.0.8</summary>
 
-Database modules has breaking changes from v0.0.7 to v0.0.8 such as rename of method, variable length argument of run/arun method in collection module apply to _upsert method instead of _create_collection method. For details, see change logs.
+Database modules has breaking changes from v0.0.7 to v0.0.8 such as rename of method, change the interface of some methods. For more details, see [this PR](https://github.com/taikinman/langrila/pull/34).
 
 </details>
 
