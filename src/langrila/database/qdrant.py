@@ -110,8 +110,14 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
     def _delete_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.delete_collection(collection_name=collection_name)
 
-    def _delete_record(self, client: QdrantClient, collection_name: str, id: int | str) -> None:
-        client.delete(collection_name=collection_name, points_selector=[id])
+    def _delete_record(
+        self,
+        client: QdrantClient,
+        collection_name: str,
+        points_selector: types.PointsSelector,
+        **kwargs,
+    ) -> None:
+        client.delete(collection_name=collection_name, points_selector=points_selector, **kwargs)
 
     def get_client(self) -> QdrantClient:
         return QdrantClient(path=self.persistence_directory)
@@ -234,8 +240,14 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
     def _delete_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.delete_collection(collection_name=collection_name)
 
-    def _delete_record(self, client: QdrantClient, collection_name: str, id: int | str) -> None:
-        client.delete(collection_name=collection_name, points_selector=[id])
+    def _delete_record(
+        self,
+        client: QdrantClient,
+        collection_name: str,
+        points_selector: types.PointsSelector,
+        **kwargs,
+    ) -> None:
+        client.delete(collection_name=collection_name, points_selector=points_selector, **kwargs)
 
     async def _aexists(self, client: AsyncQdrantClient, collection_name: str) -> bool:
         return await client.collection_exists(collection_name=collection_name)
@@ -286,9 +298,15 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         await client.delete_collection(collection_name=collection_name)
 
     async def _adelete_record(
-        self, client: QdrantClient, collection_name: str, id: int | str, **kwargs
+        self,
+        client: AsyncQdrantClient,
+        collection_name: str,
+        points_selector: types.PointsSelector,
+        **kwargs,
     ) -> None:
-        await client.delete(collection_name=collection_name, points_selector=[id], **kwargs)
+        await client.delete(
+            collection_name=collection_name, points_selector=points_selector, **kwargs
+        )
 
     def get_client(self) -> QdrantClient:
         if hasattr(self, "client"):

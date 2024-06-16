@@ -62,9 +62,9 @@ class AbstractLocalCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _delete_record(self, client: Any, collection_name: str, id: int | str) -> None:
+    def _delete_record(self, client: Any, collection_name: str, **kwargs) -> None:
         """
-        delete the record from the collection
+        delete the record from the collection. kwargs depends on the clieint.
         """
         raise NotImplementedError
 
@@ -174,16 +174,16 @@ class AbstractRemoteCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _adelete_record(self, client: Any, collection_name: str, id: int | str) -> None:
+    async def _adelete_record(self, client: Any, collection_name: str, **kwargs) -> None:
         """
-        delete the record from the collection
+        delete the record from the collection. kwargs depends on the clieint.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def _delete_record(self, client: Any, collection_name: str, id: int | str) -> None:
+    def _delete_record(self, client: Any, collection_name: str, **kwargs) -> None:
         """
-        delete the record from the collection
+        delete the record from the collection. kwargs depends on the clieint.
         """
         raise NotImplementedError
 
@@ -246,9 +246,9 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         if self._exists(client=client, collection_name=self.collection_name):
             self._delete_collection(client=client, collection_name=self.collection_name)
 
-    def delete_record(self, id: int | str) -> None:
+    def delete_record(self, **kwargs) -> None:
         client = self.get_client()
-        self._delete_record(client=client, collection_name=self.collection_name, id=id)
+        self._delete_record(client=client, collection_name=self.collection_name, **kwargs)
 
     def run(
         self,
@@ -369,9 +369,9 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         if await self._aexists(client=client, collection_name=self.collection_name):
             await self._adelete_collection(client=client, collection_name=self.collection_name)
 
-    async def adelete_record(self, id: int | str) -> None:
+    async def adelete_record(self, **kwargs) -> None:
         client = self.get_async_client()
-        await self._adelete_record(client=client, collection_name=self.collection_name, id=id)
+        await self._adelete_record(client=client, collection_name=self.collection_name, **kwargs)
 
     async def arun(
         self,

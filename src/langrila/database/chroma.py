@@ -3,6 +3,7 @@ from typing import Any
 import chromadb
 from chromadb import DEFAULT_DATABASE, DEFAULT_TENANT
 from chromadb.api import ClientAPI
+from chromadb.types import Where
 
 from ..result import RetrievalResults
 from .base import (
@@ -17,7 +18,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         self,
         persistence_directory: str,
         collection_name: str,
-        metadata: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
         tenant: str = DEFAULT_TENANT,
@@ -39,10 +40,17 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
     def _create_collection(self, client: ClientAPI, collection_name: str) -> None:
         self.collection = client.create_collection(name=collection_name, metadata=self.metadata)
 
-    def _delete_record(self, client: ClientAPI, collection_name: str, ids: list[str | int]) -> None:
+    def _delete_record(
+        self,
+        client: ClientAPI,
+        collection_name: str,
+        ids: list[str | int],
+        filter: Where | None = None,
+        **kwargs,
+    ) -> None:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(name=collection_name)
-        self.collection.delete(ids=[str(i) for i in ids])
+        self.collection.delete(ids=[str(i) for i in ids], where=filter, **kwargs)
 
     def _upsert(
         self,
