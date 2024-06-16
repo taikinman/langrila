@@ -14,8 +14,8 @@ from ...base import (
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
 from ...usage import Usage
+from ..gemini_utils import get_model
 from ..message import GeminiMessage
-from ..utils import get_model
 
 
 class GeminiChatCoreModule(BaseChatModule):
