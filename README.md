@@ -630,8 +630,6 @@ collection = ChromaLocalCollectionModule(
     embedder=embedder,
 )
 
-collection.delete_collection()
-
 documents = [
     "Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.",
     "LangChain is a framework for developing applications powered by language models.",
