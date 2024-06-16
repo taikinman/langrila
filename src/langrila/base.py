@@ -60,11 +60,11 @@ class BaseFilter(ABC):
 
 class BaseConversationMemory(ABC):
     @abstractmethod
-    def store(self, conversation_history: list[dict[str, str]]):
+    def store(self, conversation_history: list[dict[str, str]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, path: str):
+    def load(self, path: str) -> list[dict[str, str]]:
         raise NotImplementedError
 
 
