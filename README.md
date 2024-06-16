@@ -42,6 +42,9 @@ pip install -e .[openai,gemini]
 # For OpenAI and Qdrant
 pip install -e .[openai,qdrant]
 
+# For OpenAI and Chroma
+pip install -e .[openai,chroma]
+
 # For All
 pip install -e .[all]
 ```
