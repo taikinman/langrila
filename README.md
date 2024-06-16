@@ -8,7 +8,7 @@ Langrila is a useful tool to use API-based LLM in an easy way. This library put 
 ## as needed
 - openai and tiktoken for OpenAI API
 - google-generativeai for Gemini API
-- qdrant-client for retrieval
+- qdrant-client or chromadb for retrieval
 
 # Contribution
 ## Coding policy
@@ -60,6 +60,9 @@ poetry add --editable /path/to/langrila/ --extras "openai gemini"
 # For OpenAI and Qdrant
 poetry add --editable /path/to/langrila/ --extras "openai qdrant"
 
+# For OpenAI and Chroma
+poetry add --editable /path/to/langrila/ --extras "openai chroma"
+
 # For all extra dependencies
 poetry add --editable /path/to/langrila/ --extras all
 ```
@@ -103,12 +106,24 @@ poetry add --editable /path/to/langrila/ --extras all
 - gemini-1.5-flash
 
 # Breaking changes
-#### v0.0.2 -> v0.0.3
+<details>
+<summary>v0.0.7 -> v0.0.8</summary>
+
+Database modules has breaking changes from v0.0.7 to v0.0.8 such as rename of method, change the interface of some methods. For more details, see [this PR](https://github.com/taikinman/langrila/pull/34).
+
+</details>
+
+
+<details>
+<summary>v0.0.2 -> v0.0.3</summary>
+
 I have integrated gemini api into langrila on v0.0.3. When doing this, the modules for openai and azure openai should be separated from gemini's modules so that unnecessary dependencies won't happen while those components has the same interface. But migration is easy. Basically only thing to do is to change import modules level like `from langrila import OpenAIChatModule` to `from langrila.openai import OpenAIChatModule`. It's the same as other modules related to openai api.
 
 Second change point is return type of `stream()` and `astream()` method. From v0.0.3, all return types of all chunks is CompletionResults.
 
-Third point is the name of results class : `RetrievalResult` to `RetrievalResults`
+Third point is the name of results class : `RetrievalResult` to `RetrievalResults`. `RetrievalResults` model has collections atribute now. Also similarities was replaced with scores.
+
+</details>
 
 # Basic usage
 ## Basic example
@@ -530,56 +545,127 @@ Now only Qdrant are supported for basic retrieval.
 
 ### For Qdrant
 ```python
-from langrila.openai import OpenAIEmbeddingModule
+from qdrant_client import models
+
 from langrila.database.qdrant import QdrantLocalCollectionModule, QdrantLocalRetrievalModule
+from langrila.openai import OpenAIEmbeddingModule
 
 #######################
 # create collection
 #######################
 
 embedder = OpenAIEmbeddingModule(
-        api_key_env_name="API_KEY", 
-    )
+    api_key_env_name="API_KEY",
+    model_name="text-embedding-3-small",
+    dimensions=1536,
+)
 
 collection = QdrantLocalCollectionModule(
-    persistence_directory="qdrant", 
-    collection_name="sample", 
-    embedder=embedder
+    persistence_directory="./qdrant_test",
+    collection_name="sample",
+    embedder=embedder,
+    vectors_config=models.VectorParams(
+        size=1536,
+        distance=models.Distance.COSINE,
+    ),
 )
 
 documents = [
     "Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.",
-    "LangChain is a framework for developing applications powered by language models.", 
-    "LlamaIndex (GPT Index) is a data framework for your LLM application."
+    "LangChain is a framework for developing applications powered by language models.",
+    "LlamaIndex (GPT Index) is a data framework for your LLM application.",
 ]
 
-# Collection limits the number of its records (<= 10000 records) to keep memory error away.
+# Collection limits the number of its records (default <= 10000 records) to keep memory error away.
 # If you can include records over limitation, collection will be automatically divided into multiple collection.
-collection(documents=documents)
+collection.run(documents=documents) # metadatas could also be used
 
-#######################
-# retrieval
-#######################
+# #######################
+# # retrieval
+# #######################
 
 # In the case collection was already instantiated
 # retriever = collection.as_retriever(n_results=2, threshold_similarity=0.8)
 
 retriever = QdrantLocalRetrievalModule(
-            embedder=embedder,
-            persistence_directory="qdrant", 
-            collection_name="sample", 
-            n_results=2,
-            threshold_similarity=0.8,
-        )
+    embedder=embedder,
+    persistence_directory="./qdrant_test",
+    collection_name="sample",
+    n_results=2,
+    score_threshold=0.5,
+)
 
 # If multiple collections are available, search all collections and merge each results later, then return top-k results.
 query = "What is Langrila?"
-retriever(query, filter=None).model_dump()
+retriever.run(query, filter=None).model_dump()
 
 >>> {'ids': [0],
  'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
- 'metadatas': [None],
- 'similarities': [0.8371831512206701],
+ 'metadatas': [{'document': 'Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'}],
+ 'scores': [0.5303465176248179],
+ 'collections': ['sample_0'],
+ 'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
+```
+
+Qdrant server is also supported by `QdrantRemoteCollectionModule` and `QdrantRemoteRetrievalModule`. For more details, see [qdrant.py](src/langrila/database/qdrant.py).
+
+### For Chroma
+```python
+from langrila.database.chroma import ChromaLocalCollectionModule, ChromaLocalRetrievalModule
+from langrila.openai import OpenAIEmbeddingModule
+
+#######################
+# create collection
+#######################
+
+embedder = OpenAIEmbeddingModule(
+    api_key_env_name="API_KEY",
+    model_name="text-embedding-3-small",
+    dimensions=1536,
+)
+
+collection = ChromaLocalCollectionModule(
+    persistence_directory="./chroma_test",
+    collection_name="sample",
+    embedder=embedder,
+)
+
+collection.delete_collection()
+
+documents = [
+    "Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.",
+    "LangChain is a framework for developing applications powered by language models.",
+    "LlamaIndex (GPT Index) is a data framework for your LLM application.",
+]
+
+# Collection limits the number of its records (default <= 10000 records) to keep memory error away.
+# If you can include records over limitation, collection will be automatically divided into multiple collection.
+collection.run(documents=documents) # metadatas could also be used
+
+# #######################
+# # retrieval
+# #######################
+
+# In the case collection was already instantiated
+# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.8)
+
+retriever = ChromaLocalRetrievalModule(
+    embedder=embedder,
+    persistence_directory="./chroma_test",
+    collection_name="sample",
+    n_results=2,
+    score_threshold=0.5,
+)
+
+# If multiple collections are available, search all collections and merge each results later, then return top-k results.
+query = "What is Langrila?"
+retriever.run(query, filter=None).model_dump()
+
+>>> {'ids': [0],
+ 'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
+ 'metadatas': [{'document': 'Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'}],
+ 'scores': [0.46960276455443584],
+ 'collections': ['sample_0'],
  'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
 ```
 
