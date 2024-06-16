@@ -70,7 +70,7 @@ class BaseConversationMemory(ABC):
 
 class BaseMessage(ABC):
     def __init__(
-        self, content: str, images: Any | list[Any] | None = None, name: str | None = None, **kwargs
+        self, content: str, images: Any | list[Any] | None = None, name: str | None = None
     ):
         self.content = content
         self.images = images
