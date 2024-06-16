@@ -7,3 +7,4 @@ from .llm.function_calling import (
     ToolParameter,
     ToolProperty,
 )
+from .message import OpenAIMessage
