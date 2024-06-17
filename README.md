@@ -610,7 +610,38 @@ retriever.run(query, filter=None).model_dump()
  'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
 ```
 
-Qdrant server is also supported by `QdrantRemoteCollectionModule` and `QdrantRemoteRetrievalModule`. For more details, see [qdrant.py](src/langrila/database/qdrant.py).
+Qdrant server is also supported by `QdrantRemoteCollectionModule` and `QdrantRemoteRetrievalModule`. Here is a basic example using docker which app container and qdrant container are bridged by same network.
+
+```python
+from qdrant_client import models
+
+from langrila.database.qdrant import QdrantRemoteCollectionModule, QdrantRemoteRetrievalModule
+from langrila.openai import OpenAIEmbeddingModule
+
+#######################
+# create collection
+#######################
+
+embedder = OpenAIEmbeddingModule(
+    api_key_env_name="API_KEY",
+    model_name="text-embedding-3-small",
+    dimensions=1536,
+)
+
+collection = QdrantRemoteCollectionModule(
+    url="http://qdrant",
+    port="6333",
+    collection_name="sample",
+    embedder=embedder,
+    vectors_config=models.VectorParams(
+        size=1536,
+        distance=models.Distance.COSINE,
+    ),
+)
+
+```
+
+For more details, see [qdrant.py](src/langrila/database/qdrant.py).
 
 ### For Chroma
 ```python
