@@ -60,17 +60,17 @@ class BaseFilter(ABC):
 
 class BaseConversationMemory(ABC):
     @abstractmethod
-    def store(self, conversation_history: list[dict[str, str]]):
+    def store(self, conversation_history: list[dict[str, str]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, path: str):
+    def load(self, path: str) -> list[dict[str, str]]:
         raise NotImplementedError
 
 
 class BaseMessage(ABC):
     def __init__(
-        self, content: str, images: Any | list[Any] | None = None, name: str | None = None, **kwargs
+        self, content: str, images: Any | list[Any] | None = None, name: str | None = None
     ):
         self.content = content
         self.images = images

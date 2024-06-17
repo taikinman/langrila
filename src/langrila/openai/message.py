@@ -12,10 +12,9 @@ class OpenAIMessage(BaseMessage):
         images: Any | list[Any] | None = None,
         image_resolution: str | None = None,
     ):
-        super().__init__(content=content, images=images)
+        super().__init__(content=content, images=images, name=name)
         self._valid_image_resolution_value(image_resolution)
 
-        self.name = name
         self.image_resolution = image_resolution
 
     @property

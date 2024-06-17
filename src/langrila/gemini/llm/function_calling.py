@@ -17,8 +17,8 @@ from ...base import (
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...result import FunctionCallingResults, ToolOutput
 from ...usage import Usage
+from ..gemini_utils import get_model
 from ..message import GeminiMessage
-from ..utils import get_model
 
 
 class ToolProperty(BaseModel):

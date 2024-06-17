@@ -1,7 +1,14 @@
-from typing import Any, Optional
+import os
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Mapping,
+    Union,
+)
 
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.conversions import common_types as types
 
 from ..result import RetrievalResults
 from .base import (
@@ -18,11 +25,18 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         self,
         persistence_directory: str,
         collection_name: str,
-        vector_size: int,
-        distance: Distance = Distance.COSINE,
+        vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]],
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        on_disk: bool = False,
+        sparse_vectors_config: Mapping[str, types.SparseVectorParams] | None = None,
+        on_disk_payload: bool | None = None,
+        hnsw_config: types.HnswConfigDiff | None = None,
+        optimizers_config: types.OptimizersConfigDiff | None = None,
+        wal_config: types.WalConfigDiff | None = None,
+        quantization_config: types.QuantizationConfig | None = None,
+        init_from: types.InitFrom | None = None,
+        timeout: int | None = None,
+        force_disable_check_same_thread: bool = False,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -30,27 +44,32 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
             embedder=embedder,
             logger=logger,
         )
-        self.vector_size = vector_size
-        self.distance = distance
-        self.on_disk = on_disk
-
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
+        self.vectors_config = vectors_config
+        self.sparse_vectors_config = sparse_vectors_config
+        self.on_disk_payload = on_disk_payload
+        self.hnsw_config = hnsw_config
+        self.optimizers_config = optimizers_config
+        self.wal_config = wal_config
+        self.quantization_config = quantization_config
+        self.init_from = init_from
+        self.timeout = timeout
+        self.force_disable_check_same_thread = force_disable_check_same_thread
 
     def _exists(self, client: QdrantClient, collection_name: str) -> bool:
         return client.collection_exists(collection_name=collection_name)
 
-    def _create_collection(self, client: QdrantClient, collection_name: str, **kwargs) -> None:
+    def _create_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.vector_size,
-                distance=self.distance,
-                on_disk=self.on_disk,
-            ),
-            **kwargs,
+            vectors_config=self.vectors_config,
+            sparse_vectors_config=self.sparse_vectors_config,
+            on_disk_payload=self.on_disk_payload,
+            hnsw_config=self.hnsw_config,
+            optimizers_config=self.optimizers_config,
+            wal_config=self.wal_config,
+            quantization_config=self.quantization_config,
+            init_from=self.init_from,
+            timeout=self.timeout,
         )
 
     def _upsert(
@@ -58,30 +77,48 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         client: QdrantClient,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         client.upsert(
             collection_name=collection_name,
             points=models.Batch(
                 ids=ids,
                 vectors=embeddings,
-                payloads=metadatas,
+                payloads=[
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
+                ],
             ),
+            **kwargs,
         )
 
         return
 
-    def _delete(self, client: QdrantClient, collection_name: str) -> None:
+    def _delete_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.delete_collection(collection_name=collection_name)
 
+    def _delete_record(
+        self,
+        client: QdrantClient,
+        collection_name: str,
+        points_selector: types.PointsSelector,
+        **kwargs,
+    ) -> None:
+        client.delete(collection_name=collection_name, points_selector=points_selector, **kwargs)
+
     def get_client(self) -> QdrantClient:
-        return QdrantClient(path=self.persistence_directory)
+        return QdrantClient(
+            path=self.persistence_directory,
+            force_disable_check_same_thread=self.force_disable_check_same_thread,
+        )
 
     def as_retriever(
         self,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
+        ascending: bool = False,
     ) -> "QdrantLocalRetrievalModule":
         return QdrantLocalRetrievalModule(
             embedder=self.embedder,
@@ -90,6 +127,8 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=self.logger,
+            force_disable_check_same_thread=self.force_disable_check_same_thread,
+            ascending=ascending,
         )
 
 
@@ -98,17 +137,29 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         self,
         url: str,
         collection_name: str,
-        vector_size: int,
         port: str = "6333",
-        distance: Distance = Distance.COSINE,
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        on_disk: bool = False,
+        https: bool | None = None,
+        api_key_env_name: str | None = None,
+        host: str | None = None,
+        grpc_port: str | None = "6334",
+        grpc_options: dict[str, Any] | None = None,
+        auth_token_provider: Union[Callable[[], str], Callable[[], Awaitable[str]]] | None = None,
+        vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]] = None,
+        sparse_vectors_config: Mapping[str, types.SparseVectorParams] | None = None,
+        shard_number: int | None = None,
+        sharding_method: types.ShardingMethod | None = None,
+        replication_factor: int | None = None,
+        write_consistency_factor: int | None = None,
+        on_disk_payload: bool | None = None,
+        hnsw_config: types.HnswConfigDiff | None = None,
+        optimizers_config: types.OptimizersConfigDiff | None = None,
+        wal_config: types.WalConfigDiff | None = None,
+        quantization_config: types.QuantizationConfig | None = None,
+        init_from: types.InitFrom | None = None,
+        timeout: int | None = None,
     ):
-        self.vector_size = vector_size
-        self.distance = distance
-        self.on_disk = on_disk
-
         super().__init__(
             collection_name=collection_name,
             embedder=embedder,
@@ -116,24 +167,45 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             url=url,
             port=port,
         )
-
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
+        self.https = https
+        self.api_key_env_name = api_key_env_name
+        self.host = host
+        self.grpc_port = grpc_port
+        self.grpc_options = grpc_options
+        self.auth_token_provider = auth_token_provider
+        self.vectors_config = vectors_config
+        self.sparse_vectors_config = sparse_vectors_config
+        self.shard_number = shard_number
+        self.sharding_method = sharding_method
+        self.replication_factor = replication_factor
+        self.write_consistency_factor = write_consistency_factor
+        self.on_disk_payload = on_disk_payload
+        self.hnsw_config = hnsw_config
+        self.optimizers_config = optimizers_config
+        self.wal_config = wal_config
+        self.quantization_config = quantization_config
+        self.init_from = init_from
+        self.timeout = timeout
 
     def _exists(self, client: QdrantClient, collection_name: str) -> bool:
         return client.collection_exists(collection_name=collection_name)
 
-    def _create_collection(self, client: QdrantClient, collection_name: str, **kwargs) -> None:
+    def _create_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.vector_size,
-                distance=self.distance,
-                on_disk=self.on_disk,
-            ),
-            **kwargs,
+            vectors_config=self.vectors_config,
+            sparse_vectors_config=self.sparse_vectors_config,
+            shard_number=self.shard_number,
+            sharding_method=self.sharding_method,
+            replication_factor=self.replication_factor,
+            write_consistency_factor=self.write_consistency_factor,
+            on_disk_payload=self.on_disk_payload,
+            hnsw_config=self.hnsw_config,
+            optimizers_config=self.optimizers_config,
+            wal_config=self.wal_config,
+            quantization_config=self.quantization_config,
+            init_from=self.init_from,
+            timeout=self.timeout,
         )
 
     def _upsert(
@@ -141,44 +213,56 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         client: QdrantClient,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         client.upsert(
             collection_name=collection_name,
             points=models.Batch(
                 ids=ids,
                 vectors=embeddings,
-                payloads=metadatas,
+                payloads=[
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
+                ],
             ),
+            **kwargs,
         )
 
         return
 
-    def _delete(self, client: QdrantClient, collection_name: str) -> None:
+    def _delete_collection(self, client: QdrantClient, collection_name: str) -> None:
         client.delete_collection(collection_name=collection_name)
 
-    async def _aglob(self, client: AsyncQdrantClient) -> list[str]:
-        return [
-            c.name
-            for c in (await client.get_collections()).collections
-            if self.collection_name in c.name
-        ]
+    def _delete_record(
+        self,
+        client: QdrantClient,
+        collection_name: str,
+        points_selector: types.PointsSelector,
+        **kwargs,
+    ) -> None:
+        client.delete(collection_name=collection_name, points_selector=points_selector, **kwargs)
 
     async def _aexists(self, client: AsyncQdrantClient, collection_name: str) -> bool:
         return await client.collection_exists(collection_name=collection_name)
 
-    async def _acreate_collection(
-        self, client: AsyncQdrantClient, collection_name: str, **kwargs
-    ) -> None:
+    async def _acreate_collection(self, client: AsyncQdrantClient, collection_name: str) -> None:
         await client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.vector_size,
-                distance=self.distance,
-                on_disk=self.on_disk,
-            ),
-            **kwargs,
+            vectors_config=self.vectors_config,
+            sparse_vectors_config=self.sparse_vectors_config,
+            shard_number=self.shard_number,
+            sharding_method=self.sharding_method,
+            replication_factor=self.replication_factor,
+            write_consistency_factor=self.write_consistency_factor,
+            on_disk_payload=self.on_disk_payload,
+            hnsw_config=self.hnsw_config,
+            optimizers_config=self.optimizers_config,
+            wal_config=self.wal_config,
+            quantization_config=self.quantization_config,
+            init_from=self.init_from,
+            timeout=self.timeout,
         )
 
     async def _aupsert(
@@ -186,33 +270,78 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         client: AsyncQdrantClient,
         collection_name: str,
         ids: list[str | int],
+        documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
+        **kwargs,
     ) -> None:
         await client.upsert(
             collection_name=collection_name,
             points=models.Batch(
                 ids=ids,
                 vectors=embeddings,
-                payloads=metadatas,
+                payloads=[
+                    m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
+                ],
             ),
+            **kwargs,
         )
 
         return
 
-    async def _adelete(self, client: AsyncQdrantClient, collection_name: str) -> None:
+    async def _adelete_collection(self, client: AsyncQdrantClient, collection_name: str) -> None:
         await client.delete_collection(collection_name=collection_name)
 
+    async def _adelete_record(
+        self,
+        client: AsyncQdrantClient,
+        collection_name: str,
+        points_selector: types.PointsSelector,
+        **kwargs,
+    ) -> None:
+        await client.delete(
+            collection_name=collection_name, points_selector=points_selector, **kwargs
+        )
+
     def get_client(self) -> QdrantClient:
-        return QdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
+
+        self.client = QdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
+        )
+        return self.client
 
     def get_async_client(self) -> AsyncQdrantClient:
-        return AsyncQdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
+
+        self.client = AsyncQdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
+        )
+        return self.client
 
     def as_retriever(
         self,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
+        ascending: bool = False,
     ) -> "QdrantRemoteRetrievalModule":
         return QdrantRemoteRetrievalModule(
             embedder=self.embedder,
@@ -222,6 +351,14 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=self.logger,
+            https=self.https,
+            api_key_env_name=self.api_key_env_name,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
+            ascending=ascending,
         )
 
 
@@ -232,8 +369,10 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         collection_name: str,
         embedder: BaseEmbeddingModule | None = None,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
         logger: Any | None = None,
+        ascending: bool = False,
+        force_disable_check_same_thread: bool = False,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -242,15 +381,15 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=logger,
+            ascending=ascending,
         )
+        self.force_disable_check_same_thread = force_disable_check_same_thread
 
     def get_client(self) -> QdrantClient:
-        return QdrantClient(path=self.persistence_directory)
-
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
+        return QdrantClient(
+            path=self.persistence_directory,
+            force_disable_check_same_thread=self.force_disable_check_same_thread,
+        )
 
     def _retrieve(
         self,
@@ -275,8 +414,8 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         ids = [r.id for r in retrieved]
         scores = [r.score for r in retrieved]
         documents = [r.payload["document"] for r in retrieved]
-        metadatas = [r.payload["metadata"] for r in retrieved]
-        collections = [r.payload["collection"] for r in retrieved]
+        metadatas = [r.payload for r in retrieved]
+        collections = [collection_name for _ in retrieved]
 
         return RetrievalResults(
             ids=ids,
@@ -295,8 +434,16 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         port: str = "6333",
         embedder: BaseEmbeddingModule | None = None,
         n_results: int = 4,
-        score_threshold: float = 0.8,
+        score_threshold: float = 0.5,
         logger: Any | None = None,
+        ascending: bool = False,
+        https: bool | None = None,
+        api_key_env_name: str | None = None,
+        host: str | None = None,
+        grpc_port: str | None = "6334",
+        grpc_options: dict[str, Any] | None = None,
+        auth_token_provider: Union[Callable[[], str], Callable[[], Awaitable[str]]] | None = None,
+        timeout: int | None = None,
     ):
         super().__init__(
             collection_name=collection_name,
@@ -306,18 +453,49 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             logger=logger,
             url=url,
             port=port,
+            ascending=ascending,
         )
+        self.https = https
+        self.api_key_env_name = api_key_env_name
+        self.host = host
+        self.grpc_port = grpc_port
+        self.grpc_options = grpc_options
+        self.auth_token_provider = auth_token_provider
+        self.timeout = timeout
 
     def get_client(self) -> QdrantClient:
-        return QdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
+
+        self.client = QdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
+        )
+        return self.client
 
     def get_async_client(self) -> AsyncQdrantClient:
-        return AsyncQdrantClient(url=self.url, port=self.port)
+        if hasattr(self, "client"):
+            return self.client
 
-    def _glob(self, client: QdrantClient) -> list[str]:
-        return [
-            c.name for c in client.get_collections().collections if self.collection_name in c.name
-        ]
+        self.client = AsyncQdrantClient(
+            url=self.url,
+            port=self.port,
+            https=self.https,
+            api_key=os.getenv(self.api_key_env_name) if self.api_key_env_name else None,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
+        )
+        return self.client
 
     def _retrieve(
         self,
@@ -342,8 +520,8 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         ids = [r.id for r in retrieved]
         scores = [r.score for r in retrieved]
         documents = [r.payload["document"] for r in retrieved]
-        metadatas = [r.payload["metadata"] for r in retrieved]
-        collections = [r.payload["collection"] for r in retrieved]
+        metadatas = [r.payload for r in retrieved]
+        collections = [collection_name for _ in retrieved]
 
         return RetrievalResults(
             ids=ids,
@@ -352,13 +530,6 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             metadatas=metadatas,
             collections=collections,
         )
-
-    async def _aglob(self, client: AsyncQdrantClient) -> list[str]:
-        return [
-            c.name
-            for c in (await client.get_collections()).collections
-            if self.collection_name in c.name
-        ]
 
     async def _aretrieve(
         self,
