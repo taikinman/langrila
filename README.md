@@ -670,5 +670,31 @@ retriever.run(query, filter=None).model_dump()
  'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
 ```
 
+HttpClient is also supported by `ChromaRemoteCollectionModule` and `ChromaRemoteRetrievalModule`. Here is a basic example using docker which app container and chroma container are bridged by sameh network.
+
+```python
+from langrila.database.chroma import ChromaRemoteCollectionModule
+from langrila.openai import OpenAIEmbeddingModule
+
+#######################
+# create collection
+#######################
+
+embedder = OpenAIEmbeddingModule(
+    api_key_env_name="API_KEY",
+    model_name="text-embedding-3-small",
+    dimensions=1536,
+)
+
+collection = ChromaRemoteCollectionModule(
+    host="chroma",
+    port="8000",
+    collection_name="sample",
+    embedder=embedder,
+)
+```
+
+For more details, see [chroma.py](src/langrila/database/chroma.py).
+
 ### Specific use case
 The library supports a variety of use cases by combining modules such as these and defining new modules. For example, the following is an example of a module that combines basic Retrieval and prompt templates. 
