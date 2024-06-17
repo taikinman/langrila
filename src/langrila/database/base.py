@@ -532,6 +532,8 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
             **kwargs,
         )
 
+        retrieved.usage += embed.usage
+
         return retrieved
 
 
@@ -571,5 +573,7 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
             score_threshold=self.score_threshold,
             **kwargs,
         )
+
+        retrieved.usage += embed.usage
 
         return retrieved
