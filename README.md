@@ -675,7 +675,7 @@ collection.run(documents=documents) # metadatas could also be used
 # #######################
 
 # In the case collection was already instantiated
-# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.8)
+# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.5)
 
 retriever = ChromaLocalRetrievalModule(
     embedder=embedder,
