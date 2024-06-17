@@ -596,7 +596,6 @@ retriever = QdrantLocalRetrievalModule(
     score_threshold=0.5,
 )
 
-# If multiple collections are available, search all collections and merge each results later, then return top-k results.
 query = "What is Langrila?"
 retriever.run(query, filter=None).model_dump()
 
@@ -685,7 +684,6 @@ retriever = ChromaLocalRetrievalModule(
     score_threshold=0.5,
 )
 
-# If multiple collections are available, search all collections and merge each results later, then return top-k results.
 query = "What is Langrila?"
 retriever.run(query, filter=None).model_dump()
 
