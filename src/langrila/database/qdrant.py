@@ -304,7 +304,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         )
 
     def get_client(self) -> QdrantClient:
-        if hasattr(self, "client"):
+        if hasattr(self, "client") and isinstance(self.client, QdrantClient):
             return self.client
 
         self.client = QdrantClient(
@@ -321,7 +321,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         return self.client
 
     def get_async_client(self) -> AsyncQdrantClient:
-        if hasattr(self, "client"):
+        if hasattr(self, "client") and isinstance(self.client, AsyncQdrantClient):
             return self.client
 
         self.client = AsyncQdrantClient(
@@ -464,7 +464,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         self.timeout = timeout
 
     def get_client(self) -> QdrantClient:
-        if hasattr(self, "client"):
+        if hasattr(self, "client") and isinstance(self.client, QdrantClient):
             return self.client
 
         self.client = QdrantClient(
@@ -481,7 +481,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         return self.client
 
     def get_async_client(self) -> AsyncQdrantClient:
-        if hasattr(self, "client"):
+        if hasattr(self, "client") and isinstance(self.client, AsyncQdrantClient):
             return self.client
 
         self.client = AsyncQdrantClient(
