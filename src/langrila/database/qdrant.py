@@ -554,7 +554,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         ids = [r.id for r in retrieved]
         scores = [r.score for r in retrieved]
         documents = [r.payload["document"] for r in retrieved]
-        metadatas = [r.payload["metadata"] for r in retrieved]
+        metadatas = [r.payload for r in retrieved]
         collections = [collection_name for _ in retrieved]
 
         return RetrievalResults(
