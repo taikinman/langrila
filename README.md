@@ -544,7 +544,7 @@ print(template.format())
 ```
 
 ## Retrieval
-Now only Qdrant are supported for basic retrieval.
+Now only Qdrant and Chroma are supported for basic retrieval.
 
 ### For Qdrant
 ```python
@@ -579,8 +579,6 @@ documents = [
     "LlamaIndex (GPT Index) is a data framework for your LLM application.",
 ]
 
-# Collection limits the number of its records (default <= 10000 records) to keep memory error away.
-# If you can include records over limitation, collection will be automatically divided into multiple collection.
 collection.run(documents=documents) # metadatas could also be used
 
 # #######################
@@ -588,7 +586,7 @@ collection.run(documents=documents) # metadatas could also be used
 # #######################
 
 # In the case collection was already instantiated
-# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.8)
+# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.5)
 
 retriever = QdrantLocalRetrievalModule(
     embedder=embedder,
@@ -598,7 +596,6 @@ retriever = QdrantLocalRetrievalModule(
     score_threshold=0.5,
 )
 
-# If multiple collections are available, search all collections and merge each results later, then return top-k results.
 query = "What is Langrila?"
 retriever.run(query, filter=None).model_dump()
 
@@ -670,8 +667,6 @@ documents = [
     "LlamaIndex (GPT Index) is a data framework for your LLM application.",
 ]
 
-# Collection limits the number of its records (default <= 10000 records) to keep memory error away.
-# If you can include records over limitation, collection will be automatically divided into multiple collection.
 collection.run(documents=documents) # metadatas could also be used
 
 # #######################
@@ -679,7 +674,7 @@ collection.run(documents=documents) # metadatas could also be used
 # #######################
 
 # In the case collection was already instantiated
-# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.8)
+# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.5)
 
 retriever = ChromaLocalRetrievalModule(
     embedder=embedder,
@@ -689,7 +684,6 @@ retriever = ChromaLocalRetrievalModule(
     score_threshold=0.5,
 )
 
-# If multiple collections are available, search all collections and merge each results later, then return top-k results.
 query = "What is Langrila?"
 retriever.run(query, filter=None).model_dump()
 
