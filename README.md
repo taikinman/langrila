@@ -701,7 +701,7 @@ retriever.run(query, filter=None).model_dump()
  'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
 ```
 
-HttpClient is also supported by `ChromaRemoteCollectionModule` and `ChromaRemoteRetrievalModule`. Here is a basic example using docker which app container and chroma container are bridged by sameh network.
+HttpClient is also supported by `ChromaRemoteCollectionModule` and `ChromaRemoteRetrievalModule`. Here is a basic example using docker which app container and chroma container are bridged by same network.
 
 ```python
 from langrila.database.chroma import ChromaRemoteCollectionModule
