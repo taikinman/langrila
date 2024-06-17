@@ -4,7 +4,6 @@ from typing import (
     Awaitable,
     Callable,
     Mapping,
-    Optional,
     Union,
 )
 
@@ -29,18 +28,15 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]],
         embedder: BaseEmbeddingModule | None = None,
         logger: Any | None = None,
-        sparse_vectors_config: Optional[Mapping[str, types.SparseVectorParams]] = None,
-        shard_number: Optional[int] = None,
-        sharding_method: Optional[types.ShardingMethod] = None,
-        replication_factor: Optional[int] = None,
-        write_consistency_factor: Optional[int] = None,
-        on_disk_payload: Optional[bool] = None,
-        hnsw_config: Optional[types.HnswConfigDiff] = None,
-        optimizers_config: Optional[types.OptimizersConfigDiff] = None,
-        wal_config: Optional[types.WalConfigDiff] = None,
-        quantization_config: Optional[types.QuantizationConfig] = None,
-        init_from: Optional[types.InitFrom] = None,
-        timeout: Optional[int] = None,
+        sparse_vectors_config: Mapping[str, types.SparseVectorParams] | None = None,
+        on_disk_payload: bool | None = None,
+        hnsw_config: types.HnswConfigDiff | None = None,
+        optimizers_config: types.OptimizersConfigDiff | None = None,
+        wal_config: types.WalConfigDiff | None = None,
+        quantization_config: types.QuantizationConfig | None = None,
+        init_from: types.InitFrom | None = None,
+        timeout: int | None = None,
+        force_disable_check_same_thread: bool = False,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -50,10 +46,6 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         )
         self.vectors_config = vectors_config
         self.sparse_vectors_config = sparse_vectors_config
-        self.shard_number = shard_number
-        self.sharding_method = sharding_method
-        self.replication_factor = replication_factor
-        self.write_consistency_factor = write_consistency_factor
         self.on_disk_payload = on_disk_payload
         self.hnsw_config = hnsw_config
         self.optimizers_config = optimizers_config
@@ -61,6 +53,7 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         self.quantization_config = quantization_config
         self.init_from = init_from
         self.timeout = timeout
+        self.force_disable_check_same_thread = force_disable_check_same_thread
 
     def _exists(self, client: QdrantClient, collection_name: str) -> bool:
         return client.collection_exists(collection_name=collection_name)
@@ -70,10 +63,6 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
             collection_name=collection_name,
             vectors_config=self.vectors_config,
             sparse_vectors_config=self.sparse_vectors_config,
-            shard_number=self.shard_number,
-            sharding_method=self.sharding_method,
-            replication_factor=self.replication_factor,
-            write_consistency_factor=self.write_consistency_factor,
             on_disk_payload=self.on_disk_payload,
             hnsw_config=self.hnsw_config,
             optimizers_config=self.optimizers_config,
@@ -120,12 +109,16 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         client.delete(collection_name=collection_name, points_selector=points_selector, **kwargs)
 
     def get_client(self) -> QdrantClient:
-        return QdrantClient(path=self.persistence_directory)
+        return QdrantClient(
+            path=self.persistence_directory,
+            force_disable_check_same_thread=self.force_disable_check_same_thread,
+        )
 
     def as_retriever(
         self,
         n_results: int = 4,
         score_threshold: float = 0.5,
+        ascending: bool = False,
     ) -> "QdrantLocalRetrievalModule":
         return QdrantLocalRetrievalModule(
             embedder=self.embedder,
@@ -134,6 +127,8 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=self.logger,
+            force_disable_check_same_thread=self.force_disable_check_same_thread,
+            ascending=ascending,
         )
 
 
@@ -149,21 +144,21 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         api_key_env_name: str | None = None,
         host: str | None = None,
         grpc_port: str | None = "6334",
-        grpc_options: Optional[dict[str, Any]] = None,
+        grpc_options: dict[str, Any] | None = None,
         auth_token_provider: Union[Callable[[], str], Callable[[], Awaitable[str]]] | None = None,
         vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]] = None,
-        sparse_vectors_config: Optional[Mapping[str, types.SparseVectorParams]] = None,
-        shard_number: Optional[int] = None,
-        sharding_method: Optional[types.ShardingMethod] = None,
-        replication_factor: Optional[int] = None,
-        write_consistency_factor: Optional[int] = None,
-        on_disk_payload: Optional[bool] = None,
-        hnsw_config: Optional[types.HnswConfigDiff] = None,
-        optimizers_config: Optional[types.OptimizersConfigDiff] = None,
-        wal_config: Optional[types.WalConfigDiff] = None,
-        quantization_config: Optional[types.QuantizationConfig] = None,
-        init_from: Optional[types.InitFrom] = None,
-        timeout: Optional[int] = None,
+        sparse_vectors_config: Mapping[str, types.SparseVectorParams] | None = None,
+        shard_number: int | None = None,
+        sharding_method: types.ShardingMethod | None = None,
+        replication_factor: int | None = None,
+        write_consistency_factor: int | None = None,
+        on_disk_payload: bool | None = None,
+        hnsw_config: types.HnswConfigDiff | None = None,
+        optimizers_config: types.OptimizersConfigDiff | None = None,
+        wal_config: types.WalConfigDiff | None = None,
+        quantization_config: types.QuantizationConfig | None = None,
+        init_from: types.InitFrom | None = None,
+        timeout: int | None = None,
     ):
         super().__init__(
             collection_name=collection_name,
@@ -321,6 +316,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             grpc_port=self.grpc_port,
             grpc_options=self.grpc_options,
             auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
         )
         return self.client
 
@@ -337,6 +333,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             grpc_port=self.grpc_port,
             grpc_options=self.grpc_options,
             auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
         )
         return self.client
 
@@ -344,6 +341,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         self,
         n_results: int = 4,
         score_threshold: float = 0.5,
+        ascending: bool = False,
     ) -> "QdrantRemoteRetrievalModule":
         return QdrantRemoteRetrievalModule(
             embedder=self.embedder,
@@ -353,6 +351,14 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=self.logger,
+            https=self.https,
+            api_key_env_name=self.api_key_env_name,
+            host=self.host,
+            grpc_port=self.grpc_port,
+            grpc_options=self.grpc_options,
+            auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
+            ascending=ascending,
         )
 
 
@@ -366,6 +372,7 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         score_threshold: float = 0.5,
         logger: Any | None = None,
         ascending: bool = False,
+        force_disable_check_same_thread: bool = False,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -376,9 +383,13 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
             logger=logger,
             ascending=ascending,
         )
+        self.force_disable_check_same_thread = force_disable_check_same_thread
 
     def get_client(self) -> QdrantClient:
-        return QdrantClient(path=self.persistence_directory)
+        return QdrantClient(
+            path=self.persistence_directory,
+            force_disable_check_same_thread=self.force_disable_check_same_thread,
+        )
 
     def _retrieve(
         self,
@@ -430,8 +441,9 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         api_key_env_name: str | None = None,
         host: str | None = None,
         grpc_port: str | None = "6334",
-        grpc_options: Optional[dict[str, Any]] = None,
+        grpc_options: dict[str, Any] | None = None,
         auth_token_provider: Union[Callable[[], str], Callable[[], Awaitable[str]]] | None = None,
+        timeout: int | None = None,
     ):
         super().__init__(
             collection_name=collection_name,
@@ -449,6 +461,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         self.grpc_port = grpc_port
         self.grpc_options = grpc_options
         self.auth_token_provider = auth_token_provider
+        self.timeout = timeout
 
     def get_client(self) -> QdrantClient:
         if hasattr(self, "client"):
@@ -463,6 +476,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             grpc_port=self.grpc_port,
             grpc_options=self.grpc_options,
             auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
         )
         return self.client
 
@@ -479,6 +493,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             grpc_port=self.grpc_port,
             grpc_options=self.grpc_options,
             auth_token_provider=self.auth_token_provider,
+            timeout=self.timeout,
         )
         return self.client
 
