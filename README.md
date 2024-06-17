@@ -544,7 +544,7 @@ print(template.format())
 ```
 
 ## Retrieval
-Now only Qdrant are supported for basic retrieval.
+Now only Qdrant and Chroma are supported for basic retrieval.
 
 ### For Qdrant
 ```python
