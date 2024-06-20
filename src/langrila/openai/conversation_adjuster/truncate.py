@@ -60,14 +60,17 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     print(
                         "Input message is truncated because total length of messages exceeds context length."
                     )
-                    new_message = {"role": role, "content": new_content}
+                    new_message = {"role": role, "content": new_content} | (
+                        {"name": message["name"]} if "name" in message else {}
+                    )
                     return new_message, total_n_tokens
 
                 elif self.model_name in _VISION_MODEL and isinstance(message["content"], list):
+                    # truncate whole image
                     new_message = {
                         "role": role,
                         "content": "(Image was truncated.)",
-                    }  # truncate whole image
+                    } | ({"name": message["name"]} if "name" in message else {})
                     return new_message, total_n_tokens
 
                 else:
