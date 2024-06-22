@@ -77,7 +77,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
         return self.client
 
     def _exists(self, **kwargs) -> bool:
-        return os.path.exists(self._collection_path)
+        return self._collection_path.exists()
 
     def _create_collection(self, client: Index, **kwargs) -> None:
         self._collection_path.parent.mkdir(parents=True, exist_ok=True)
