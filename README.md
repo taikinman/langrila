@@ -756,6 +756,8 @@ documents = [
 ]
 
 # Strongly recommended because search result may be different when new vectors are inserted after existing vectors are removed.
+# Instead, rebuilding the index is recommended using `delete_collection` before upserting.
+# Or use exact search to avoid this issue when search time.
 collection.delete_collection()
 
 collection.run(documents=documents) # metadatas could also be used. 

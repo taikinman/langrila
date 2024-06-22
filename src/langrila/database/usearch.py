@@ -103,6 +103,8 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
 
         if is_contained.any():
             # FIXME : search result may be different when new vectors are inserted after existing vectors are removed.
+            # Instead, rebuilding the index is recommended using `delete_collection` before upserting.
+            # Or use exact search to avoid this issue when search time.
             duplicate_keys = np.where(is_contained)[0]
             client.remove(np.array(ids)[duplicate_keys])
 
