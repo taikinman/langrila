@@ -544,7 +544,7 @@ print(template.format())
 ```
 
 ## Retrieval
-Now only Qdrant and Chroma are supported for basic retrieval.
+Now langrila supports qdrant, chroma and usearch for retrieval.
 
 ### For Qdrant
 ```python
@@ -720,6 +720,78 @@ collection = ChromaRemoteCollectionModule(
 ```
 
 For more details, see [chroma.py](src/langrila/database/chroma.py).
+
+### For Usearch
+Usearch originally doesn't support metadata storing and filtering, so in langrila, those functions are realized by SQLite3 and postprocessing.
+
+```python
+from langrila.database.usearch import UsearchLocalCollectionModule, UsearchLocalRetrievalModule
+from langrila.openai import OpenAIEmbeddingModule
+
+#######################
+# create collection
+#######################
+
+embedder = OpenAIEmbeddingModule(
+    api_key_env_name="API_KEY",
+    model_name="text-embedding-3-small",
+    dimensions=1536,
+)
+
+collection = UsearchLocalCollectionModule(
+    persistence_directory="./usearch_test",
+    collection_name="sample",
+    embedder=embedder,
+    dtype = "f16",
+    ndim = 1536,
+    connectivity = 16,
+    expansion_add = 128,
+    expansion_search = 64,
+)
+
+documents = [
+    "Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.",
+    "LangChain is a framework for developing applications powered by language models.",
+    "LlamaIndex (GPT Index) is a data framework for your LLM application.",
+]
+
+# Strongly recommended because current implementation for upsert operation has bug when collection already exists.
+collection.delete_collection()
+
+collection.run(documents=documents) # metadatas could also be used. 
+
+# #######################
+# # retrieval
+# #######################
+
+# In the case collection was already instantiated
+# retriever = collection.as_retriever(n_results=2, threshold_similarity=0.5)
+
+retriever = UsearchLocalRetrievalModule(
+    embedder=embedder,
+    persistence_directory="./usearch_test",
+    collection_name="sample",
+    dtype = "f16",
+    ndim=1536,
+    connectivity = 16,
+    expansion_add = 128,
+    expansion_search = 64,
+    n_results=2,
+    score_threshold=0.5,
+)
+
+query = "What is Langrila?"
+retriever.run(query, filter=None, exact=False).model_dump()
+
+>>> {'ids': [0],
+ 'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
+ 'metadatas': [{'document': 'Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'}],
+ 'scores': [0.46986961364746094],
+ 'collections': ['sample'],
+ 'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
+```
+
+When you need to filter retrieval results by metadata in search time, you can implement your custom metadata filter. Base class of metadata filter is in [base.py](src/langrila/base.py). For more details, see : [usearch.py](src/langrila/database/usearch.py).
 
 ### Specific use case
 The library supports a variety of use cases by combining modules such as these and defining new modules. For example, the following is an example of a module that combines basic Retrieval and prompt templates. 
