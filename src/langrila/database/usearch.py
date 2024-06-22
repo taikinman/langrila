@@ -102,7 +102,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
         is_contained = client.contains(ids)
 
         if is_contained.any():
-            # When the index is re-created, the search result may be different.
+            # FIXME : search result may be different when new vectors are inserted after existing vectors are removed.
             duplicate_keys = np.where(is_contained)[0]
             client.remove(np.array(ids)[duplicate_keys])
 

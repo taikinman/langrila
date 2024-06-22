@@ -755,7 +755,7 @@ documents = [
     "LlamaIndex (GPT Index) is a data framework for your LLM application.",
 ]
 
-# Strongly recommended because current implementation for upsert operation has bug when collection already exists.
+# Strongly recommended because search result may be different when new vectors are inserted after existing vectors are removed.
 collection.delete_collection()
 
 collection.run(documents=documents) # metadatas could also be used. 
