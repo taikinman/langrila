@@ -312,6 +312,9 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
                     if n_retries == 3:
                         raise e
 
+        if hasattr(self, "_save_on_last"):
+            self._save_on_last(client=client)
+
     def _verify_metadata(self, metadatas: list[dict[str, str]]) -> None:
         """
         check if the key 'document' is included in metadatas
@@ -434,6 +437,9 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
 
                     if n_retries == 3:
                         raise e
+
+        if hasattr(self, "_save_on_last"):
+            self._save_on_last(client=client)
 
 
 class AbstractLocalRetrievalModule(ABC):
