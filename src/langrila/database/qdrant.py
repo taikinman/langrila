@@ -4,6 +4,7 @@ from typing import (
     Awaitable,
     Callable,
     Mapping,
+    Sequence,
     Union,
 )
 
@@ -80,7 +81,9 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        wait: bool = True,
+        ordering: types.WriteOrdering | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
     ) -> None:
         client.upsert(
             collection_name=collection_name,
@@ -91,7 +94,9 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
                     m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
-            **kwargs,
+            wait=wait,
+            ordering=ordering,
+            shard_key_selector=shard_key_selector,
         )
 
         return
@@ -104,9 +109,17 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         client: QdrantClient,
         collection_name: str,
         points_selector: types.PointsSelector,
-        **kwargs,
+        wait: bool = True,
+        ordering: types.WriteOrdering | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
     ) -> None:
-        client.delete(collection_name=collection_name, points_selector=points_selector, **kwargs)
+        client.delete(
+            collection_name=collection_name,
+            points_selector=points_selector,
+            wait=wait,
+            ordering=ordering,
+            shard_key_selector=shard_key_selector,
+        )
 
     def get_client(self) -> QdrantClient:
         return QdrantClient(
@@ -216,7 +229,9 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        wait: bool = True,
+        ordering: types.WriteOrdering | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
     ) -> None:
         client.upsert(
             collection_name=collection_name,
@@ -227,7 +242,9 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                     m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
-            **kwargs,
+            wait=wait,
+            ordering=ordering,
+            shard_key_selector=shard_key_selector,
         )
 
         return
@@ -240,9 +257,17 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         client: QdrantClient,
         collection_name: str,
         points_selector: types.PointsSelector,
-        **kwargs,
+        wait: bool = True,
+        ordering: types.WriteOrdering | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
     ) -> None:
-        client.delete(collection_name=collection_name, points_selector=points_selector, **kwargs)
+        client.delete(
+            collection_name=collection_name,
+            points_selector=points_selector,
+            wait=wait,
+            ordering=ordering,
+            shard_key_selector=shard_key_selector,
+        )
 
     async def _aexists(self, client: AsyncQdrantClient, collection_name: str) -> bool:
         return await client.collection_exists(collection_name=collection_name)
@@ -273,7 +298,9 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        wait: bool = True,
+        ordering: types.WriteOrdering | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
     ) -> None:
         await client.upsert(
             collection_name=collection_name,
@@ -284,7 +311,9 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
                     m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)
                 ],
             ),
-            **kwargs,
+            wait=wait,
+            ordering=ordering,
+            shard_key_selector=shard_key_selector,
         )
 
         return
@@ -297,10 +326,16 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         client: AsyncQdrantClient,
         collection_name: str,
         points_selector: types.PointsSelector,
-        **kwargs,
+        wait: bool = True,
+        ordering: types.WriteOrdering | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
     ) -> None:
         await client.delete(
-            collection_name=collection_name, points_selector=points_selector, **kwargs
+            collection_name=collection_name,
+            points_selector=points_selector,
+            wait=wait,
+            ordering=ordering,
+            shard_key_selector=shard_key_selector,
         )
 
     def get_client(self) -> QdrantClient:
@@ -399,16 +434,29 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        search_params: types.SearchParams | None = None,
+        offset: int | None = None,
+        with_payload: Union[bool, Sequence[str], types.PayloadSelector] = True,
+        with_vectors: Union[bool, Sequence[str]] = False,
+        append_payload: bool = True,
+        consistency: types.ReadConsistency | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
+        timeout: int | None = None,
     ) -> RetrievalResults:
         retrieved = client.search(
             collection_name=collection_name,
             query_vector=query_vector,
             query_filter=filter,
             score_threshold=score_threshold,
-            with_vectors=False,
             limit=n_results,
-            **kwargs,
+            search_params=search_params,
+            offset=offset,
+            with_payload=with_payload,
+            with_vectors=with_vectors,
+            append_payload=append_payload,
+            consistency=consistency,
+            shard_key_selector=shard_key_selector,
+            timeout=timeout,
         )
 
         ids = [r.id for r in retrieved]
@@ -505,16 +553,29 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        search_params: types.SearchParams | None = None,
+        offset: int | None = None,
+        with_payload: Union[bool, Sequence[str], types.PayloadSelector] = True,
+        with_vectors: Union[bool, Sequence[str]] = False,
+        append_payload: bool = True,
+        consistency: types.ReadConsistency | None = None,
+        shard_key_selector: types.ShardKeySelector | None = None,
+        timeout: int | None = None,
     ) -> RetrievalResults:
         retrieved = client.search(
             collection_name=collection_name,
             query_vector=query_vector,
             query_filter=filter,
             score_threshold=score_threshold,
-            with_vectors=False,
             limit=n_results,
-            **kwargs,
+            search_params=search_params,
+            offset=offset,
+            with_payload=with_payload,
+            with_vectors=with_vectors,
+            append_payload=append_payload,
+            consistency=consistency,
+            shard_key_selector=shard_key_selector,
+            timeout=timeout,
         )
 
         ids = [r.id for r in retrieved]
