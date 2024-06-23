@@ -3,7 +3,8 @@ from typing import Any
 import chromadb
 from chromadb import DEFAULT_DATABASE, DEFAULT_TENANT, Settings
 from chromadb.api import ClientAPI
-from chromadb.types import Where
+from chromadb.api.types import URI, Image, Include, OneOrMany
+from chromadb.types import Where, WhereDocument
 
 from ..result import RetrievalResults
 from .base import (
@@ -50,11 +51,13 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         collection_name: str,
         ids: list[str | int],
         filter: Where | None = None,
-        **kwargs,
+        where_document: WhereDocument | None = None,
     ) -> None:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(name=collection_name)
-        self.collection.delete(ids=[str(i) for i in ids], where=filter, **kwargs)
+        self.collection.delete(
+            ids=[str(i) for i in ids], where=filter, where_document=where_document
+        )
 
     def _upsert(
         self,
@@ -64,7 +67,8 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        images: OneOrMany[Image] | None = None,
+        uris: OneOrMany[URI] | None = None,
     ) -> None:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(name=collection_name)
@@ -74,7 +78,8 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
             embeddings=embeddings,
             documents=documents,
             metadatas=[m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)],
-            **kwargs,
+            images=images,
+            uris=uris,
         )
 
         return
@@ -149,11 +154,13 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         collection_name: str,
         ids: list[str | int],
         filter: Where | None = None,
-        **kwargs,
+        where_document: WhereDocument | None = None,
     ) -> None:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(name=collection_name)
-        self.collection.delete(ids=[str(i) for i in ids], where=filter, **kwargs)
+        self.collection.delete(
+            ids=[str(i) for i in ids], where=filter, where_document=where_document
+        )
 
     def _upsert(
         self,
@@ -163,7 +170,8 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        images: OneOrMany[Image] | None = None,
+        uris: OneOrMany[URI] | None = None,
     ) -> None:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(name=collection_name)
@@ -173,7 +181,8 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
             embeddings=embeddings,
             documents=documents,
             metadatas=[m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)],
-            **kwargs,
+            images=images,
+            uris=uris,
         )
 
         return
@@ -230,10 +239,14 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         collection_name: str,
         ids: list[str | int],
         filter: Where | None = None,
-        **kwargs,
+        where_document: WhereDocument | None = None,
     ) -> None:
         self._delete_record(
-            client=client, collection_name=collection_name, ids=ids, filter=filter, **kwargs
+            client=client,
+            collection_name=collection_name,
+            ids=ids,
+            filter=filter,
+            where_document=where_document,
         )
 
     async def _aupsert(
@@ -244,7 +257,8 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        images: OneOrMany[Image] | None = None,
+        uris: OneOrMany[URI] | None = None,
     ) -> None:
         self._upsert(
             client=client,
@@ -253,7 +267,8 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
             documents=documents,
             embeddings=embeddings,
             metadatas=metadatas,
-            **kwargs,
+            images=images,
+            uris=uris,
         )
 
 
@@ -300,7 +315,10 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        query_images: OneOrMany[Image] | None = None,
+        query_uris: OneOrMany[URI] | None = None,
+        where_document: WhereDocument | None = None,
+        include: Include | None = None,
     ) -> RetrievalResults:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(name=collection_name)
@@ -308,9 +326,11 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
         retrieved = self.collection.query(
             query_embeddings=query_vector,
             where=filter,
-            include=["metadatas", "documents", "distances"],
+            include=include or ["metadatas", "documents", "distances"],
             n_results=n_results,
-            **kwargs,
+            query_images=query_images,
+            query_uris=query_uris,
+            where_document=where_document,
         )
 
         ids = []
@@ -397,7 +417,10 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        query_images: OneOrMany[Image] | None = None,
+        query_uris: OneOrMany[URI] | None = None,
+        where_document: WhereDocument | None = None,
+        include: Include | None = None,
     ) -> RetrievalResults:
         if not hasattr(self, "collection"):
             self.collection = client.get_collection(name=collection_name)
@@ -405,9 +428,11 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
         retrieved = self.collection.query(
             query_embeddings=query_vector,
             where=filter,
-            include=["metadatas", "documents", "distances"],
+            include=include or ["metadatas", "documents", "distances"],
             n_results=n_results,
-            **kwargs,
+            query_images=query_images,
+            query_uris=query_uris,
+            where_document=where_document,
         )
 
         ids = []
@@ -446,7 +471,10 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        query_images: OneOrMany[Image] | None = None,
+        query_uris: OneOrMany[URI] | None = None,
+        where_document: WhereDocument | None = None,
+        include: Include | None = None,
     ) -> RetrievalResults:
         return self._retrieve(
             client=client,
@@ -455,5 +483,8 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
             n_results=n_results,
             score_threshold=score_threshold,
             filter=filter,
-            **kwargs,
+            query_images=query_images,
+            query_uris=query_uris,
+            where_document=where_document,
+            include=include,
         )
