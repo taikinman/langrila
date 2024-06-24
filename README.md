@@ -8,7 +8,7 @@ Langrila is a useful tool to use API-based LLM in an easy way. This library put 
 ## as needed
 - openai and tiktoken for OpenAI API
 - google-generativeai for Gemini API
-- qdrant-client or chromadb for retrieval
+- qdrant-client, chromadb or usearch for retrieval
 
 # Contribution
 ## Coding policy
@@ -27,6 +27,8 @@ git clone git@github.com:taikinman/langrila.git
 ```
 
 ## pip
+See [pyproject.toml](./pyproject.toml) for more detailed installation options.
+
 ```
 cd langrila
 
@@ -45,11 +47,16 @@ pip install -e .[openai,qdrant]
 # For OpenAI and Chroma
 pip install -e .[openai,chroma]
 
+# For OpenAI and Usearch
+pip install -e .[openai,usearch]
+
 # For All
 pip install -e .[all]
 ```
 
 ## poetry
+See [pyproject.toml](./pyproject.toml) for more detailed installation options.
+
 ```
 # For OpenAI
 poetry add --editable /path/to/langrila/ --extras openai
@@ -65,6 +72,9 @@ poetry add --editable /path/to/langrila/ --extras "openai qdrant"
 
 # For OpenAI and Chroma
 poetry add --editable /path/to/langrila/ --extras "openai chroma"
+
+# For OpenAI and Usearch
+poetry add --editable /path/to/langrila/ --extras "openai usearch"
 
 # For all extra dependencies
 poetry add --editable /path/to/langrila/ --extras all
