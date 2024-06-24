@@ -256,7 +256,9 @@ class UsearchLocalRetrievalModule(BaseLocalRetrievalModule):
 
         # filter by metadata
         if filter:
-            use_indices = [i for i, metadata in enumerate(metadatas) if filter.run(metadata)]
+            use_indices = [i for i, metadata in enumerate(metadatas) if filter.run(metadata)][
+                :n_results
+            ]
             ids = [ids[i] for i in use_indices]
             documents = [documents[i] for i in use_indices]
             metadatas = [metadatas[i] for i in use_indices]
