@@ -454,7 +454,7 @@ response.model_dump()
 ```
 
 ## Conversation memory
-You can use 2 conversation memory modules by default named InMemoryConversationMemory and JSONConversationMemory. Additionally, langrila supports Cosmos DB and Amazon S3 to store conversation historys.
+You can use 2 conversation memory modules by default named InMemoryConversationMemory and JSONConversationMemory. Additionally, langrila supports Cosmos DB and Amazon S3 to store conversation history.
 
 ### Conversation memory with local json file
 In this example, we specify JSONConversationMemory. 
