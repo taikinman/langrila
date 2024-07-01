@@ -27,6 +27,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self.conversation_memory = conversation_memory
         self.content_filter = content_filter
         self.conversation_length_adjuster = conversation_length_adjuster
+        self._INIT_STATUS = False
 
     @abstractmethod
     def _get_client_message_type(self) -> type[BaseMessage]:
@@ -40,6 +41,8 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         **kwargs,
     ) -> CompletionResults:
         Message = self._get_client_message_type()
+        self._init_conversation_memory(init_conversation=init_conversation)
+
         messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
@@ -74,6 +77,8 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         **kwargs,
     ) -> CompletionResults:
         Message = self._get_client_message_type()
+        self._init_conversation_memory(init_conversation=init_conversation)
+
         messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
@@ -108,6 +113,8 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         **kwargs,
     ) -> Generator[CompletionResults, None, None]:
         Message = self._get_client_message_type()
+        self._init_conversation_memory(init_conversation=init_conversation)
+
         messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
@@ -146,6 +153,8 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         **kwargs,
     ) -> AsyncGenerator[CompletionResults, None]:
         Message = self._get_client_message_type()
+        self._init_conversation_memory(init_conversation=init_conversation)
+
         messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
@@ -188,6 +197,7 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         self.conversation_memory = conversation_memory
         self.content_filter = content_filter
         self.conversation_length_adjuster = conversation_length_adjuster
+        self._INIT_STATUS = False
 
     @abstractmethod
     def _get_client_message_type(self) -> type[BaseMessage]:
@@ -200,6 +210,8 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         **kwargs,
     ) -> FunctionCallingResults:
         Message = self._get_client_message_type()
+        self._init_conversation_memory(init_conversation=init_conversation)
+
         messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
@@ -239,6 +251,8 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         **kwargs,
     ) -> FunctionCallingResults:
         Message = self._get_client_message_type()
+        self._init_conversation_memory(init_conversation=init_conversation)
+
         messages = self.load_conversation()
 
         if isinstance(init_conversation, list) and len(messages) == 0:
