@@ -156,7 +156,6 @@ class GeminiChatModule(ChatWrapperModule):
         timeout: int = 60,
         content_filter: Optional[BaseFilter] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
-        conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
         system_instruction: str | None = None,
     ):
         chat_model = GeminiChatCoreModule(
@@ -172,7 +171,6 @@ class GeminiChatModule(ChatWrapperModule):
             chat_model=chat_model,
             content_filter=content_filter,
             conversation_memory=conversation_memory,
-            conversation_length_adjuster=conversation_length_adjuster,
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:
