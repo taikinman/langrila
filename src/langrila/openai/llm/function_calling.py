@@ -113,6 +113,8 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         max_retries: int = 2,
         max_tokens: int = 2048,
         seed: Optional[int] = None,
+        system_instruction: str | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> None:
         assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
         if api_type == "azure":
@@ -152,6 +154,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             self.tool_configs = [f.model_dump()["function"] for f in tool_configs]
             self.additional_inputs["functions"] = self.tool_configs
 
+        self.system_instruction = (
+            OpenAIMessage(content=system_instruction).as_system if system_instruction else None
+        )
+        self.conversation_length_adjuster = conversation_length_adjuster
+
     def _set_tool_choice(self, tool_choice: str = "auto"):
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():
             self.additional_inputs["tool_choice"] = (
@@ -181,9 +188,13 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             timeout=self.timeout,
         )
 
+        _messages = [self.system_instruction] + messages if self.system_instruction else messages
+        if self.conversation_length_adjuster:
+            _messages = self.conversation_length_adjuster.run(_messages)
+
         response = client.chat.completions.create(
             model=self.model_name,
-            messages=messages if isinstance(messages, list) else [messages],
+            messages=_messages,
             temperature=0,
             max_tokens=self.max_tokens,
             top_p=0,
@@ -260,9 +271,13 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             timeout=self.timeout,
         )
 
+        _messages = [self.system_instruction] + messages if self.system_instruction else messages
+        if self.conversation_length_adjuster:
+            _messages = self.conversation_length_adjuster.run(_messages)
+
         response = await client.chat.completions.create(
             model=self.model_name,
-            messages=messages if isinstance(messages, list) else [messages],
+            messages=_messages,
             temperature=0,
             max_tokens=self.max_tokens,
             top_p=0,
@@ -340,6 +355,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         context_length: Optional[int] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
+        system_instruction: Optional[str] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
     ) -> None:
         if model_name in MODEL_POINT.keys():
@@ -358,6 +374,11 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         ), f"max_tokens({max_tokens}) + context_length({context_length}) must be less than or equal to the token limit of the model ({token_lim})."
         assert context_length > 0, "context_length must be positive."
 
+        conversation_length_adjuster = (
+            OldConversationTruncationModule(model_name=model_name, context_length=context_length)
+            if conversation_length_adjuster is None
+            else conversation_length_adjuster
+        )
         function_calling_model = FunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,
@@ -372,13 +393,10 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             timeout=timeout,
             max_retries=max_retries,
             seed=seed,
+            system_instruction=system_instruction,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
-        conversation_length_adjuster = (
-            OldConversationTruncationModule(model_name=model_name, context_length=context_length)
-            if conversation_length_adjuster is None
-            else conversation_length_adjuster
-        )
         content_filter = content_filter
         conversation_memory = conversation_memory
 
@@ -386,7 +404,6 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             function_calling_model=function_calling_model,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
-            conversation_length_adjuster=conversation_length_adjuster,
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:

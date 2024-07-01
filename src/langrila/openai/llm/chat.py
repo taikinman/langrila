@@ -101,6 +101,8 @@ class OpenAIChatCoreModule(BaseChatModule):
         max_retries: int = 2,
         seed: Optional[int] = None,
         response_format: Optional[dict[str, str]] = None,
+        system_instruction: str | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> None:
         assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
         if api_type == "azure":
@@ -138,6 +140,11 @@ class OpenAIChatCoreModule(BaseChatModule):
                     f"response_format is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
 
+        self.system_instruction = (
+            OpenAIMessage(content=system_instruction).as_system if system_instruction else None
+        )
+        self.conversation_length_adjuster = conversation_length_adjuster
+
     def run(self, messages: list[dict[str, str]]) -> CompletionResults:
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
@@ -156,10 +163,14 @@ class OpenAIChatCoreModule(BaseChatModule):
             timeout=self.timeout,
         )
 
+        _messages = [self.system_instruction] + messages if self.system_instruction else messages
+        if self.conversation_length_adjuster:
+            _messages = self.conversation_length_adjuster.run(_messages)
+
         response = completion(
             client=client,
             model_name=self.model_name,
-            messages=messages,
+            messages=_messages,
             temperature=0,
             max_tokens=self.max_tokens,
             top_p=0,
@@ -197,10 +208,14 @@ class OpenAIChatCoreModule(BaseChatModule):
             timeout=self.timeout,
         )
 
+        _messages = [self.system_instruction] + messages if self.system_instruction else messages
+        if self.conversation_length_adjuster:
+            _messages = self.conversation_length_adjuster.run(_messages)
+
         response = await acompletion(
             client=client,
             model_name=self.model_name,
-            messages=messages,
+            messages=_messages,
             temperature=0,
             max_tokens=self.max_tokens,
             top_p=0,
@@ -238,10 +253,14 @@ class OpenAIChatCoreModule(BaseChatModule):
             timeout=self.timeout,
         )
 
+        _messages = [self.system_instruction] + messages if self.system_instruction else messages
+        if self.conversation_length_adjuster:
+            _messages = self.conversation_length_adjuster.run(_messages)
+
         response = completion(
             client=client,
             model_name=self.model_name,
-            messages=messages,
+            messages=_messages,
             temperature=0,
             max_tokens=self.max_tokens,
             top_p=0,
@@ -300,10 +319,14 @@ class OpenAIChatCoreModule(BaseChatModule):
             timeout=self.timeout,
         )
 
+        _messages = [self.system_instruction] + messages if self.system_instruction else messages
+        if self.conversation_length_adjuster:
+            _messages = self.conversation_length_adjuster.run(_messages)
+
         response = await acompletion(
             client=client,
             model_name=self.model_name,
-            messages=messages,
+            messages=_messages,
             temperature=0,
             max_tokens=self.max_tokens,
             top_p=0,
@@ -380,6 +403,12 @@ class OpenAIChatModule(ChatWrapperModule):
         ), f"max_tokens({max_tokens}) + context_length({context_length}) must be less than or equal to the token limit of the model ({token_lim})."
         assert context_length > 0, "context_length must be positive."
 
+        conversation_length_adjuster = (
+            OldConversationTruncationModule(model_name=model_name, context_length=context_length)
+            if conversation_length_adjuster is None
+            else conversation_length_adjuster
+        )
+
         chat_model = OpenAIChatCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,
@@ -393,46 +422,18 @@ class OpenAIChatModule(ChatWrapperModule):
             max_retries=max_retries,
             seed=seed,
             response_format=response_format,
-        )
-
-        conversation_length_adjuster = (
-            OldConversationTruncationModule(model_name=model_name, context_length=context_length)
-            if conversation_length_adjuster is None
-            else conversation_length_adjuster
+            system_instruction=system_instruction,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
         super().__init__(
             chat_model=chat_model,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
-            conversation_length_adjuster=conversation_length_adjuster,
         )
-
-        self.system_instruction = system_instruction
-        if system_instruction and conversation_memory:
-            # if system_instruction is passed, it is stored in conversation_memory as the first message
-            self.conversation_memory.store([OpenAIMessage(content=system_instruction).as_system])
 
     def _get_client_message_type(self) -> type[BaseMessage]:
         return OpenAIMessage
-
-    def _format_init_conversation(
-        self, init_conversation: list[dict[str, Any]] | None = None
-    ) -> list[dict[str, str]] | None:
-        if self.conversation_memory is None:
-            # if conversation_memory is not passed, system_instruction is added to init_conversation
-            if self.system_instruction:
-                system_instruction = [OpenAIMessage(content=self.system_instruction).as_system]
-            else:
-                system_instruction = None
-
-            if init_conversation and system_instruction:
-                # system_instruction is added to the beginning of init_conversation
-                init_conversation = system_instruction + init_conversation
-            elif not init_conversation and system_instruction:
-                init_conversation = system_instruction
-
-        return init_conversation
 
     def run(
         self,
@@ -441,8 +442,6 @@ class OpenAIChatModule(ChatWrapperModule):
         init_conversation: list[dict[str, Any]] | None = None,
         image_resolution: str = "low",
     ) -> CompletionResults:
-        init_conversation = self._format_init_conversation(init_conversation)
-
         return super().run(
             prompt=prompt,
             images=images,
@@ -457,8 +456,6 @@ class OpenAIChatModule(ChatWrapperModule):
         init_conversation: list[dict[str, Any]] | None = None,
         image_resolution: str | list[str] = "low",
     ) -> CompletionResults:
-        init_conversation = self._format_init_conversation(init_conversation)
-
         return await super().arun(
             prompt=prompt,
             images=images,
@@ -473,8 +470,6 @@ class OpenAIChatModule(ChatWrapperModule):
         init_conversation: list[dict[str, Any]] | None = None,
         image_resolution: str = "low",
     ) -> Generator[CompletionResults, None, None]:
-        init_conversation = self._format_init_conversation(init_conversation)
-
         return super().stream(
             prompt=prompt,
             images=images,
@@ -489,8 +484,6 @@ class OpenAIChatModule(ChatWrapperModule):
         init_conversation: list[dict[str, Any]] | None = None,
         image_resolution: str | list[str] = "low",
     ) -> AsyncGenerator[CompletionResults, None]:
-        init_conversation = self._format_init_conversation(init_conversation)
-
         return await super().astream(
             prompt=prompt,
             images=images,

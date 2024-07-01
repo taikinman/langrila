@@ -265,9 +265,7 @@ response.model_dump()
 
 >>> {'message': {'role': 'assistant', 'content': 'Yes.'},
  'usage': {'prompt_tokens': 36, 'completion_tokens': 2},
- 'prompt': [{'role': 'system',
-   'content': 'You must answer any questions only with yes or no.'},
-  {'role': 'user',
+ 'prompt': [{'role': 'user',
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
 
