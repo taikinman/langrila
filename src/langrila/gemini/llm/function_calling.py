@@ -180,7 +180,6 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         timeout: int = 60,
         content_filter: Optional[BaseFilter] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
-        conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
     ):
         function_calling_model = GeminiFunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
@@ -196,7 +195,6 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
             function_calling_model=function_calling_model,
             content_filter=content_filter,
             conversation_memory=conversation_memory,
-            conversation_length_adjuster=conversation_length_adjuster,
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:
