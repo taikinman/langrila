@@ -26,6 +26,7 @@ class GeminiChatCoreModule(BaseChatModule):
         max_tokens: int = 2048,
         json_mode: bool = False,
         timeout: int = 60,
+        system_instruction: str | None = None,
     ):
         self.api_key_env_name = api_key_env_name
         self.model_name = model_name
@@ -42,9 +43,12 @@ class GeminiChatCoreModule(BaseChatModule):
         self.request_options = RequestOptions(
             timeout=timeout,
         )
+        self.system_instruction = system_instruction
 
     def run(self, messages: list[dict[str, str]]) -> CompletionResults:
-        model = get_model(self.model_name, self.api_key_env_name)
+        model = get_model(
+            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+        )
         response = model.generate_content(contents=messages, request_options=self.request_options)
         content = response.candidates[0].content
         return CompletionResults(
@@ -57,7 +61,9 @@ class GeminiChatCoreModule(BaseChatModule):
         )
 
     async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
-        model = get_model(self.model_name, self.api_key_env_name)
+        model = get_model(
+            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+        )
         response = await model.generate_content_async(
             contents=messages, request_options=self.request_options
         )
@@ -74,7 +80,9 @@ class GeminiChatCoreModule(BaseChatModule):
     def stream(
         self, messages: list[dict[str, str | list[str]]]
     ) -> Generator[CompletionResults, None, None]:
-        model = get_model(self.model_name, self.api_key_env_name)
+        model = get_model(
+            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+        )
         responses = model.generate_content(
             contents=messages, request_options=self.request_options, stream=True
         )
@@ -105,7 +113,9 @@ class GeminiChatCoreModule(BaseChatModule):
     async def astream(
         self, messages: list[dict[str, str]]
     ) -> AsyncGenerator[CompletionResults, None]:
-        model = get_model(self.model_name, self.api_key_env_name)
+        model = get_model(
+            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+        )
         responses = await model.generate_content_async(
             contents=messages, request_options=self.request_options, stream=True
         )
@@ -147,6 +157,7 @@ class GeminiChatModule(ChatWrapperModule):
         content_filter: Optional[BaseFilter] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
+        system_instruction: str | None = None,
     ):
         chat_model = GeminiChatCoreModule(
             api_key_env_name=api_key_env_name,
@@ -154,6 +165,7 @@ class GeminiChatModule(ChatWrapperModule):
             max_tokens=max_tokens,
             json_mode=json_mode,
             timeout=timeout,
+            system_instruction=system_instruction,
         )
 
         super().__init__(

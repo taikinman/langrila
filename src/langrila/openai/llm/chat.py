@@ -362,6 +362,7 @@ class OpenAIChatModule(ChatWrapperModule):
         conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
+        system_instruction: str | None = None,
     ):
         if model_name in MODEL_POINT.keys():
             print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
@@ -407,8 +408,95 @@ class OpenAIChatModule(ChatWrapperModule):
             conversation_length_adjuster=conversation_length_adjuster,
         )
 
+        self.system_instruction = system_instruction
+        if system_instruction and conversation_memory:
+            # if system_instruction is passed, it is stored in conversation_memory as the first message
+            self.conversation_memory.store([OpenAIMessage(content=system_instruction).as_system])
+
     def _get_client_message_type(self) -> type[BaseMessage]:
         return OpenAIMessage
+
+    def _format_init_conversation(
+        self, init_conversation: list[dict[str, Any]] | None = None
+    ) -> list[dict[str, str]] | None:
+        if self.conversation_memory is None:
+            # if conversation_memory is not passed, system_instruction is added to init_conversation
+            if self.system_instruction:
+                system_instruction = [OpenAIMessage(content=self.system_instruction).as_system]
+            else:
+                system_instruction = None
+
+            if init_conversation and system_instruction:
+                # system_instruction is added to the beginning of init_conversation
+                init_conversation = system_instruction + init_conversation
+            elif not init_conversation and system_instruction:
+                init_conversation = system_instruction
+
+        return init_conversation
+
+    def run(
+        self,
+        prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
+        init_conversation: list[dict[str, Any]] | None = None,
+        image_resolution: str = "low",
+    ) -> CompletionResults:
+        init_conversation = self._format_init_conversation(init_conversation)
+
+        return super().run(
+            prompt=prompt,
+            images=images,
+            init_conversation=init_conversation,
+            image_resolution=image_resolution,
+        )
+
+    async def arun(
+        self,
+        prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
+        init_conversation: list[dict[str, Any]] | None = None,
+        image_resolution: str | list[str] = "low",
+    ) -> CompletionResults:
+        init_conversation = self._format_init_conversation(init_conversation)
+
+        return await super().arun(
+            prompt=prompt,
+            images=images,
+            init_conversation=init_conversation,
+            image_resolution=image_resolution,
+        )
+
+    def stream(
+        self,
+        prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
+        init_conversation: list[dict[str, Any]] | None = None,
+        image_resolution: str = "low",
+    ) -> Generator[CompletionResults, None, None]:
+        init_conversation = self._format_init_conversation(init_conversation)
+
+        return super().stream(
+            prompt=prompt,
+            images=images,
+            init_conversation=init_conversation,
+            image_resolution=image_resolution,
+        )
+
+    async def astream(
+        self,
+        prompt: str,
+        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
+        init_conversation: list[dict[str, Any]] | None = None,
+        image_resolution: str | list[str] = "low",
+    ) -> AsyncGenerator[CompletionResults, None]:
+        init_conversation = self._format_init_conversation(init_conversation)
+
+        return await super().astream(
+            prompt=prompt,
+            images=images,
+            init_conversation=init_conversation,
+            image_resolution=image_resolution,
+        )
 
     async def abatch_run(
         self,
