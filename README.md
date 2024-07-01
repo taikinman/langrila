@@ -159,6 +159,7 @@ response = chat.run(prompt)
 # asynchronous processing
 response = await chat.arun(prompt)
 
+# show result
 response.model_dump()
 
 >>> {'message': {'role': 'assistant',
@@ -199,6 +200,7 @@ response = chat.run(prompt)
 # asynchronous processing
 response = await chat.arun(prompt)
 
+# show result
 response.model_dump()
 
 >>> {'message': {'role': 'model',
@@ -235,12 +237,44 @@ chat = GeminiChatModule(
 )
 
 response = await chat.arun(prompt, images=image) # or response = await chat.arun(prompt, images=image)
+
+# show result
 response.model_dump()
+```
+
+## System instruction
+You can pass system instruction to llm like below:
+
+```python
+from langrila.openai import OpenAIChatModule
+
+# For conventional model
+chat = OpenAIChatModule(
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="gpt-3.5-turbo-0125",
+    system_instruction="You must answer any questions only with yes or no.",
+)
+
+prompt = "Please give me only one advice to improve the quality of my sleep."
+
+# synchronous processing
+response = chat.run(prompt)
+
+# show result
+response.model_dump()
+
+>>> {'message': {'role': 'assistant', 'content': 'Yes.'},
+ 'usage': {'prompt_tokens': 36, 'completion_tokens': 2},
+ 'prompt': [{'role': 'system',
+   'content': 'You must answer any questions only with yes or no.'},
+  {'role': 'user',
+   'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
 
 
 ## Batch processing
 For optimization, you can process multiple prompts as batches.
+
 ```python
 prompts = [
     "Please give me only one advice to improve the quality of my sleep.", 
@@ -342,6 +376,8 @@ function_calling = OpenAIFunctionCallingModule(
 )
 
 response = await function_calling.arun("What is the weather in New York on 2022-01-01?")
+
+# show result
 response.model_dump()
 
 >>> {'usage': {'prompt_tokens': 72, 'completion_tokens': 24},
@@ -356,6 +392,7 @@ response.model_dump()
 
 ### For Azure
 Basically same interface with For OpenAI.
+
 ```python
 function_calling = OpenAIFunctionCallingModule(
             api_key_env_name = "AZURE_API_KEY", # env variable name
@@ -373,6 +410,7 @@ function_calling = OpenAIFunctionCallingModule(
 
 ### For Gemini
 For Gemini, only things you have to do is to replace module.
+
 ```python
 from langrila.gemini import GeminiFunctionCallingModule, ToolConfig, ToolParameter, ToolProperty
 
@@ -402,6 +440,8 @@ function_calling = GeminiFunctionCallingModule(
 
 prompt = "What is the weather in New York on 2022-01-01?"
 response = await function_calling.arun(prompt)
+
+# show result
 response.model_dump()
 
 >>> {'usage': {'prompt_tokens': 21, 'completion_tokens': 30},
@@ -414,7 +454,11 @@ response.model_dump()
 ```
 
 ## Conversation memory
-### For standard chat model
+You can use 2 conversation memory modules by default named InMemoryConversationMemory and JSONConversationMemory. Additionally, langrila supports Cosmos DB and AWS S3 to store conversation historys.
+
+### Conversation memory with local json file
+In this example, we specify JSONConversationMemory. 
+
 ```python
 from langrila import JSONConversationMemory
 
@@ -429,7 +473,10 @@ chat = OpenAIChatModule(
 
 message = "Do you know Rude who is the character in Final Fantasy 7."
 response = chat.run(message)
+
+# show result
 response.model_dump()
+
 >>> {'message': {'role': 'assistant',
   'content': 'Yes, Rude is a character in Final Fantasy 7. He is a member of the Turks, a group of elite operatives working for the Shinra Electric Power Company. Rude is known for his calm and collected demeanor, as well as his impressive physical strength. He often works alongside his partner, Reno, and is skilled in hand-to-hand combat.'},
  'usage': {'prompt_tokens': 22, 'completion_tokens': 72},
@@ -439,7 +486,10 @@ response.model_dump()
 # second prompt
 message = "What does he think about Tifa?"
 response = chat.run(message)
+
+# show result
 response.model_dump()
+
 >>> {'message': {'role': 'assistant',
   'content': "In Final Fantasy 7, Rude is shown to have a respectful and professional relationship with Tifa Lockhart, one of the main protagonists of the game. While Rude is a member of the Turks and initially opposes Tifa and her allies, he does not harbor any personal animosity towards her. In fact, there are moments in the game where Rude shows a sense of admiration for Tifa's strength and determination. Overall, Rude's interactions with Tifa are characterized by mutual respect and a sense of professionalism."},
  'usage': {'prompt_tokens': 110, 'completion_tokens': 106},
@@ -494,6 +544,8 @@ embedder = OpenAIEmbeddingModule(
 message = "Please give me only one advice to improve the quality of my sleep."
 
 results = embedder.run(message)
+
+# show result
 results.model_dump()
 
 >>> {'text': ['Please give me only one advice to improve the quality of my sleep.'],
@@ -510,6 +562,7 @@ results.model_dump()
 
 ## PromptTemplate
 You can manage your prompt as a prompt template that is often used.
+
 ```python
 from langrila import PromptTemplate
 
@@ -607,7 +660,10 @@ retriever = QdrantLocalRetrievalModule(
 )
 
 query = "What is Langrila?"
-retriever.run(query, filter=None).model_dump()
+retrieval_reuslt = retriever.run(query, filter=None)
+
+# show result
+retrieval_result.model_dump()
 
 >>> {'ids': [0],
  'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
@@ -695,7 +751,10 @@ retriever = ChromaLocalRetrievalModule(
 )
 
 query = "What is Langrila?"
-retriever.run(query, filter=None).model_dump()
+retrieval_result = retriever.run(query, filter=None)
+
+# show result
+retrieval_result.model_dump()
 
 >>> {'ids': [0],
  'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
@@ -793,7 +852,10 @@ retriever = UsearchLocalRetrievalModule(
 )
 
 query = "What is Langrila?"
-retriever.run(query, filter=None, exact=False).model_dump()
+retrieval_result = retriever.run(query, filter=None, exact=False)
+
+# show result
+retrieval_result.model_dump()
 
 >>> {'ids': [0],
  'documents': ['Langrila is a useful tool to use ChatGPT with OpenAI API or Azure in an easy way.'],
