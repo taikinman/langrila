@@ -330,7 +330,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         self,
         url: str,
         collection_name: str,
-        port: str = "6333",
+        port: str,
         embedder: BaseEmbeddingModule = None,
         logger: Any | None = None,
     ):
@@ -549,7 +549,7 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         self,
         url: str,
         collection_name: str,
-        port: str = "6333",
+        port: str,
         embedder: BaseEmbeddingModule = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
