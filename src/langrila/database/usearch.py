@@ -134,6 +134,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
         self,
         n_results: int = 4,
         score_threshold: float = 0.5,
+        n_results_coef: float = 5.0,
     ) -> "UsearchLocalRetrievalModule":
         return UsearchLocalRetrievalModule(
             persistence_directory=self.persistence_directory,
@@ -151,6 +152,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=self.logger,
+            n_results_coef=n_results_coef,
         )
 
 
@@ -172,6 +174,7 @@ class UsearchLocalRetrievalModule(BaseLocalRetrievalModule):
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,
+        n_results_coef: float = 5.0,  # It's multiplied by n_results to get the number of results to fetch before filtering
     ):
         super().__init__(
             persistence_directory=persistence_directory,
@@ -198,6 +201,7 @@ class UsearchLocalRetrievalModule(BaseLocalRetrievalModule):
         self.metadata_store = SQLiteMetadataStore(
             persistence_directory=persistence_directory, collection_name=collection_name
         )
+        self.n_results_coef = n_results_coef
 
     def get_client(self) -> Index:
         if hasattr(self, "client"):
@@ -231,11 +235,10 @@ class UsearchLocalRetrievalModule(BaseLocalRetrievalModule):
         exact: bool = False,
         log: bool = False,
         progress: ProgressCallback | None = None,
-        n_results_mergin: float = 2.0,  # It's multiplied by n_results to get the number of results to fetch before filtering
     ) -> RetrievalResults:
         matches: Matches = client.search(
             vectors=np.array(query_vector),
-            count=int(n_results * n_results_mergin) if filter else n_results,
+            count=int(n_results * self.n_results_coef) if filter else n_results,
             radius=radius,
             threads=threads,
             exact=exact,
