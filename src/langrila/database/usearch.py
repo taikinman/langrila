@@ -134,7 +134,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
         self,
         n_results: int = 4,
         score_threshold: float = 0.5,
-        n_results_mergin: float = 5.0,
+        n_results_coef: float = 5.0,
     ) -> "UsearchLocalRetrievalModule":
         return UsearchLocalRetrievalModule(
             persistence_directory=self.persistence_directory,
@@ -152,7 +152,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
             n_results=n_results,
             score_threshold=score_threshold,
             logger=self.logger,
-            n_results_mergin=n_results_mergin,
+            n_results_coef=n_results_coef,
         )
 
 
