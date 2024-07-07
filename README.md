@@ -12,9 +12,8 @@ Langrila is a useful tool to use API-based LLM in an easy way. This library put 
 
 # Contribution
 ## Coding policy
-1. Sticking to simplicity : This library is motivated by simplifying architecture for readability. Thus multiple inheriting and nested inheriting should be avoided as much as possible for basic modules at least.
-2. Making responsibility Independent : The responsibility of each module must be closed into each module itself. It means a module is not allowed to affect other modules.
-3. Implementing minimum modules : The more functions each module has, the more complex the source code becomes. Langrila focuses on implementing minimum necessary functions in each module.
+1. Sticking to simplicity : This library is motivated by simplifying architecture for readability. Thus too much abstraction should be avoided.
+2. Implementing minimum modules : The more functions each module has, the more complex the source code becomes. Langrila focuses on implementing minimum necessary functions in each module Basically module has only a responsibility expressed by thier module name and main function is implemented in a method easy to understand like `run()` or `arun()` methods except for some.
 
 ## Branch management rule
 - Topic branch are checkout from main branch.
