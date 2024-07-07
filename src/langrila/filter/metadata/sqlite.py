@@ -21,30 +21,45 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
             value = value[1:-1]  # Remove the double quotes
         return value
 
-    def _parse_in_clause(self, field, values):
+    def _parse_in_clause(self, field, values, expression):
         values = values.strip()[1:-1]  # Remove the surrounding parentheses
         value_list = [self._parse_value(v.strip()) for v in values.split(",")]
-        return [field, "IN", value_list]
+        return [field, expression, value_list]
 
-    def _parse_not_in_clause(self, field, values):
-        values = values.strip()[1:-1]  # Remove the surrounding parentheses
-        value_list = [self._parse_value(v.strip()) for v in values.split(",")]
-        return [field, "NOT IN", value_list]
+    def _replace_in_expression_and_append_clause(
+        self, expression: str, where_clause: str, stack: list
+    ):
+        clauses = re.findall(
+            r"\w+\s+{expression}\s+\([^)]*\)".format(expression=expression),
+            where_clause,
+            flags=re.IGNORECASE,
+        )
+
+        expression_ = expression.replace(" ", "_")
+        for clause in clauses:
+            where_clause = where_clause.replace(clause, f"{expression_}_CLAUSE_{len(stack)}")
+            stack.append(clause)
+
+        return where_clause, stack
+
+    def _replace_is_not_expression(self, expression: str, where_clause: str):
+        where_clause = where_clause.replace(expression, expression.replace(" ", "_"))
+        return where_clause
 
     def _parse_where_clause(self, where_clause: str) -> list[tuple[Any, str, Any]]:
         conditions = []
         stack = []
 
-        # Separate IN clause to distinguish brackets in IN clause from other brackets
-        not_in_clauses = re.findall(r"\w+\s+NOT IN\s+\([^)]*\)", where_clause, flags=re.IGNORECASE)
-        for not_in_clause in not_in_clauses:
-            where_clause = where_clause.replace(not_in_clause, f"NOT_IN_CLAUSE_{len(stack)}")
-            stack.append(not_in_clause)
+        # Separate typical clause to distinguish brackets in IN clause from other brackets
+        where_clause, stack = self._replace_in_expression_and_append_clause(
+            "NOT IN", where_clause, stack
+        )
+        where_clause, stack = self._replace_in_expression_and_append_clause(
+            "IN", where_clause, stack
+        )
 
-        in_clauses = re.findall(r"\w+\s+IN\s+\([^)]*\)", where_clause, flags=re.IGNORECASE)
-        for in_clause in in_clauses:
-            where_clause = where_clause.replace(in_clause, f"IN_CLAUSE_{len(stack)}")
-            stack.append(in_clause)
+        # Replace IS NOT expressions with IS_NOT
+        where_clause = self._replace_is_not_expression("IS NOT", where_clause)
 
         tokens = re.split(r"(\(|\)|\s+AND\s+|\s+OR\s+)", where_clause, flags=re.IGNORECASE)
         tokens = [token.strip() for token in tokens if token.strip()]
@@ -65,16 +80,22 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
                 in_match = re.match(r"(\w+)\s+IN\s+(\(.+\))", in_clause, re.IGNORECASE)
                 if in_match:
                     field, values = in_match.groups()
-                    conditions.append(self._parse_in_clause(field, values))
+                    conditions.append(self._parse_in_clause(field, values, "IN"))
             elif token.startswith("NOT_IN_CLAUSE_"):
                 index = int(token.split("_")[-1])
                 not_in_clause = stack[index]
                 not_in_match = re.match(r"(\w+)\s+NOT IN\s+(\(.+\))", not_in_clause, re.IGNORECASE)
                 if not_in_match:
                     field, values = not_in_match.groups()
-                    conditions.append(self._parse_not_in_clause(field, values))
+                    conditions.append(self._parse_in_clause(field, values, "NOT IN"))
+            elif "IS_NOT" in token:
+                field, value = token.split(" IS_NOT ")
+                value = self._parse_value(value)
+                conditions.append([field, "IS NOT", value])
             else:
-                match = re.match(r"(\w+)\s*(>=|<=|!=|<>|=|>|<|LIKE)\s*(.+)", token, re.IGNORECASE)
+                match = re.match(
+                    r"(\w+)\s*(>=|<=|!=|<>|=|==|>|<|LIKE|IS)\s*(.+)", token, re.IGNORECASE
+                )
                 if match:
                     field, operator, value = match.groups()
                     value = self._parse_value(value)
@@ -102,10 +123,16 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
                     if item_value is None:
                         result = False
                     else:
-                        if operator == "=":
-                            result = item_value == value
-                        elif operator == "!=" or operator == "<>":
-                            result = item_value != value
+                        if operator == "=" or operator == "==" or operator == "IS":
+                            if value.isdigit():
+                                result = float(item_value) == float(value)
+                            else:
+                                result = item_value == value
+                        elif operator == "!=" or operator == "<>" or operator == "IS NOT":
+                            if value.isdigit():
+                                result = float(item_value) != float(value)
+                            else:
+                                result = item_value != value
                         elif operator == ">":
                             if value.isdigit():
                                 result = float(item_value) > float(value)
