@@ -26,11 +26,21 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
         value_list = [self._parse_value(v.strip()) for v in values.split(",")]
         return [field, "IN", value_list]
 
+    def _parse_not_in_clause(self, field, values):
+        values = values.strip()[1:-1]  # Remove the surrounding parentheses
+        value_list = [self._parse_value(v.strip()) for v in values.split(",")]
+        return [field, "NOT IN", value_list]
+
     def _parse_where_clause(self, where_clause: str) -> list[tuple[Any, str, Any]]:
         conditions = []
         stack = []
 
         # Separate IN clause to distinguish brackets in IN clause from other brackets
+        not_in_clauses = re.findall(r"\w+\s+NOT IN\s+\([^)]*\)", where_clause, flags=re.IGNORECASE)
+        for not_in_clause in not_in_clauses:
+            where_clause = where_clause.replace(not_in_clause, f"NOT_IN_CLAUSE_{len(stack)}")
+            stack.append(not_in_clause)
+
         in_clauses = re.findall(r"\w+\s+IN\s+\([^)]*\)", where_clause, flags=re.IGNORECASE)
         for in_clause in in_clauses:
             where_clause = where_clause.replace(in_clause, f"IN_CLAUSE_{len(stack)}")
@@ -56,6 +66,13 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
                 if in_match:
                     field, values = in_match.groups()
                     conditions.append(self._parse_in_clause(field, values))
+            elif token.startswith("NOT_IN_CLAUSE_"):
+                index = int(token.split("_")[-1])
+                not_in_clause = stack[index]
+                not_in_match = re.match(r"(\w+)\s+NOT IN\s+(\(.+\))", not_in_clause, re.IGNORECASE)
+                if not_in_match:
+                    field, values = not_in_match.groups()
+                    conditions.append(self._parse_not_in_clause(field, values))
             else:
                 match = re.match(r"(\w+)\s*(>=|<=|!=|=|>|<|LIKE)\s*(.+)", token, re.IGNORECASE)
                 if match:
@@ -113,6 +130,11 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
                             pattern_split = re.compile(r",|、|\s|　")
                             values = pattern_split.split(value)
                             result = any([bool(re.search(v, item_value)) for v in values if v])
+                        elif operator == "NOT IN":
+                            pattern_split = re.compile(r",|、|\s|　")
+                            item_values = pattern_split.split(item_value)
+                            value = set(value)
+                            result = all([v not in value for v in item_values])
                         elif operator == "IN":
                             pattern_split = re.compile(r",|、|\s|　")
                             item_values = pattern_split.split(item_value)
