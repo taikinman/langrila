@@ -74,7 +74,7 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
                     field, values = not_in_match.groups()
                     conditions.append(self._parse_not_in_clause(field, values))
             else:
-                match = re.match(r"(\w+)\s*(>=|<=|!=|=|>|<|LIKE)\s*(.+)", token, re.IGNORECASE)
+                match = re.match(r"(\w+)\s*(>=|<=|!=|<>|=|>|<|LIKE)\s*(.+)", token, re.IGNORECASE)
                 if match:
                     field, operator, value = match.groups()
                     value = self._parse_value(value)
@@ -104,7 +104,7 @@ class SQLiteMetadataFilter(BaseMetadataFilter):
                     else:
                         if operator == "=":
                             result = item_value == value
-                        elif operator == "!=":
+                        elif operator == "!=" or operator == "<>":
                             result = item_value != value
                         elif operator == ">":
                             if value.isdigit():
