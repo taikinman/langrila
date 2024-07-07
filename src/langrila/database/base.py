@@ -1,3 +1,4 @@
+import asyncio
 import math
 import time
 from abc import ABC, abstractmethod
@@ -433,7 +434,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                 except Exception as e:
                     self.logger.error(f"Error: {e}")
                     n_retries += 1
-                    time.sleep(10)
+                    await asyncio.sleep(10)
 
                     if n_retries == 3:
                         raise e
