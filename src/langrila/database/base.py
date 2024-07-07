@@ -1,3 +1,4 @@
+import asyncio
 import math
 import time
 from abc import ABC, abstractmethod
@@ -329,7 +330,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         self,
         url: str,
         collection_name: str,
-        port: str = "6333",
+        port: str,
         embedder: BaseEmbeddingModule = None,
         logger: Any | None = None,
     ):
@@ -433,7 +434,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
                 except Exception as e:
                     self.logger.error(f"Error: {e}")
                     n_retries += 1
-                    time.sleep(10)
+                    await asyncio.sleep(10)
 
                     if n_retries == 3:
                         raise e
@@ -548,7 +549,7 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         self,
         url: str,
         collection_name: str,
-        port: str = "6333",
+        port: str,
         embedder: BaseEmbeddingModule = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
