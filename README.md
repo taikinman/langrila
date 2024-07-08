@@ -459,6 +459,44 @@ response.model_dump()
    'parts': ['What is the weather in New York on 2022-01-01?']}]}
 ```
 
+## Total token counting
+Total number of tokens can be summed for each models by `TokenCounter`. It's useful to see cost when multiple models are cooperatively working.
+
+```python
+from langrila import TokenCounter
+from langrila.openai import OpenAIChatModule
+
+# initialize shared token counter
+token_counter = TokenCounter()
+
+# For conventional model
+chat1 = OpenAIChatModule(
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="gpt-3.5-turbo-0125",
+    token_counter=token_counter,
+    # organization_id_env_name="ORGANIZATION_ID", # env variable name
+)
+
+chat2 = OpenAIChatModule(
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="gpt-4o-2024-05-13",
+    token_counter=token_counter,
+    # organization_id_env_name="ORGANIZATION_ID", # env variable name
+)
+
+
+prompt = "Please give me only one advice to improve the quality of my sleep."
+
+# generate response
+response1 = chat1.run(prompt)
+response1 = chat1.run(prompt) # second call to see summed token result
+response2 = chat2.run(prompt)
+
+print(token_counter)
+
+>>> {'gpt-3.5-turbo-0125': Usage(prompt_tokens=42, completion_tokens=61, total_tokens=103), 'gpt-4o-2024-05-13': Usage(prompt_tokens=21, completion_tokens=40, total_tokens=61)}
+```
+
 ## Conversation memory
 You can use 2 conversation memory modules by default named InMemoryConversationMemory and JSONConversationMemory. Additionally, langrila supports Cosmos DB and Amazon S3 to store conversation history.
 
