@@ -92,15 +92,15 @@ class TokenCounter(UserDict):
         super().__init__(tokens)
 
     def __add__(self, other: Usage):
-        if other.model_name not in self.data:
-            self.data[other.model_name] = Usage(model_name=other.model_name)
-        self.data[other.model_name] += other
-        return self
-
-    def __sub__(self, other: Usage):
-        if other.model_name not in self.data:
-            self.data[other.model_name] = Usage(model_name=other.model_name)
-        self.data[other.model_name] -= other
+        if other.model_name:
+            if other.model_name not in self.data:
+                self.data[other.model_name] = Usage(model_name=other.model_name)
+            self.data[other.model_name] += other
+        else:
+            model_name = "unknown_model"
+            if model_name not in self.data:
+                self.data[model_name] = Usage(model_name=model_name)
+            self.data[model_name] += other
         return self
 
     def __setitem__(self, model_name: str, usage: Usage):
