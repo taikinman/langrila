@@ -16,7 +16,7 @@ from ...base import (
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...result import FunctionCallingResults, ToolOutput
-from ...usage import Usage
+from ...usage import TokenCounter, Usage
 from ..gemini_utils import get_model
 from ..message import GeminiMessage
 
@@ -131,6 +131,7 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
 
         return FunctionCallingResults(
             usage=Usage(
+                model_name=self.model_name,
                 prompt_tokens=(model.count_tokens(messages)).total_tokens,
                 completion_tokens=(model.count_tokens(parts)).total_tokens,
             ),
@@ -160,6 +161,7 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
 
         return FunctionCallingResults(
             usage=Usage(
+                model_name=self.model_name,
                 prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
                 completion_tokens=(await model.count_tokens_async(parts)).total_tokens,
             ),
@@ -180,6 +182,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         timeout: int = 60,
         content_filter: Optional[BaseFilter] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
+        token_counter: Optional[TokenCounter] = None,
     ):
         function_calling_model = GeminiFunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
@@ -195,6 +198,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
             function_calling_model=function_calling_model,
             content_filter=content_filter,
             conversation_memory=conversation_memory,
+            token_counter=token_counter,
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:

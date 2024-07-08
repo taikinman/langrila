@@ -13,6 +13,7 @@ from .base import (
 )
 from .mixin import ConversationMixin, FilterMixin
 from .result import CompletionResults, FunctionCallingResults
+from .usage import TokenCounter
 
 
 class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
@@ -21,10 +22,12 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         chat_model: BaseChatModule,
         conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
+        token_counter: Optional[TokenCounter] = None,
     ):
         self.chat_model = chat_model
         self.conversation_memory = conversation_memory
         self.content_filter = content_filter
+        self.token_counter = token_counter
         self._INIT_STATUS = False
 
     @abstractmethod
@@ -52,6 +55,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             messages = self.content_filter.apply(messages)
 
         response = self.chat_model.run(messages)
+
+        if self.token_counter is not None:
+            self.token_counter += response.usage
 
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
@@ -84,6 +90,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             messages = self.content_filter.apply(messages)
 
         response = await self.chat_model.arun(messages)
+
+        if self.token_counter is not None:
+            self.token_counter += response.usage
 
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
@@ -126,6 +135,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             else:
                 raise AssertionError
 
+        if self.token_counter is not None:
+            self.token_counter += chunk.usage
+
         messages.append(chunk.message)
 
         if self.conversation_memory is not None:
@@ -161,6 +173,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             else:
                 raise AssertionError
 
+        if self.token_counter is not None:
+            self.token_counter += chunk.usage
+
         messages.append(chunk.message)
 
         if self.conversation_memory is not None:
@@ -173,10 +188,12 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         function_calling_model: BaseFunctionCallingModule,
         conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
+        token_counter: Optional[TokenCounter] = None,
     ):
         self.function_calling_model = function_calling_model
         self.conversation_memory = conversation_memory
         self.content_filter = content_filter
+        self.token_counter = token_counter
         self._INIT_STATUS = False
 
     @abstractmethod
@@ -203,6 +220,9 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
             messages = self.apply_content_filter(messages)
 
         response = self.function_calling_model.run(messages, **kwargs)
+
+        if self.token_counter is not None:
+            self.token_counter += response.usage
 
         if self.content_filter is not None:
             for i, _ in enumerate(response.results):
@@ -240,6 +260,9 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
             messages = self.apply_content_filter(messages)
 
         response = await self.function_calling_model.arun(messages, **kwargs)
+
+        if self.token_counter is not None:
+            self.token_counter += response.usage
 
         if self.content_filter is not None:
             for i, _ in enumerate(response.results):

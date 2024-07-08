@@ -14,7 +14,7 @@ from ...base import (
 )
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
-from ...usage import Usage
+from ...usage import TokenCounter, Usage
 from ...utils import make_batch
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
@@ -181,7 +181,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             **self.additional_inputs,
         )
 
-        usage = Usage()
+        usage = Usage(model_name=self.model_name)
         usage += response.usage
         response_message = response.choices[0].message.content.strip("\n")
         return CompletionResults(
@@ -226,7 +226,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             **self.additional_inputs,
         )
 
-        usage = Usage()
+        usage = Usage(model_name=self.model_name)
         usage += response.usage
         response_message = response.choices[0].message.content.strip("\n")
         return CompletionResults(
@@ -280,13 +280,14 @@ class OpenAIChatCoreModule(BaseChatModule):
                     if chunk is not None:
                         response_message["content"] += chunk
                         yield CompletionResults(
-                            usage=Usage(),
+                            usage=Usage(model_name=self.model_name),
                             message=response_message,
                             prompt=[{}],
                         )
                     else:
                         # at the end of stream, return the whole message and usage
                         usage = Usage(
+                            model_name=self.model_name,
                             prompt_tokens=sum(
                                 [get_n_tokens(m, self.model_name)["total"] for m in messages]
                             ),
@@ -346,13 +347,14 @@ class OpenAIChatCoreModule(BaseChatModule):
                     if chunk is not None:
                         response_message["content"] += chunk
                         yield CompletionResults(
-                            usage=Usage(),
+                            usage=Usage(model_name=self.model_name),
                             message=response_message,
                             prompt=[{}],
                         )
                     else:
                         # at the end of stream, return the whole message and usage
                         usage = Usage(
+                            model_name=self.model_name,
                             prompt_tokens=sum(
                                 [get_n_tokens(m, self.model_name)["total"] for m in messages]
                             ),
@@ -386,6 +388,7 @@ class OpenAIChatModule(ChatWrapperModule):
         content_filter: Optional[BaseFilter] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
         system_instruction: str | None = None,
+        token_counter: TokenCounter | None = None,
     ):
         if model_name in MODEL_POINT.keys():
             print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
@@ -430,6 +433,7 @@ class OpenAIChatModule(ChatWrapperModule):
             chat_model=chat_model,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
+            token_counter=token_counter,
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:
