@@ -13,7 +13,7 @@ from ...base import (
 )
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
-from ...usage import Usage
+from ...usage import TokenCounter, Usage
 from ..gemini_utils import get_model
 from ..message import GeminiMessage
 
@@ -54,6 +54,7 @@ class GeminiChatCoreModule(BaseChatModule):
         return CompletionResults(
             message={"role": content.role, "parts": [content.parts[0].text]},
             usage=Usage(
+                model_name=self.model_name,
                 prompt_tokens=model.count_tokens(messages).total_tokens,
                 completion_tokens=model.count_tokens(content.parts).total_tokens,
             ),
@@ -71,6 +72,7 @@ class GeminiChatCoreModule(BaseChatModule):
         return CompletionResults(
             message={"role": content.role, "parts": [content.parts[0].text]},
             usage=Usage(
+                model_name=self.model_name,
                 prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
                 completion_tokens=(await model.count_tokens_async(content.parts)).total_tokens,
             ),
@@ -93,7 +95,7 @@ class GeminiChatCoreModule(BaseChatModule):
             entire_response_texts.extend([content.parts[0].text])
             result = CompletionResults(
                 message={"role": content.role, "parts": ["".join(entire_response_texts)]},
-                usage=Usage(),
+                usage=Usage(model_name=self.model_name),
                 prompt="",
             )
 
@@ -104,6 +106,7 @@ class GeminiChatCoreModule(BaseChatModule):
         yield CompletionResults(
             message={"role": content.role, "parts": [entire_response_texts]},
             usage=Usage(
+                model_name=self.model_name,
                 prompt_tokens=model.count_tokens(messages).total_tokens,
                 completion_tokens=model.count_tokens(entire_response_texts).total_tokens,
             ),
@@ -126,7 +129,7 @@ class GeminiChatCoreModule(BaseChatModule):
             entire_response_texts.extend([content.parts[0].text])
             result = CompletionResults(
                 message={"role": content.role, "parts": ["".join(entire_response_texts)]},
-                usage=Usage(),
+                usage=Usage(model_name=self.model_name),
                 prompt="",
             )
 
@@ -137,6 +140,7 @@ class GeminiChatCoreModule(BaseChatModule):
         yield CompletionResults(
             message={"role": content.role, "parts": [entire_response_texts]},
             usage=Usage(
+                model_name=self.model_name,
                 prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
                 completion_tokens=(
                     await model.count_tokens_async(entire_response_texts)
@@ -157,6 +161,7 @@ class GeminiChatModule(ChatWrapperModule):
         content_filter: Optional[BaseFilter] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
         system_instruction: str | None = None,
+        token_counter: TokenCounter | None = None,
     ):
         chat_model = GeminiChatCoreModule(
             api_key_env_name=api_key_env_name,
@@ -171,6 +176,7 @@ class GeminiChatModule(ChatWrapperModule):
             chat_model=chat_model,
             content_filter=content_filter,
             conversation_memory=conversation_memory,
+            token_counter=token_counter,
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:

@@ -74,7 +74,7 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
             text = [text]
 
         embeddings = []
-        total_usage = Usage()
+        total_usage = Usage(model_name=self.model_name)
         for batch in make_batch(text, batch_size=self.batch_size):
             response = embedder.create(input=batch, model=self.model_name, **self.additional_params)
             embeddings.extend([e.embedding for e in response.data])
@@ -105,7 +105,7 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
             text = [text]
 
         embeddings = []
-        total_usage = Usage()
+        total_usage = Usage(model_name=self.model_name)
         for batch in make_batch(text, batch_size=self.batch_size):
             response = await embedder.create(
                 input=batch, model=self.model_name, **self.additional_params

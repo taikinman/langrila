@@ -7,6 +7,8 @@ from typing import Any, Optional
 
 from tqdm import tqdm
 
+from langrila import Usage
+
 from ..base import BaseEmbeddingModule
 from ..logger import DefaultLogger
 from ..result import EmbeddingResults, RetrievalResults
@@ -539,7 +541,7 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
             **kwargs,
         )
 
-        retrieved.usage += embed.usage
+        retrieved.usage = embed.usage  # override
 
         return retrieved
 
@@ -581,6 +583,6 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
             **kwargs,
         )
 
-        retrieved.usage += embed.usage
+        retrieved.usage = embed.usage  # override
 
         return retrieved

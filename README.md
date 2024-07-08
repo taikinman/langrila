@@ -162,8 +162,10 @@ response = await chat.arun(prompt)
 response.model_dump()
 
 >>> {'message': {'role': 'assistant',
-  'content': 'Establish a consistent bedtime routine and stick to it every night, including going to bed and waking up at the same time each day.'},
- 'usage': {'prompt_tokens': 21, 'completion_tokens': 26},
+  'content': "Establish a consistent bedtime routine and stick to it every night, even on weekends. This will help signal to your body that it's time to wind down and prepare for sleep."},
+ 'usage': {'model_name': 'gpt-3.5-turbo-0125',
+  'prompt_tokens': 21,
+  'completion_tokens': 35},
  'prompt': [{'role': 'user',
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
@@ -203,8 +205,10 @@ response = await chat.arun(prompt)
 response.model_dump()
 
 >>> {'message': {'role': 'model',
-  'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at the same time every day, even on weekends.** \n']},
- 'usage': {'prompt_tokens': 15, 'completion_tokens': 26},
+  'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at roughly the same time each day, even on weekends.** \n']},
+ 'usage': {'model_name': 'gemini-1.5-flash',
+  'prompt_tokens': 15,
+  'completion_tokens': 27},
  'prompt': [{'role': 'user',
    'parts': ['Please give me only one advice to improve the quality of my sleep.']}]}
 ```
@@ -263,7 +267,9 @@ response = chat.run(prompt)
 response.model_dump()
 
 >>> {'message': {'role': 'assistant', 'content': 'Yes.'},
- 'usage': {'prompt_tokens': 36, 'completion_tokens': 2},
+ 'usage': {'model_name': 'gpt-3.5-turbo-0125',
+  'prompt_tokens': 36,
+  'completion_tokens': 2},
  'prompt': [{'role': 'user',
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
@@ -377,14 +383,15 @@ response = await function_calling.arun("What is the weather in New York on 2022-
 # show result
 response.model_dump()
 
->>> {'usage': {'prompt_tokens': 72, 'completion_tokens': 24},
- 'results': [{'call_id': 'call_Yg5mU4wLX6nFkgVnlEaMp1mC',
+>>> {'usage': {'model_name': 'gpt-3.5-turbo-0125',
+  'prompt_tokens': 72,
+  'completion_tokens': 24},
+ 'results': [{'call_id': 'call_pE7xySesEtGi7FSuTZYR8yMT',
    'funcname': 'get_weather',
    'args': '{"city":"New York","date":"2022-01-01"}',
    'output': 'The weather in New York on 2022-01-01 is sunny.'}],
  'prompt': [{'role': 'user',
    'content': 'What is the weather in New York on 2022-01-01?'}]}
-
 ```
 
 ### For Azure
@@ -441,13 +448,53 @@ response = await function_calling.arun(prompt)
 # show result
 response.model_dump()
 
->>> {'usage': {'prompt_tokens': 21, 'completion_tokens': 30},
+>>> {'usage': {'model_name': 'gemini-1.5-flash',
+  'prompt_tokens': 21,
+  'completion_tokens': 30},
  'results': [{'call_id': None,
    'funcname': 'get_weather',
    'args': '{"date": "2022-01-01", "city": "New York"}',
    'output': 'The weather in New York on 2022-01-01 is sunny.'}],
  'prompt': [{'role': 'user',
    'parts': ['What is the weather in New York on 2022-01-01?']}]}
+```
+
+## Total token counting
+Total number of tokens can be summed for each models by `TokenCounter`. It's useful to see cost when multiple models are cooperatively working.
+
+```python
+from langrila import TokenCounter
+from langrila.openai import OpenAIChatModule
+
+# initialize shared token counter
+token_counter = TokenCounter()
+
+# For conventional model
+chat1 = OpenAIChatModule(
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="gpt-3.5-turbo-0125",
+    token_counter=token_counter,
+    # organization_id_env_name="ORGANIZATION_ID", # env variable name
+)
+
+chat2 = OpenAIChatModule(
+    api_key_env_name="API_KEY",  # env variable name
+    model_name="gpt-4o-2024-05-13",
+    token_counter=token_counter,
+    # organization_id_env_name="ORGANIZATION_ID", # env variable name
+)
+
+
+prompt = "Please give me only one advice to improve the quality of my sleep."
+
+# generate response
+response1 = chat1.run(prompt)
+response1 = chat1.run(prompt) # second call to see summed token result
+response2 = chat2.run(prompt)
+
+print(token_counter)
+
+>>> {'gpt-3.5-turbo-0125': Usage(prompt_tokens=42, completion_tokens=61, total_tokens=103), 'gpt-4o-2024-05-13': Usage(prompt_tokens=21, completion_tokens=40, total_tokens=61)}
 ```
 
 ## Conversation memory
@@ -476,7 +523,9 @@ response.model_dump()
 
 >>> {'message': {'role': 'assistant',
   'content': 'Yes, Rude is a character in Final Fantasy 7. He is a member of the Turks, a group of elite operatives working for the Shinra Electric Power Company. Rude is known for his calm and collected demeanor, as well as his impressive physical strength. He often works alongside his partner, Reno, and is skilled in hand-to-hand combat.'},
- 'usage': {'prompt_tokens': 22, 'completion_tokens': 72},
+ 'usage': {'model_name': 'gpt-3.5-turbo-0125',
+  'prompt_tokens': 22,
+  'completion_tokens': 72},
  'prompt': [{'role': 'user',
    'content': 'Do you know Rude who is the character in Final Fantasy 7.'}]}
 
@@ -488,8 +537,10 @@ response = chat.run(message)
 response.model_dump()
 
 >>> {'message': {'role': 'assistant',
-  'content': "In Final Fantasy 7, Rude is shown to have a respectful and professional relationship with Tifa Lockhart, one of the main protagonists of the game. While Rude is a member of the Turks and initially opposes Tifa and her allies, he does not harbor any personal animosity towards her. In fact, there are moments in the game where Rude shows a sense of admiration for Tifa's strength and determination. Overall, Rude's interactions with Tifa are characterized by mutual respect and a sense of professionalism."},
- 'usage': {'prompt_tokens': 110, 'completion_tokens': 106},
+  'content': "In Final Fantasy 7, Rude is shown to have a crush on Tifa Lockhart, one of the main protagonists of the game. He admires her strength and beauty, and is often seen blushing or acting shy around her. Despite being a member of the Turks and having conflicting interests with Tifa and her friends, Rude's feelings for her show a more human and compassionate side to his character."},
+ 'usage': {'model_name': 'gpt-3.5-turbo-0125',
+  'prompt_tokens': 110,
+  'completion_tokens': 84},
  'prompt': [{'role': 'user',
    'content': 'Do you know Rude who is the character in Final Fantasy 7.'},
   {'role': 'assistant',
@@ -554,7 +605,9 @@ results.model_dump()
    0.010305874049663544,
    0.019127702340483665,
    ...]],
- 'usage': {'prompt_tokens': 14, 'completion_tokens': 0}}
+ 'usage': {'model_name': 'text-embedding-3-large',
+  'prompt_tokens': 14,
+  'completion_tokens': 0}}
 ```
 
 ## PromptTemplate

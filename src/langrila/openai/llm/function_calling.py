@@ -14,7 +14,7 @@ from ...base import (
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...mixin import ConversationMixin, FilterMixin
 from ...result import FunctionCallingResults, ToolOutput
-from ...usage import Usage
+from ...usage import TokenCounter, Usage
 from ...utils import make_batch
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
@@ -204,7 +204,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             **self.additional_inputs,
         )
 
-        usage = Usage()
+        usage = Usage(model_name=self.model_name)
         usage += response.usage
 
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():
@@ -287,7 +287,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             **self.additional_inputs,
         )
 
-        usage = Usage()
+        usage = Usage(model_name=self.model_name)
         usage += response.usage
 
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():
@@ -357,6 +357,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         content_filter: Optional[BaseFilter] = None,
         system_instruction: Optional[str] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
+        token_counter: Optional[TokenCounter] = None,
     ) -> None:
         if model_name in MODEL_POINT.keys():
             print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
@@ -404,6 +405,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             function_calling_model=function_calling_model,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
+            token_counter=token_counter,
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:
