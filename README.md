@@ -185,6 +185,7 @@ chat = OpenAIChatModule(
 
 ### For Gemini
 You can use gemini in the same interface.
+
 ```python
 from langrila.gemini import GeminiChatModule
 
@@ -204,13 +205,55 @@ response = await chat.arun(prompt)
 # show result
 response.model_dump()
 
->>> {'message': {'role': 'model',
-  'parts': ['**Establish a consistent sleep schedule, going to bed and waking up at roughly the same time each day, even on weekends.** \n']},
+>>> {'message': parts {
+   text: "**Establish a consistent sleep schedule, going to bed and waking up at the same time every day, even on weekends.** \n"
+ }
+ role: "model",
  'usage': {'model_name': 'gemini-1.5-flash',
   'prompt_tokens': 15,
-  'completion_tokens': 27},
- 'prompt': [{'role': 'user',
-   'parts': ['Please give me only one advice to improve the quality of my sleep.']}]}
+  'completion_tokens': 26},
+ 'prompt': [parts {
+    text: "Please give me only one advice to improve the quality of my sleep."
+  }
+  role: "user"]}
+```
+
+### For Gemini on VertexAI
+You can also run gemini on VertexAI with a few additional arguments instead of `api_key_env_name`.
+
+```python
+from langrila.gemini import GeminiChatModule
+
+chat = GeminiChatModule(
+    # api_key_env_name="GEMINI_API_KEY",
+    api_type="vertexai",
+    project_id_env_name="PROJECT_ID",
+    location_env_name="LOCATION",
+    model_name="gemini-1.5-flash",
+)
+
+prompt = "Please give me only one advice to improve the quality of my sleep."
+
+# synchronous processing
+response = chat.run(prompt)
+
+# asynchronous processing
+response = await chat.arun(prompt)
+
+# show result
+response.model_dump()
+
+>>> {'message': role: "model"
+ parts {
+   text: "**Establish a consistent sleep schedule, going to bed and waking up at the same time every day, even on weekends.** \n"
+ },
+ 'usage': {'model_name': 'gemini-1.5-flash',
+  'prompt_tokens': 14,
+  'completion_tokens': 26},
+ 'prompt': [role: "user"
+  parts {
+    text: "Please give me only one advice to improve the quality of my sleep."
+  }]}
 ```
 
 ## Vision model
@@ -239,11 +282,13 @@ chat = GeminiChatModule(
     model_name="gemini-1.5-flash",
 )
 
-response = await chat.arun(prompt, images=image) # or response = await chat.arun(prompt, images=image)
+response = chat.run(prompt, images=image) # or response = await chat.arun(prompt, images=image)
 
 # show result
 response.model_dump()
 ```
+
+Gemini on VertexAI has the same interface above.
 
 ## System instruction
 You can pass system instruction to llm like below:
@@ -274,21 +319,6 @@ response.model_dump()
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
 
-
-## Batch processing
-For optimization, you can process multiple prompts as batches.
-
-```python
-prompts = [
-    "Please give me only one advice to improve the quality of my sleep.", 
-    "Please give me only one advice to improve my memory.",
-    "Please give me only one advice on how to make exercise a habit.",
-    "Please give me only one advice to help me not get bored with things so quickly." 
-            ]
-
-await chat.abatch_run(prompts, batch_size=4)
-```
-
 ## Stream
 ### For OpenAI
 ```python
@@ -306,8 +336,8 @@ list(response)
 
 
 # For async process
-response = chat.astream(prompt)
-[r async for r in response]
+# response = chat.astream(prompt)
+# [r async for r in response]
 
 >>> [CompletionResults(message={'role': 'assistant', 'content': ''}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
  CompletionResults(message={'role': 'assistant', 'content': 'Establish'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
@@ -338,60 +368,158 @@ response = model_chat.stream(prompt)
 list(response)
 
 # For async process
-response = model_chat.astream(prompt)
-[r async for r in response]
+# response = model_chat.astream(prompt)
+# [r async for r in response]
 
 
->>> [CompletionResults(message={'role': 'model', 'parts': ['**']}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
- CompletionResults(message={'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time']}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
- CompletionResults(message={'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time each day, even on weekends.** \n']}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
- CompletionResults(message={'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time each day, even on weekends.** \n']}, usage=Usage(prompt_tokens=15, completion_tokens=26, total_tokens=41), prompt=[{'role': 'user', 'parts': ['Please give me only one advice to improve the quality of my sleep.']}, {'role': 'model', 'parts': ['**Establish a consistent sleep schedule, going to bed and waking up around the same time each day, even on weekends.** \n']}])]
+>>> [CompletionResults(message=parts {
+   text: "**"
+ }
+ role: "model"
+ , usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
+ CompletionResults(message=parts {
+   text: "**Establish a consistent sleep schedule, going to bed and waking up at the same time"
+ }
+ role: "model"
+ , usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
+ CompletionResults(message=parts {
+   text: "**Establish a consistent sleep schedule, going to bed and waking up at the same time every day, even on weekends.** \n"
+ }
+ role: "model"
+ , usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=''),
+ CompletionResults(message=parts {
+   text: "**Establish a consistent sleep schedule, going to bed and waking up at the same time every day, even on weekends.** \n"
+ }
+ role: "model"
+ , usage=Usage(prompt_tokens=15, completion_tokens=26, total_tokens=41), prompt=[parts {
+   text: "Please give me only one advice to improve the quality of my sleep."
+ }
+ role: "user"
+ ])]
 ```
 
 ## Function Calling
+
+Now we use these functions.
+
+```python
+def power_disco_ball(power: bool) -> bool:
+    """Powers the spinning disco ball."""
+    return f"Disco ball is {'spinning!' if power else 'stopped.'}"
+
+
+def start_music(energetic: bool, loud: bool, bpm: int) -> str:
+    """Play some music matching the specified parameters.
+
+    Args:
+      energetic: Whether the music is energetic or not.
+      loud: Whether the music is loud or not.
+      bpm: The beats per minute of the music.
+
+    Returns: The name of the song being played.
+    """
+    return f"Starting music! {energetic=} {loud=}, {bpm=}"
+
+
+def dim_lights(brightness: float) -> bool:
+    """Dim the lights.
+
+    Args:
+      brightness: The brightness of the lights, 0.0 is off, 1.0 is full.
+    """
+    return f"Lights are now set to {brightness:.0%}"
+```
+
 ### For OpenAI
 ```python
 from langrila.openai import OpenAIFunctionCallingModule, ToolConfig, ToolParameter, ToolProperty
 
-
-def get_weather(city: str, date: str) -> str:
-    return f"The weather in {city} on {date} is sunny."
-
-
-tool_config = ToolConfig(
-    name="get_weather",
-    description="Get weather at current location.",
-    parameters=ToolParameter(
-        properties=[
-            ToolProperty(name="city", type="string", description="City name"),
-            ToolProperty(name="date", type="string", description="Date"),
-        ],
-        required=["city", "date"],
+tool_configs = [
+    ToolConfig(
+        name="power_disco_ball",
+        description="Powers the spinning disco ball.",
+        parameters=ToolParameter(
+            properties=[
+                ToolProperty(
+                    name="power",
+                    type="boolean",
+                    description="Boolean to spin disco ball.",
+                ),
+            ],
+            required=["power"],
+        ),
     ),
-)
-
+    ToolConfig(
+        name="start_music",
+        description="Play some music matching the specified parameters.",
+        parameters=ToolParameter(
+            properties=[
+                ToolProperty(
+                    name="energetic",
+                    type="boolean",
+                    description="Whether the music is energetic or not.",
+                ),
+                ToolProperty(
+                    name="loud", type="boolean", description="Whether the music is loud or not."
+                ),
+                ToolProperty(
+                    name="bpm", type="number", description="The beats per minute of the music."
+                ),
+            ],
+            required=["energetic", "loud", "bpm"],
+        ),
+    ),
+    ToolConfig(
+        name="dim_lights",
+        description="Dim the lights.",
+        parameters=ToolParameter(
+            properties=[
+                ToolProperty(
+                    name="brightness",
+                    type="number",
+                    description="The brightness of the lights, 0.0 is off, 1.0 is full.",
+                ),
+            ],
+            required=["brightness"],
+        ),
+    ),
+]
 
 function_calling = OpenAIFunctionCallingModule(
     api_key_env_name="API_KEY",
-    model_name="gpt-3.5-turbo-0125",
-    tools=[get_weather],
-    tool_configs=[tool_config],
+    model_name="gpt-4o-2024-05-13",
+    tools=[power_disco_ball, start_music, dim_lights],
+    tool_configs=tool_configs,
 )
 
-response = await function_calling.arun("What is the weather in New York on 2022-01-01?")
+prompt = "Turn this place into a party!"
+response = await function_calling.arun(
+    prompt,
+    # If you want to use a specific tool, you can specify it here
+    # tool_choice="power_disco_ball",
+)
 
-# show result
+# Show result
 response.model_dump()
 
->>> {'usage': {'model_name': 'gpt-3.5-turbo-0125',
-  'prompt_tokens': 72,
-  'completion_tokens': 24},
- 'results': [{'call_id': 'call_pE7xySesEtGi7FSuTZYR8yMT',
-   'funcname': 'get_weather',
-   'args': '{"city":"New York","date":"2022-01-01"}',
-   'output': 'The weather in New York on 2022-01-01 is sunny.'}],
+>>> {'usage': {'model_name': 'gpt-4o-2024-05-13',
+  'prompt_tokens': 158,
+  'completion_tokens': 75},
+ 'results': [{'call_id': 'call_JihPSqJEgAXZqExPMaWTGT60',
+   'funcname': 'power_disco_ball',
+   'args': '{"power": true}',
+   'output': 'Disco ball is spinning!'},
+  {'call_id': 'call_BS2IksJBeLkTgt7qghgH5lPt',
+   'funcname': 'start_music',
+   'args': '{"energetic": true, "loud": true, "bpm": 120}',
+   'output': 'Starting music! energetic=True loud=True, bpm=120'},
+  {'call_id': 'call_XELGql9jojBILNkH4JVtZUu9',
+   'funcname': 'dim_lights',
+   'args': '{"brightness": 0.3}',
+   'output': 'Lights are now set to 30%'}],
  'prompt': [{'role': 'user',
-   'content': 'What is the weather in New York on 2022-01-01?'}]}
+   'content': 'Turn this place into a party!',
+   'name': None}]}
 ```
 
 ### For Azure
@@ -400,7 +528,7 @@ Basically same interface with For OpenAI.
 ```python
 function_calling = OpenAIFunctionCallingModule(
             api_key_env_name = "AZURE_API_KEY", # env variable name
-            model_name="gpt-3.5-turbo-0125",
+            model_name="gpt-4o-2024-05-13",
             api_type="azure", 
             api_version="2024-05-01-preview",
             endpoint_env_name="ENDPOINT", # env variable name
@@ -416,47 +544,115 @@ function_calling = OpenAIFunctionCallingModule(
 For Gemini, only things you have to do is to replace module.
 
 ```python
-from langrila.gemini import GeminiFunctionCallingModule, ToolConfig, ToolParameter, ToolProperty
+from langrila.gemini import GeminiFunctionCallingModule
+from langrila.gemini.genai.tools import ToolConfig, ToolParameter, ToolProperty
 
-
-def get_weather(city: str, date: str) -> str:
-    return f"The weather in {city} on {date} is sunny."
-
-
-tool_config = ToolConfig(
-    name="get_weather",
-    description="Get weather at current location.",
-    parameters=ToolParameter(
-        properties=[
-            ToolProperty(name="city", type="string", description="City name"),
-            ToolProperty(name="date", type="string", description="Date"),
-        ],
-        required=["city", "date"],
+# tool_configs is the same as that of OpenAI
+tool_configs = [
+    ToolConfig(
+        name="power_disco_ball",
+        description="Powers the spinning disco ball.",
+        parameters=ToolParameter(
+            properties=[
+                ToolProperty(
+                    name="power",
+                    type="boolean",
+                    description="Boolean to spin disco ball.",
+                ),
+            ],
+            required=["power"],
+        ),
     ),
-)
+    ToolConfig(
+        name="start_music",
+        description="Play some music matching the specified parameters.",
+        parameters=ToolParameter(
+            properties=[
+                ToolProperty(
+                    name="energetic",
+                    type="boolean",
+                    description="Whether the music is energetic or not.",
+                ),
+                ToolProperty(
+                    name="loud", type="boolean", description="Whether the music is loud or not."
+                ),
+                ToolProperty(
+                    name="bpm", type="number", description="The beats per minute of the music."
+                ),
+            ],
+            required=["energetic", "loud", "bpm"],
+        ),
+    ),
+    ToolConfig(
+        name="dim_lights",
+        description="Dim the lights.",
+        parameters=ToolParameter(
+            properties=[
+                ToolProperty(
+                    name="brightness",
+                    type="number",
+                    description="The brightness of the lights, 0.0 is off, 1.0 is full.",
+                ),
+            ],
+            required=["brightness"],
+        ),
+    ),
+]
 
 function_calling = GeminiFunctionCallingModule(
     api_key_env_name="GEMINI_API_KEY",
     model_name="gemini-1.5-flash",
-    tools=[get_weather],
-    tool_configs=[tool_config],
+    tools=[power_disco_ball, start_music, dim_lights],
+    tool_configs=tool_configs,
 )
 
-prompt = "What is the weather in New York on 2022-01-01?"
-response = await function_calling.arun(prompt)
+prompt = "Turn this place into a party!"
+response = await function_calling.arun(
+    prompt,
+    # If you want to use a specific tool, you can specify it here
+    # tool_choice=["power_disco_ball"],
+)
 
 # show result
 response.model_dump()
 
 >>> {'usage': {'model_name': 'gemini-1.5-flash',
-  'prompt_tokens': 21,
-  'completion_tokens': 30},
+  'prompt_tokens': 8,
+  'completion_tokens': 58},
  'results': [{'call_id': None,
-   'funcname': 'get_weather',
-   'args': '{"date": "2022-01-01", "city": "New York"}',
-   'output': 'The weather in New York on 2022-01-01 is sunny.'}],
- 'prompt': [{'role': 'user',
-   'parts': ['What is the weather in New York on 2022-01-01?']}]}
+   'funcname': 'power_disco_ball',
+   'args': '{"power": true}',
+   'output': 'Disco ball is spinning!'},
+  {'call_id': None,
+   'funcname': 'start_music',
+   'args': '{"loud": true, "energetic": true, "bpm": 120.0}',
+   'output': 'Starting music! energetic=True loud=True, bpm=120.0'},
+  {'call_id': None,
+   'funcname': 'dim_lights',
+   'args': '{"brightness": 0.5}',
+   'output': 'Lights are now set to 50%'}],
+ 'prompt': [parts {
+    text: "Turn this place into a party!"
+  }
+  role: "user"]}
+```
+
+For VertexAI, things you only do is to replace genai modules with vertexai modules and then pass a few additional arguments instead of `api_key_env_name` as well as `GeminiChatModule`. Here is an instruction.
+
+```python
+# from langrila.gemini.genai.tools import ToolConfig, ToolParameter, ToolProperty
+from langrila.gemini.vertexai.tools import ToolConfig, ToolParameter, ToolProperty
+
+function_calling = GeminiFunctionCallingModule(
+    # api_key_env_name="GEMINI_API_KEY",
+    api_type="vertexai",
+    project_id_env_name="PROJECT_ID",
+    location_env_name="LOCATION",
+    model_name="gemini-1.5-flash",
+    tools=[power_disco_ball, start_music, dim_lights],
+    tool_configs=tool_configs,
+)
+
 ```
 
 ## Total token counting
@@ -547,6 +743,8 @@ response.model_dump()
    'content': 'Yes, Rude is a character in Final Fantasy 7. He is a member of the Turks, a group of elite operatives working for the Shinra Electric Power Company. Rude is known for his calm and collected demeanor, as well as his impressive physical strength. He often works alongside his partner, Reno, and is skilled in hand-to-hand combat.'},
   {'role': 'user', 'content': 'What does he think about Tifa?'}]}
 ```
+
+`OpenAIFunctionCallingModule`, `GeminiChatModule` and `GeminiFunctionCallingModule` also allow you to save conversation in JSON format.
 
 ### Conversation memory with Cosmos DB
 ```python

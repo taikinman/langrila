@@ -1,21 +1,130 @@
-import os
-from typing import Optional
+from typing import Any, Sequence
 
-import google.generativeai as genai
-from google.generativeai.types.content_types import ContentType, FunctionLibraryType, ToolConfigType
+from google.auth import credentials as auth_credentials
 
 
 def get_model(
     model_name: str,
-    api_key_env_name: str,
-    system_instruction: Optional[ContentType] = None,
-    tools: Optional[FunctionLibraryType] = None,
-    tool_config: Optional[ToolConfigType] = None,
+    max_output_tokens: int = 2048,
+    json_mode: bool = False,
+    api_key_env_name: str | None = None,
+    api_type: str = "gemini",
+    project_id_env_name: str | None = None,
+    location_env_name: str | None = None,
+    system_instruction: str | None = None,
+    experiment: str | None = None,
+    experiment_description: str | None = None,
+    experiment_tensorboard: str | bool | None = None,
+    staging_bucket: str | None = None,
+    credentials: auth_credentials.Credentials | None = None,
+    encryption_spec_key_name: str | None = None,
+    network: str | None = None,
+    service_account: str | None = None,
+    endpoint_env_name: str | None = None,
+    request_metadata: Sequence[tuple[str, str]] | None = None,
 ):
-    genai.configure(api_key=os.getenv(api_key_env_name))
-    return genai.GenerativeModel(
-        model_name=model_name,
-        tools=tools,
-        tool_config=tool_config,
-        system_instruction=system_instruction,
-    )
+    if api_type == "genai":
+        from .genai.client import get_genai_model
+
+        return get_genai_model(
+            model_name=model_name,
+            api_key_env_name=api_key_env_name,
+            system_instruction=system_instruction,
+            max_output_tokens=max_output_tokens,
+            json_mode=json_mode,
+        )
+    elif api_type == "vertexai":
+        from .vertexai.client import get_vertexai_model
+
+        return get_vertexai_model(
+            model_name=model_name,
+            max_output_tokens=max_output_tokens,
+            system_instruction=system_instruction,
+            json_mode=json_mode,
+            project_id_env_name=project_id_env_name,
+            location_env_name=location_env_name,
+            experiment=experiment,
+            experiment_description=experiment_description,
+            experiment_tensorboard=experiment_tensorboard,
+            staging_bucket=staging_bucket,
+            credentials=credentials,
+            encryption_spec_key_name=encryption_spec_key_name,
+            network=network,
+            service_account=service_account,
+            endpoint_env_name=endpoint_env_name,
+            request_metadata=request_metadata,
+        )
+    else:
+        raise ValueError(f"Unknown API type: {api_type}")
+
+
+def get_message_cls(api_type: str):
+    if api_type == "genai":
+        from .genai.message import GeminiMessage
+
+        return GeminiMessage
+    elif api_type == "vertexai":
+        from .vertexai.message import VertexAIMessage
+
+        return VertexAIMessage
+    else:
+        raise ValueError(f"Unknown API type: {api_type}")
+
+
+def get_tool_cls(api_type: str):
+    if api_type == "genai":
+        from google.generativeai.protos import Tool
+
+        return Tool
+
+    elif api_type == "vertexai":
+        from vertexai.generative_models import Tool
+
+        return Tool
+    else:
+        raise ValueError(f"Unknown API type: {api_type}")
+
+
+def get_call_config(api_type: str, tool_choice: str | None = "auto"):
+    if api_type == "genai":
+        from google.generativeai.protos import FunctionCallingConfig, ToolConfig
+
+        if tool_choice != "auto":
+            return ToolConfig(
+                function_calling_config=FunctionCallingConfig(
+                    mode=FunctionCallingConfig.Mode.ANY,
+                    allowed_function_names=[tool_choice],
+                )
+            )
+        elif tool_choice is None:
+            return ToolConfig(
+                function_calling_config=FunctionCallingConfig(mode=FunctionCallingConfig.Mode.NONE)
+            )
+        else:
+            return ToolConfig(
+                function_calling_config=FunctionCallingConfig(mode=FunctionCallingConfig.Mode.AUTO)
+            )
+    elif api_type == "vertexai":
+        from vertexai.preview.generative_models import ToolConfig
+
+        if tool_choice != "auto":
+            return ToolConfig(
+                function_calling_config=ToolConfig.FunctionCallingConfig(
+                    mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
+                    allowed_function_names=[tool_choice],
+                )
+            )
+        elif tool_choice is None:
+            return ToolConfig(
+                function_calling_config=ToolConfig.FunctionCallingConfig(
+                    mode=ToolConfig.FunctionCallingConfig.Mode.NONE
+                )
+            )
+        else:
+            return ToolConfig(
+                function_calling_config=ToolConfig.FunctionCallingConfig(
+                    mode=ToolConfig.FunctionCallingConfig.Mode.AUTO
+                )
+            )
+    else:
+        raise ValueError(f"Unknown API type: {api_type}")

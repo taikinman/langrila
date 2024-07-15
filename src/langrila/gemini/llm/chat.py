@@ -1,8 +1,7 @@
 import copy
-from typing import AsyncGenerator, Generator, Optional
+from typing import AsyncGenerator, Generator, Optional, Sequence
 
-from google.generativeai.types.generation_types import GenerationConfig
-from google.generativeai.types.helper_types import RequestOptions
+from google.auth import credentials as auth_credentials
 
 from ...base import (
     BaseChatModule,
@@ -14,15 +13,27 @@ from ...base import (
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
-from ..gemini_utils import get_model
-from ..message import GeminiMessage
+from ..gemini_utils import get_message_cls, get_model
 
 
 class GeminiChatCoreModule(BaseChatModule):
     def __init__(
         self,
-        api_key_env_name: str,
         model_name: str,
+        api_key_env_name: str | None = None,
+        api_type: str = "genai",
+        project_id_env_name: str | None = None,
+        location_env_name: str | None = None,
+        experiment: str | None = None,
+        experiment_description: str | None = None,
+        experiment_tensorboard: str | bool | None = None,
+        staging_bucket: str | None = None,
+        credentials: auth_credentials.Credentials | None = None,
+        encryption_spec_key_name: str | None = None,
+        network: str | None = None,
+        service_account: str | None = None,
+        endpoint_env_name: str | None = None,
+        request_metadata: Sequence[tuple[str, str]] | None = None,
         max_tokens: int = 2048,
         json_mode: bool = False,
         timeout: int = 60,
@@ -31,28 +42,57 @@ class GeminiChatCoreModule(BaseChatModule):
         self.api_key_env_name = api_key_env_name
         self.model_name = model_name
         self.max_output_tokens = max_tokens
+        self.api_type = api_type
+        self.project_id_env_name = project_id_env_name
+        self.location_env_name = location_env_name
+        self.experiment = experiment
+        self.experiment_description = experiment_description
+        self.experiment_tensorboard = experiment_tensorboard
+        self.staging_bucket = staging_bucket
+        self.credentials = credentials
+        self.encryption_spec_key_name = encryption_spec_key_name
+        self.network = network
+        self.service_account = service_account
+        self.endpoint_env_name = endpoint_env_name
+        self.request_metadata = request_metadata
+        self.json_mode = json_mode
 
-        self.generation_config = GenerationConfig(
-            stop_sequences=None,
-            max_output_tokens=self.max_output_tokens,
-            temperature=0.0,
-            top_p=0.0,
-            response_mime_type="text/plain" if not json_mode else "application/json",
-        )
+        self.additional_kwargs = {}
+        if api_type == "genai":
+            from google.generativeai.types.helper_types import RequestOptions
 
-        self.request_options = RequestOptions(
-            timeout=timeout,
-        )
+            request_options = RequestOptions(
+                timeout=timeout,
+            )
+            self.additional_kwargs["request_options"] = request_options
+
         self.system_instruction = system_instruction
 
     def run(self, messages: list[dict[str, str]]) -> CompletionResults:
         model = get_model(
-            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+            model_name=self.model_name,
+            api_key_env_name=self.api_key_env_name,
+            max_output_tokens=self.max_output_tokens,
+            json_mode=self.json_mode,
+            system_instruction=self.system_instruction,
+            api_type=self.api_type,
+            project_id_env_name=self.project_id_env_name,
+            location_env_name=self.location_env_name,
+            experiment=self.experiment,
+            experiment_description=self.experiment_description,
+            experiment_tensorboard=self.experiment_tensorboard,
+            staging_bucket=self.staging_bucket,
+            credentials=self.credentials,
+            encryption_spec_key_name=self.encryption_spec_key_name,
+            network=self.network,
+            service_account=self.service_account,
+            endpoint_env_name=self.endpoint_env_name,
+            request_metadata=self.request_metadata,
         )
-        response = model.generate_content(contents=messages, request_options=self.request_options)
+        response = model.generate_content(contents=messages, **self.additional_kwargs)
         content = response.candidates[0].content
         return CompletionResults(
-            message={"role": content.role, "parts": [content.parts[0].text]},
+            message=content,
             usage=Usage(
                 model_name=self.model_name,
                 prompt_tokens=model.count_tokens(messages).total_tokens,
@@ -63,14 +103,29 @@ class GeminiChatCoreModule(BaseChatModule):
 
     async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
         model = get_model(
-            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+            model_name=self.model_name,
+            api_key_env_name=self.api_key_env_name,
+            max_output_tokens=self.max_output_tokens,
+            json_mode=self.json_mode,
+            system_instruction=self.system_instruction,
+            api_type=self.api_type,
+            project_id_env_name=self.project_id_env_name,
+            location_env_name=self.location_env_name,
+            experiment=self.experiment,
+            experiment_description=self.experiment_description,
+            experiment_tensorboard=self.experiment_tensorboard,
+            staging_bucket=self.staging_bucket,
+            credentials=self.credentials,
+            encryption_spec_key_name=self.encryption_spec_key_name,
+            network=self.network,
+            service_account=self.service_account,
+            endpoint_env_name=self.endpoint_env_name,
+            request_metadata=self.request_metadata,
         )
-        response = await model.generate_content_async(
-            contents=messages, request_options=self.request_options
-        )
+        response = await model.generate_content_async(contents=messages, **self.additional_kwargs)
         content = response.candidates[0].content
         return CompletionResults(
-            message={"role": content.role, "parts": [content.parts[0].text]},
+            message=content,
             usage=Usage(
                 model_name=self.model_name,
                 prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
@@ -83,78 +138,121 @@ class GeminiChatCoreModule(BaseChatModule):
         self, messages: list[dict[str, str | list[str]]]
     ) -> Generator[CompletionResults, None, None]:
         model = get_model(
-            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+            model_name=self.model_name,
+            api_key_env_name=self.api_key_env_name,
+            max_output_tokens=self.max_output_tokens,
+            json_mode=self.json_mode,
+            system_instruction=self.system_instruction,
+            api_type=self.api_type,
+            project_id_env_name=self.project_id_env_name,
+            location_env_name=self.location_env_name,
+            experiment=self.experiment,
+            experiment_description=self.experiment_description,
+            experiment_tensorboard=self.experiment_tensorboard,
+            staging_bucket=self.staging_bucket,
+            credentials=self.credentials,
+            encryption_spec_key_name=self.encryption_spec_key_name,
+            network=self.network,
+            service_account=self.service_account,
+            endpoint_env_name=self.endpoint_env_name,
+            request_metadata=self.request_metadata,
         )
-        responses = model.generate_content(
-            contents=messages, request_options=self.request_options, stream=True
-        )
+        responses = model.generate_content(contents=messages, stream=True, **self.additional_kwargs)
 
-        entire_response_texts = []
+        chunk_all = ""
         for response in responses:
             content = response.candidates[0].content
-            entire_response_texts.extend([content.parts[0].text])
-            result = CompletionResults(
-                message={"role": content.role, "parts": ["".join(entire_response_texts)]},
-                usage=Usage(model_name=self.model_name),
-                prompt="",
-            )
+            if content.parts[0].text:
+                chunk_all += content.parts[0].text
+                if hasattr(content.parts[0], "_raw_part"):
+                    content.parts[0]._raw_part.text = chunk_all
+                else:
+                    content.parts[0].text = chunk_all
 
-            yield result
+                last_content = content
+                result = CompletionResults(
+                    message=content,
+                    usage=Usage(model_name=self.model_name),
+                    prompt="",
+                )
+
+                yield result
 
         # at the end of the stream, return the entire response
-        entire_response_texts = "".join(entire_response_texts)
         yield CompletionResults(
-            message={"role": content.role, "parts": [entire_response_texts]},
+            message=last_content,
             usage=Usage(
                 model_name=self.model_name,
                 prompt_tokens=model.count_tokens(messages).total_tokens,
-                completion_tokens=model.count_tokens(entire_response_texts).total_tokens,
+                completion_tokens=model.count_tokens(chunk_all).total_tokens,
             ),
-            prompt=messages,
+            prompt=copy.deepcopy(messages),
         )
 
     async def astream(
         self, messages: list[dict[str, str]]
     ) -> AsyncGenerator[CompletionResults, None]:
         model = get_model(
-            self.model_name, self.api_key_env_name, system_instruction=self.system_instruction
+            model_name=self.model_name,
+            api_key_env_name=self.api_key_env_name,
+            max_output_tokens=self.max_output_tokens,
+            json_mode=self.json_mode,
+            system_instruction=self.system_instruction,
+            api_type=self.api_type,
+            project_id_env_name=self.project_id_env_name,
+            location_env_name=self.location_env_name,
+            experiment=self.experiment,
+            experiment_description=self.experiment_description,
+            experiment_tensorboard=self.experiment_tensorboard,
+            staging_bucket=self.staging_bucket,
+            credentials=self.credentials,
+            encryption_spec_key_name=self.encryption_spec_key_name,
+            network=self.network,
+            service_account=self.service_account,
+            endpoint_env_name=self.endpoint_env_name,
+            request_metadata=self.request_metadata,
         )
         responses = await model.generate_content_async(
-            contents=messages, request_options=self.request_options, stream=True
+            contents=messages, stream=True, **self.additional_kwargs
         )
 
-        entire_response_texts = []
-        async for response in responses:
-            content = response.candidates[0].content
-            entire_response_texts.extend([content.parts[0].text])
-            result = CompletionResults(
-                message={"role": content.role, "parts": ["".join(entire_response_texts)]},
-                usage=Usage(model_name=self.model_name),
-                prompt="",
-            )
+        chunk_all = ""
+        async for _response in responses:
+            content = _response.candidates[0].content
+            if content.parts[0].text:
+                chunk_all += content.parts[0].text
+                if hasattr(content.parts[0], "_raw_part"):
+                    content.parts[0]._raw_part.text = chunk_all
+                else:
+                    content.parts[0].text = chunk_all
 
-            yield result
+                last_content = content
+
+                result = CompletionResults(
+                    message=content,
+                    usage=Usage(model_name=self.model_name),
+                    prompt="",
+                )
+
+                yield result
 
         # at the end of the stream, return the entire response
-        entire_response_texts = "".join(entire_response_texts)
         yield CompletionResults(
-            message={"role": content.role, "parts": [entire_response_texts]},
+            message=last_content,
             usage=Usage(
                 model_name=self.model_name,
                 prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
-                completion_tokens=(
-                    await model.count_tokens_async(entire_response_texts)
-                ).total_tokens,
+                completion_tokens=(await model.count_tokens_async(chunk_all)).total_tokens,
             ),
-            prompt=messages,
+            prompt=copy.deepcopy(messages),
         )
 
 
 class GeminiChatModule(ChatWrapperModule):
     def __init__(
         self,
-        api_key_env_name: str,
         model_name: str,
+        api_key_env_name: str | None = None,
         max_tokens: int = 2048,
         json_mode: bool = False,
         timeout: int = 60,
@@ -162,6 +260,19 @@ class GeminiChatModule(ChatWrapperModule):
         conversation_memory: Optional[BaseConversationMemory] = None,
         system_instruction: str | None = None,
         token_counter: TokenCounter | None = None,
+        api_type: str = "genai",
+        project_id_env_name: str | None = None,
+        location_env_name: str | None = None,
+        experiment: str | None = None,
+        experiment_description: str | None = None,
+        experiment_tensorboard: str | bool | None = None,
+        staging_bucket: str | None = None,
+        credentials: auth_credentials.Credentials | None = None,
+        encryption_spec_key_name: str | None = None,
+        network: str | None = None,
+        service_account: str | None = None,
+        endpoint_env_name: str | None = None,
+        request_metadata: Sequence[tuple[str, str]] | None = None,
     ):
         chat_model = GeminiChatCoreModule(
             api_key_env_name=api_key_env_name,
@@ -170,6 +281,19 @@ class GeminiChatModule(ChatWrapperModule):
             json_mode=json_mode,
             timeout=timeout,
             system_instruction=system_instruction,
+            api_type=api_type,
+            project_id_env_name=project_id_env_name,
+            location_env_name=location_env_name,
+            experiment=experiment,
+            experiment_description=experiment_description,
+            experiment_tensorboard=experiment_tensorboard,
+            staging_bucket=staging_bucket,
+            credentials=credentials,
+            encryption_spec_key_name=encryption_spec_key_name,
+            network=network,
+            service_account=service_account,
+            endpoint_env_name=endpoint_env_name,
+            request_metadata=request_metadata,
         )
 
         super().__init__(
@@ -180,4 +304,4 @@ class GeminiChatModule(ChatWrapperModule):
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:
-        return GeminiMessage
+        return get_message_cls(self.chat_model.api_type)

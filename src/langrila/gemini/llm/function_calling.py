@@ -1,10 +1,8 @@
+import copy
 import json
-from typing import AsyncGenerator, Callable, Generator, Optional
+from typing import Any, Callable, Optional, Sequence
 
-import google.ai.generativelanguage as glm
-import google.generativeai as genai
-from google.generativeai.types.generation_types import GenerationConfig
-from google.generativeai.types.helper_types import RequestOptions
+from google.auth import credentials as auth_credentials
 from pydantic import BaseModel
 
 from ...base import (
@@ -17,102 +15,102 @@ from ...base import (
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...result import FunctionCallingResults, ToolOutput
 from ...usage import TokenCounter, Usage
-from ..gemini_utils import get_model
-from ..message import GeminiMessage
-
-
-class ToolProperty(BaseModel):
-    name: str
-    type: str
-    description: str
-
-    def model_dump(self):
-        return {
-            self.name: {"type_": self.type.upper(), "description": self.description},
-        }
-
-
-class ToolParameter(BaseModel):
-    type: str = "object"
-    properties: list[ToolProperty]
-    required: Optional[list[str]] = []
-
-    def model_dump(self):
-        property_descriptions = {}
-        property_types = {}
-        for prop in self.properties:
-            prop_dict = prop.model_dump()
-            for key, value in prop_dict.items():
-                property_descriptions.update({key: value.pop("description")})
-                property_types.update({key: {"type_": value.pop("type_")}})
-
-        return {
-            "description": property_descriptions,
-            "properties": property_types,
-            "required": self.required,
-        }
-
-
-class ToolConfig(BaseModel):
-    name: str
-    # type: str = "function"
-    description: str
-    parameters: ToolParameter
-
-    def model_dump(self):
-        parameters_dict = self.parameters.model_dump()
-        parameters_descriptions_dict = parameters_dict.pop("description")
-        parameters_description = ""
-        for key, value in parameters_descriptions_dict.items():
-            parameters_description += f"        {key}: {value}\n"
-
-        return {
-            "function_declarations": [
-                {
-                    "name": self.name,
-                    "description": self.description + "\n\n    Args:\n" + parameters_description,
-                    "parameters": {
-                        "type_": "OBJECT",
-                        **parameters_dict,
-                    },
-                }
-            ]
-        }
+from ..gemini_utils import get_call_config, get_message_cls, get_model, get_tool_cls
 
 
 class GeminiFunctionCallingCoreModule(BaseChatModule):
     def __init__(
         self,
-        api_key_env_name: str,
         model_name: str,
         tools: list[Callable],
-        tool_configs: list[ToolConfig],
+        tool_configs: list[Any],
+        api_key_env_name: str | None = None,
+        api_type: str = "genai",
+        project_id_env_name: str | None = None,
+        location_env_name: str | None = None,
+        experiment: str | None = None,
+        experiment_description: str | None = None,
+        experiment_tensorboard: str | bool | None = None,
+        staging_bucket: str | None = None,
+        credentials: auth_credentials.Credentials | None = None,
+        encryption_spec_key_name: str | None = None,
+        network: str | None = None,
+        service_account: str | None = None,
+        endpoint_env_name: str | None = None,
+        request_metadata: Sequence[tuple[str, str]] | None = None,
         max_tokens: int = 2048,
         json_mode: bool = False,
         timeout: int = 60,
+        system_instruction: str | None = None,
     ):
         self.api_key_env_name = api_key_env_name
         self.model_name = model_name
         self.max_output_tokens = max_tokens
+        self.api_type = api_type
+        self.project_id_env_name = project_id_env_name
+        self.location_env_name = location_env_name
+        self.experiment = experiment
+        self.experiment_description = experiment_description
+        self.experiment_tensorboard = experiment_tensorboard
+        self.staging_bucket = staging_bucket
+        self.credentials = credentials
+        self.encryption_spec_key_name = encryption_spec_key_name
+        self.network = network
+        self.service_account = service_account
+        self.endpoint_env_name = endpoint_env_name
+        self.request_metadata = request_metadata
+        self.json_mode = json_mode
+        self.system_instruction = system_instruction
 
-        self.generation_config = GenerationConfig(
-            stop_sequences=None,
-            max_output_tokens=self.max_output_tokens,
-            temperature=0.0,
-            top_p=0.0,
-            response_mime_type="text/plain" if not json_mode else "application/json",
-        )
+        self.additional_kwargs = {}
+        if api_type == "genai":
+            from google.generativeai.types.helper_types import RequestOptions
 
-        self.request_options = RequestOptions(
-            timeout=timeout,
-        )
+            request_options = RequestOptions(
+                timeout=timeout,
+            )
+            self.additional_kwargs["request_options"] = request_options
+
         self.tools = {func.__name__: func for func in tools}
-        self.tool_configs = [config.model_dump() for config in tool_configs]
 
-    def run(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
-        model = get_model(self.model_name, self.api_key_env_name)
+        tool_cls = get_tool_cls(api_type=api_type)
+        function_declarations = [config.format() for config in tool_configs]
+        self.tool_configs = [tool_cls(function_declarations=function_declarations)]
+
+    def _get_call_config(self, tool_choice: str | None = "auto"):
+        return get_call_config(api_type=self.api_type, tool_choice=tool_choice)
+
+    def run(
+        self, messages: list[dict[str, str]], tool_choice: list[str] | str | None = "auto"
+    ) -> FunctionCallingResults:
+        model = get_model(
+            model_name=self.model_name,
+            api_key_env_name=self.api_key_env_name,
+            max_output_tokens=self.max_output_tokens,
+            json_mode=self.json_mode,
+            system_instruction=self.system_instruction,
+            api_type=self.api_type,
+            project_id_env_name=self.project_id_env_name,
+            location_env_name=self.location_env_name,
+            experiment=self.experiment,
+            experiment_description=self.experiment_description,
+            experiment_tensorboard=self.experiment_tensorboard,
+            staging_bucket=self.staging_bucket,
+            credentials=self.credentials,
+            encryption_spec_key_name=self.encryption_spec_key_name,
+            network=self.network,
+            service_account=self.service_account,
+            endpoint_env_name=self.endpoint_env_name,
+            request_metadata=self.request_metadata,
+        )
+
+        call_config = self._get_call_config(tool_choice=tool_choice)
+
         response = model.generate_content(
-            contents=messages, request_options=self.request_options, tools=self.tool_configs
+            contents=messages,
+            tools=self.tool_configs,
+            tool_config=call_config,
+            **self.additional_kwargs,
         )
         parts = response.candidates[0].content.parts
         results = []
@@ -136,13 +134,40 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                 completion_tokens=(model.count_tokens(parts)).total_tokens,
             ),
             results=results,
-            prompt=messages,
+            prompt=copy.deepcopy(messages),
         )
 
-    async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
-        model = get_model(self.model_name, self.api_key_env_name)
+    async def arun(
+        self, messages: list[dict[str, str]], tool_choice: list[str] | str | None = "auto"
+    ) -> FunctionCallingResults:
+        model = get_model(
+            model_name=self.model_name,
+            api_key_env_name=self.api_key_env_name,
+            max_output_tokens=self.max_output_tokens,
+            json_mode=self.json_mode,
+            system_instruction=self.system_instruction,
+            api_type=self.api_type,
+            project_id_env_name=self.project_id_env_name,
+            location_env_name=self.location_env_name,
+            experiment=self.experiment,
+            experiment_description=self.experiment_description,
+            experiment_tensorboard=self.experiment_tensorboard,
+            staging_bucket=self.staging_bucket,
+            credentials=self.credentials,
+            encryption_spec_key_name=self.encryption_spec_key_name,
+            network=self.network,
+            service_account=self.service_account,
+            endpoint_env_name=self.endpoint_env_name,
+            request_metadata=self.request_metadata,
+        )
+
+        call_config = self._get_call_config(tool_choice=tool_choice)
+
         response = await model.generate_content_async(
-            contents=messages, request_options=self.request_options, tools=self.tool_configs
+            contents=messages,
+            tools=self.tool_configs,
+            tool_config=call_config,
+            **self.additional_kwargs,
         )
         parts = response.candidates[0].content.parts
         results = []
@@ -166,23 +191,37 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                 completion_tokens=(await model.count_tokens_async(parts)).total_tokens,
             ),
             results=results,
-            prompt=messages,
+            prompt=copy.deepcopy(messages),
         )
 
 
 class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
     def __init__(
         self,
-        api_key_env_name: str,
         model_name: str,
         tools: list[Callable],
-        tool_configs: list[ToolConfig],
+        tool_configs: list[Any],
+        api_key_env_name: str | None = None,
         max_tokens: int = 2048,
         json_mode: bool = False,
         timeout: int = 60,
         content_filter: Optional[BaseFilter] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
         token_counter: Optional[TokenCounter] = None,
+        api_type: str = "genai",
+        project_id_env_name: str | None = None,
+        location_env_name: str | None = None,
+        experiment: str | None = None,
+        experiment_description: str | None = None,
+        experiment_tensorboard: str | bool | None = None,
+        staging_bucket: str | None = None,
+        credentials: auth_credentials.Credentials | None = None,
+        encryption_spec_key_name: str | None = None,
+        network: str | None = None,
+        service_account: str | None = None,
+        endpoint_env_name: str | None = None,
+        request_metadata: Sequence[tuple[str, str]] | None = None,
+        system_instruction: str | None = None,
     ):
         function_calling_model = GeminiFunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
@@ -192,6 +231,20 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
             timeout=timeout,
             tools=tools,
             tool_configs=tool_configs,
+            api_type=api_type,
+            project_id_env_name=project_id_env_name,
+            location_env_name=location_env_name,
+            experiment=experiment,
+            experiment_description=experiment_description,
+            experiment_tensorboard=experiment_tensorboard,
+            staging_bucket=staging_bucket,
+            credentials=credentials,
+            encryption_spec_key_name=encryption_spec_key_name,
+            network=network,
+            service_account=service_account,
+            endpoint_env_name=endpoint_env_name,
+            request_metadata=request_metadata,
+            system_instruction=system_instruction,
         )
 
         super().__init__(
@@ -202,4 +255,4 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         )
 
     def _get_client_message_type(self) -> type[BaseMessage]:
-        return GeminiMessage
+        return get_message_cls(self.function_calling_model.api_type)
