@@ -46,6 +46,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
 
         messages = self.load_conversation()
 
+        if hasattr(Message, "from_dict"):
+            messages = [Message.from_dict(message) for message in messages]
+
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
@@ -65,6 +68,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(response.message)
 
         if self.conversation_memory is not None:
+            if hasattr(Message, "to_dict"):
+                messages = [Message.to_dict(message) for message in messages]
+
             self.save_conversation(messages)
 
         return response
@@ -80,6 +86,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self._init_conversation_memory(init_conversation=init_conversation)
 
         messages = self.load_conversation()
+
+        if hasattr(Message, "from_dict"):
+            messages = [Message.from_dict(message) for message in messages]
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -100,6 +109,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(response.message)
 
         if self.conversation_memory is not None:
+            if hasattr(Message, "to_dict"):
+                messages = [Message.to_dict(message) for message in messages]
+
             self.save_conversation(messages)
 
         return response
@@ -115,6 +127,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self._init_conversation_memory(init_conversation=init_conversation)
 
         messages = self.load_conversation()
+
+        if hasattr(Message, "from_dict"):
+            messages = [Message.from_dict(message) for message in messages]
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -141,6 +156,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(chunk.message)
 
         if self.conversation_memory is not None:
+            if hasattr(Message, "to_dict"):
+                messages = [Message.to_dict(message) for message in messages]
+
             self.save_conversation(messages)
 
     async def astream(
@@ -154,6 +172,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self._init_conversation_memory(init_conversation=init_conversation)
 
         messages = self.load_conversation()
+
+        if hasattr(Message, "from_dict"):
+            messages = [Message.from_dict(message) for message in messages]
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -179,6 +200,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(chunk.message)
 
         if self.conversation_memory is not None:
+            if hasattr(Message, "to_dict"):
+                messages = [Message.to_dict(message) for message in messages]
+
             self.save_conversation(messages)
 
 
@@ -211,6 +235,9 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
 
         messages = self.load_conversation()
 
+        if hasattr(Message, "from_dict"):
+            messages = [Message.from_dict(message) for message in messages]
+
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
@@ -236,6 +263,9 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
                     Message(content=str(result.output), name=result.funcname).as_function
                 )
 
+            if hasattr(Message, "to_dict"):
+                messages = [Message.to_dict(message) for message in messages]
+
             self.save_conversation(messages)
 
         return response
@@ -250,6 +280,9 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         self._init_conversation_memory(init_conversation=init_conversation)
 
         messages = self.load_conversation()
+
+        if hasattr(Message, "from_dict"):
+            messages = [Message.from_dict(message) for message in messages]
 
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
@@ -275,6 +308,9 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
                 messages.append(
                     Message(content=str(result.output), name=result.funcname).as_function
                 )
+
+            if hasattr(Message, "to_dict"):
+                messages = [Message.to_dict(message) for message in messages]
 
             self.save_conversation(messages)
 
