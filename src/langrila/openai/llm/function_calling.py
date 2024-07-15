@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import json
 from typing import Callable, Optional
 
@@ -31,9 +32,14 @@ class ToolProperty(BaseModel):
     name: str
     type: str
     description: str
+    enum: list[str | int | float] | None = None
 
     def model_dump(self):
-        return {self.name: super().model_dump(exclude=["name"])}
+        return {
+            self.name: super().model_dump(exclude=["name"]) | {"enum": self.enum}
+            if self.enum
+            else {}
+        }
 
     @field_validator("type")
     def check_type_value(cls, v):
@@ -226,7 +232,9 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                     )
                     results.append(output)
 
-            return FunctionCallingResults(usage=usage, results=results, prompt=messages)
+            return FunctionCallingResults(
+                usage=usage, results=results, prompt=copy.deepcopy(messages)
+            )
 
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
@@ -247,7 +255,9 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                     )
                 ]
 
-            return FunctionCallingResults(usage=usage, results=output, prompt=messages)
+            return FunctionCallingResults(
+                usage=usage, results=output, prompt=copy.deepcopy(messages)
+            )
 
         else:
             raise ValueError(f"model_name {self.model_name} is not supported.")
@@ -309,7 +319,9 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                     )
                     results.append(output)
 
-            return FunctionCallingResults(usage=usage, results=results, prompt=messages)
+            return FunctionCallingResults(
+                usage=usage, results=results, prompt=copy.deepcopy(messages)
+            )
 
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
@@ -330,7 +342,9 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                     )
                 ]
 
-            return FunctionCallingResults(usage=usage, results=output, prompt=messages)
+            return FunctionCallingResults(
+                usage=usage, results=output, prompt=copy.deepcopy(messages)
+            )
 
         else:
             raise ValueError(f"model_name {self.model_name} is not supported.")

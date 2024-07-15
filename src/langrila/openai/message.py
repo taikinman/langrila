@@ -1,5 +1,16 @@
 from typing import Any, Optional
 
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionContentPartImageParam,
+    ChatCompletionContentPartTextParam,
+    ChatCompletionFunctionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionToolMessageParam,
+    ChatCompletionUserMessageParam,
+)
+from openai.types.chat.chat_completion_content_part_image_param import ImageURL
+
 from ..base import BaseMessage
 from ..utils import encode_image
 
@@ -19,12 +30,12 @@ class OpenAIMessage(BaseMessage):
 
     @property
     def as_system(self):
-        return {"role": "system", "content": self.content}
+        return ChatCompletionSystemMessageParam(role="system", content=self.content)
 
     @property
     def as_user(self):
         if self.images:
-            content = [{"type": "text", "text": self.content}]
+            content = [ChatCompletionContentPartTextParam(text=self.content, type="text")]
             if not isinstance(self.images, list):
                 images = [self.images]
             else:
@@ -32,23 +43,21 @@ class OpenAIMessage(BaseMessage):
 
             for image in images:
                 content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{encode_image(image)}",
-                            "detail": self.image_resolution if self.image_resolution else "low",
-                        },
-                    }
+                    ChatCompletionContentPartImageParam(
+                        type="image_url",
+                        image_url=ImageURL(
+                            url=f"data:image/jpeg;base64,{encode_image(image)}",
+                            detail=self.image_resolution if self.image_resolution else "low",
+                        ),
+                    )
                 )
-            return {"role": "user", "content": content} | ({"name": self.name} if self.name else {})
+            return ChatCompletionUserMessageParam(role="user", content=content, name=self.name)
         else:
-            return {"role": "user", "content": self.content} | (
-                {"name": self.name} if self.name else {}
-            )
+            return ChatCompletionUserMessageParam(role="user", content=self.content, name=self.name)
 
     @property
     def as_assistant(self):
-        return {"role": "assistant", "content": self.content}
+        return ChatCompletionAssistantMessageParam(role="assistant", content=self.content)
 
     # @property
     # def as_tool(self):
@@ -56,11 +65,9 @@ class OpenAIMessage(BaseMessage):
 
     @property
     def as_function(self):
-        return {
-            "role": "function",
-            "name": self.name,
-            "content": self.content,
-        }
+        return ChatCompletionFunctionMessageParam(
+            role="function", name=self.name, content=self.content
+        )
 
     def _valid_image_resolution_value(self, image_resolution: str) -> None:
         if image_resolution:

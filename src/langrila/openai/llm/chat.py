@@ -3,6 +3,7 @@ from copy import deepcopy
 from typing import Any, AsyncGenerator, Generator, Optional
 
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
+from openai.types.chat import ChatCompletionAssistantMessageParam
 from PIL import Image
 
 from ...base import (
@@ -186,7 +187,7 @@ class OpenAIChatCoreModule(BaseChatModule):
         response_message = response.choices[0].message.content.strip("\n")
         return CompletionResults(
             usage=usage,
-            message={"role": "assistant", "content": response_message},
+            message=ChatCompletionAssistantMessageParam(role="assistant", content=response_message),
             prompt=deepcopy(messages),
         )
 
@@ -231,7 +232,7 @@ class OpenAIChatCoreModule(BaseChatModule):
         response_message = response.choices[0].message.content.strip("\n")
         return CompletionResults(
             usage=usage,
-            message={"role": "assistant", "content": response_message},
+            message=ChatCompletionAssistantMessageParam(role="assistant", content=response_message),
             prompt=deepcopy(messages),
         )
 
@@ -271,7 +272,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             **self.additional_inputs,
         )
 
-        response_message = {"role": "assistant", "content": ""}
+        response_message = ChatCompletionAssistantMessageParam(role="assistant", content="")
         for r in response:
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
@@ -338,7 +339,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             **self.additional_inputs,
         )
 
-        response_message = {"role": "assistant", "content": ""}
+        response_message = ChatCompletionAssistantMessageParam(role="assistant", content="")
         async for r in response:
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
