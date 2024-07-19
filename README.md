@@ -511,9 +511,9 @@ tool_configs = [
 
 function_calling = OpenAIFunctionCallingModule(
     api_key_env_name="API_KEY",
-    model_name="gpt-4o-2024-05-13",
-    tools=[power_disco_ball, start_music, dim_lights],
-    tool_configs=tool_configs,
+    model_name="gpt-4o-mini-2024-07-18",
+    tools=[get_weather],
+    tool_configs=[tool_config],
 )
 
 prompt = "Turn this place into a party!"
@@ -526,21 +526,13 @@ response = await function_calling.arun(
 # Show result
 response.model_dump()
 
->>> {'usage': {'model_name': 'gpt-4o-2024-05-13',
-  'prompt_tokens': 158,
-  'completion_tokens': 75},
- 'results': [{'call_id': 'call_JihPSqJEgAXZqExPMaWTGT60',
-   'funcname': 'power_disco_ball',
-   'args': '{"power": true}',
-   'output': 'Disco ball is spinning!'},
-  {'call_id': 'call_BS2IksJBeLkTgt7qghgH5lPt',
-   'funcname': 'start_music',
-   'args': '{"energetic": true, "loud": true, "bpm": 120}',
-   'output': 'Starting music! energetic=True loud=True, bpm=120'},
-  {'call_id': 'call_XELGql9jojBILNkH4JVtZUu9',
-   'funcname': 'dim_lights',
-   'args': '{"brightness": 0.3}',
-   'output': 'Lights are now set to 30%'}],
+>>> {'usage': {'model_name': 'gpt-4o-mini-2024-07-18',
+  'prompt_tokens': 69,
+  'completion_tokens': 24},
+ 'results': [{'call_id': 'call_3S6TauBaHWSkgNUZH9krjcPZ',
+   'funcname': 'get_weather',
+   'args': '{"city":"New York","date":"2022-01-01"}',
+   'output': 'The weather in New York on 2022-01-01 is sunny.'}],
  'prompt': [{'role': 'user',
    'content': 'Turn this place into a party!',
    'name': None}]}
