@@ -68,6 +68,11 @@ _NEWER_MODEL_CONFIG = {
 }
 
 _VISION_MODEL = {
+    "gpt-4o-mini-2024-07-18": {
+        "max_tokens": 128000,
+        "prompt_cost_per_token": 0.000000150,
+        "completion_cost_per_token": 0.00000060,
+    },
     "gpt-4o-2024-05-13": {
         "max_tokens": 128000,
         "prompt_cost_per_token": 0.000005,
@@ -86,6 +91,7 @@ _VISION_MODEL = {
 }
 
 MODEL_POINT = {
+    "gpt-4o-mini": "gpt-4o-mini-2024-07-18",
     "gpt-4o": "gpt-4o-2024-05-13",
     "gpt-4-turbo": "gpt-4-turbo-2024-04-09",
     "gpt-4-turbo-preview": "gpt-4-0125-preview",
