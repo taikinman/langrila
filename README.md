@@ -63,7 +63,10 @@ poetry add --editable /path/to/langrila/ --extras openai
 # For Gemini
 poetry add --editable /path/to/langrila/ --extras gemini
 
-# For both
+# For Claude
+poetry add --editable /path/to/langrila/ --extras claude
+
+# For both OpenAI and Gemini (can choose Claude as well)
 poetry add --editable /path/to/langrila/ --extras "openai gemini"
 
 # For OpenAI and Qdrant
@@ -114,10 +117,30 @@ poetry add --editable /path/to/langrila/ --extras all
  'gpt-3.5-turbo': 'gpt-3.5-turbo-0125'}
 ```
 
+## Platform
+- OpenAI
+- Azure OpenAI
+
 # Supported models for Gemini
 ## Chat models
 - gemini-1.5-pro
 - gemini-1.5-flash
+
+## Platform
+- GenerativeAI
+- VertexAI
+
+# Supported models for Claude
+## Chat models
+- claude-3.5-sonnet
+- claude-3-opus
+- claude-3-sonnet
+- claude-3-haiku
+
+## Platform
+- Anthropic
+- Amazon Bedrock
+- VertexAI
 
 # Breaking changes
 <details>
