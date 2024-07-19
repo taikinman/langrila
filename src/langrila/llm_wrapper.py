@@ -52,7 +52,10 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        if isinstance(prompt, str):
+            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        else:
+            messages.append(prompt)
 
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
@@ -65,12 +68,14 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
 
+        if hasattr(Message, "to_dict"):
+            response.message = Message.to_dict(response.message)
+            messages = [Message.to_dict(message) for message in messages]
+            response.prompt = [Message.to_dict(message) for message in response.prompt]
+
         messages.append(response.message)
 
         if self.conversation_memory is not None:
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
             self.save_conversation(messages)
 
         return response
@@ -93,7 +98,10 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        if isinstance(prompt, str):
+            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        else:
+            messages.append(prompt)
 
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
@@ -106,12 +114,14 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
 
+        if hasattr(Message, "to_dict"):
+            response.message = Message.to_dict(response.message)
+            messages = [Message.to_dict(message) for message in messages]
+            response.prompt = [Message.to_dict(message) for message in response.prompt]
+
         messages.append(response.message)
 
         if self.conversation_memory is not None:
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
             self.save_conversation(messages)
 
         return response
@@ -134,7 +144,10 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        if isinstance(prompt, str):
+            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        else:
+            messages.append(prompt)
 
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
@@ -145,6 +158,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             if isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
                     chunk.message = self.restore_content_filter([chunk.message])[0]
+                chunk.message = Message.to_dict(chunk.message)
                 yield chunk
 
             else:
@@ -153,12 +167,13 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.token_counter is not None:
             self.token_counter += chunk.usage
 
+        if hasattr(Message, "to_dict"):
+            chunk.prompt = [Message.to_dict(message) for message in chunk.prompt]
+            messages = [Message.to_dict(message) for message in messages]
+
         messages.append(chunk.message)
 
         if self.conversation_memory is not None:
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
             self.save_conversation(messages)
 
     async def astream(
@@ -179,7 +194,10 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        if isinstance(prompt, str):
+            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
+        else:
+            messages.append(prompt)
 
         if self.content_filter is not None:
             messages = self.content_filter.apply(messages)
@@ -190,6 +208,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             if isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
                     chunk.message = self.restore_content_filter([chunk.message])[0]
+                chunk.message = Message.to_dict(chunk.message)
                 yield chunk
             else:
                 raise AssertionError
@@ -197,12 +216,13 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.token_counter is not None:
             self.token_counter += chunk.usage
 
+        if hasattr(Message, "to_dict"):
+            chunk.prompt = [Message.to_dict(message) for message in chunk.prompt]
+            messages = [Message.to_dict(message) for message in messages]
+
         messages.append(chunk.message)
 
         if self.conversation_memory is not None:
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
             self.save_conversation(messages)
 
 
@@ -241,7 +261,10 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt).as_user)
+        if isinstance(prompt, str):
+            messages.append(Message(content=prompt).as_user)
+        else:
+            messages.append(prompt)
 
         if self.content_filter is not None:
             messages = self.apply_content_filter(messages)
@@ -257,15 +280,14 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
                     0
                 ]
 
+        for result in response.results:
+            messages.append(Message(content=str(result.output), name=result.funcname).as_function)
+
+        if hasattr(Message, "to_dict"):
+            messages = [Message.to_dict(message) for message in messages]
+            response.prompt = [Message.to_dict(message) for message in response.prompt]
+
         if self.conversation_memory is not None:
-            for result in response.results:
-                messages.append(
-                    Message(content=str(result.output), name=result.funcname).as_function
-                )
-
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
             self.save_conversation(messages)
 
         return response
@@ -287,7 +309,10 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        messages.append(Message(content=prompt).as_user)
+        if isinstance(prompt, str):
+            messages.append(Message(content=prompt).as_user)
+        else:
+            messages.append(prompt)
 
         if self.content_filter is not None:
             messages = self.apply_content_filter(messages)
@@ -303,15 +328,14 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
                     0
                 ]
 
+        for result in response.results:
+            messages.append(Message(content=str(result.output), name=result.funcname).as_function)
+
+        if hasattr(Message, "to_dict"):
+            messages = [Message.to_dict(message) for message in messages]
+            response.prompt = [Message.to_dict(message) for message in response.prompt]
+
         if self.conversation_memory is not None:
-            for result in response.results:
-                messages.append(
-                    Message(content=str(result.output), name=result.funcname).as_function
-                )
-
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
             self.save_conversation(messages)
 
         return response

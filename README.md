@@ -63,7 +63,10 @@ poetry add --editable /path/to/langrila/ --extras openai
 # For Gemini
 poetry add --editable /path/to/langrila/ --extras gemini
 
-# For both
+# For Claude
+poetry add --editable /path/to/langrila/ --extras claude
+
+# For both OpenAI and Gemini (can choose Claude as well)
 poetry add --editable /path/to/langrila/ --extras "openai gemini"
 
 # For OpenAI and Qdrant
@@ -99,6 +102,7 @@ poetry add --editable /path/to/langrila/ --extras all
 - gpt-4-0125-preview
 - gpt-4-turbo-2024-04-09
 - gpt-4o-2024-05-13
+- gpt-4o-mini-2024-07-18
 
 ## Embedding models
 - text-embedding-ada-002
@@ -107,15 +111,36 @@ poetry add --editable /path/to/langrila/ --extras all
 
 ## Aliases
 ```
-{'gpt-4o': 'gpt-4o-2024-05-13',
+{'gpt-4o-mini': 'gpt-4o-mini-2024-07-18',
+ 'gpt-4o': 'gpt-4o-2024-05-13',
  'gpt-4-turbo': 'gpt-4-turbo-2024-04-09',
  'gpt-3.5-turbo': 'gpt-3.5-turbo-0125'}
 ```
+
+## Platform
+- OpenAI
+- Azure OpenAI
 
 # Supported models for Gemini
 ## Chat models
 - gemini-1.5-pro
 - gemini-1.5-flash
+
+## Platform
+- GenerativeAI
+- VertexAI
+
+# Supported models for Claude
+## Chat models
+- claude-3.5-sonnet
+- claude-3-opus
+- claude-3-sonnet
+- claude-3-haiku
+
+## Platform
+- Anthropic
+- Amazon Bedrock
+- VertexAI
 
 # Breaking changes
 <details>
@@ -146,7 +171,7 @@ from langrila.openai import OpenAIChatModule
 # For conventional model
 chat = OpenAIChatModule(
     api_key_env_name = "API_KEY", # env variable name
-    model_name="gpt-3.5-turbo-0125",
+    model_name="gpt-4o-mini-2024-07-18",
     # organization_id_env_name="ORGANIZATION_ID", # env variable name
 )
 
@@ -162,10 +187,10 @@ response = await chat.arun(prompt)
 response.model_dump()
 
 >>> {'message': {'role': 'assistant',
-  'content': "Establish a consistent bedtime routine and stick to it every night, even on weekends. This will help signal to your body that it's time to wind down and prepare for sleep."},
- 'usage': {'model_name': 'gpt-3.5-turbo-0125',
+  'content': "Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends. This helps regulate your body's internal clock and can improve the quality of your sleep."},
+ 'usage': {'model_name': 'gpt-4o-mini-2024-07-18',
   'prompt_tokens': 21,
-  'completion_tokens': 35},
+  'completion_tokens': 40},
  'prompt': [{'role': 'user',
    'content': 'Please give me only one advice to improve the quality of my sleep.'}]}
 ```
@@ -175,7 +200,7 @@ If you specify the arguments likes below, you can get the response from Azure Op
 ```python
 chat = OpenAIChatModule(
         api_key_env_name="AZURE_API_KEY", # env variable name
-        model_name="gpt-3.5-turbo-0125",
+        model_name="gpt-4o-2024-05-13",
         api_type="azure",
         api_version="2024-05-01-preview", 
         deployment_id_env_name="DEPLOY_ID", # env variable name
@@ -299,7 +324,7 @@ from langrila.openai import OpenAIChatModule
 # For conventional model
 chat = OpenAIChatModule(
     api_key_env_name="API_KEY",  # env variable name
-    model_name="gpt-3.5-turbo-0125",
+    model_name="gpt-4o-mini-2024-07-18",
     system_instruction="You must answer any questions only with yes or no.",
 )
 
@@ -312,7 +337,7 @@ response = chat.run(prompt)
 response.model_dump()
 
 >>> {'message': {'role': 'assistant', 'content': 'Yes.'},
- 'usage': {'model_name': 'gpt-3.5-turbo-0125',
+ 'usage': {'model_name': 'gpt-4o-mini-2024-07-18',
   'prompt_tokens': 36,
   'completion_tokens': 2},
  'prompt': [{'role': 'user',
@@ -326,7 +351,7 @@ from langrila.openai import OpenAIChatModule
 
 chat = OpenAIChatModule(
     api_key_env_name = "API_KEY", # env variable name
-    model_name="gpt-3.5-turbo-0125",
+    model_name="gpt-4o-mini-2024-07-18",
     # organization_id_env_name="ORGANIZATION_ID", # env variable name
 )
 
@@ -340,15 +365,14 @@ list(response)
 # [r async for r in response]
 
 >>> [CompletionResults(message={'role': 'assistant', 'content': ''}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': 'Est'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
  CompletionResults(message={'role': 'assistant', 'content': 'Establish'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
  CompletionResults(message={'role': 'assistant', 'content': 'Establish a'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
- CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
- CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent bedtime'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
- CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent bedtime routine'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
- CompletionResults(message={'role': 'assistant', 'content': 'Establish a consistent bedtime routine and'}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+
 ...
- CompletionResults(message={'role': 'assistant', 'content': "Establish a consistent bedtime routine and stick to it every night, even on weekends. This can help signal to your body that it's time to wind down and prepare for sleep."}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
- CompletionResults(message={'role': 'assistant', 'content': "Establish a consistent bedtime routine and stick to it every night, even on weekends. This can help signal to your body that it's time to wind down and prepare for sleep."}, usage=Usage(prompt_tokens=21, completion_tokens=42, total_tokens=63), prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve the quality of my sleep.'}])] # at the end of stream, model returns entire response and usage
+CompletionResults(message={'role': 'assistant', 'content': "Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends. This helps regulate your body's internal clock and can improve the quality of your sleep"}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': "Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends. This helps regulate your body's internal clock and can improve the quality of your sleep."}, usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0), prompt=[{}]),
+ CompletionResults(message={'role': 'assistant', 'content': "Establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends. This helps regulate your body's internal clock and can improve the quality of your sleep."}, usage=Usage(prompt_tokens=21, completion_tokens=47, total_tokens=68), prompt=[{'role': 'user', 'content': 'Please give me only one advice to improve the quality of my sleep.'}])] # at the end of stream, model returns entire response and usage
 ```
 
 For Azure OpenAI, inteface is the same.
@@ -668,7 +692,7 @@ token_counter = TokenCounter()
 # For conventional model
 chat1 = OpenAIChatModule(
     api_key_env_name="API_KEY",  # env variable name
-    model_name="gpt-3.5-turbo-0125",
+    model_name="gpt-4o-mini-2024-07-18",
     token_counter=token_counter,
     # organization_id_env_name="ORGANIZATION_ID", # env variable name
 )
@@ -690,7 +714,7 @@ response2 = chat2.run(prompt)
 
 print(token_counter)
 
->>> {'gpt-3.5-turbo-0125': Usage(prompt_tokens=42, completion_tokens=61, total_tokens=103), 'gpt-4o-2024-05-13': Usage(prompt_tokens=21, completion_tokens=40, total_tokens=61)}
+>>> {'gpt-4o-mini-2024-07-18': Usage(prompt_tokens=42, completion_tokens=80, total_tokens=122), 'gpt-4o-2024-05-13': Usage(prompt_tokens=21, completion_tokens=40, total_tokens=61)}
 ```
 
 ## Conversation memory
@@ -704,7 +728,7 @@ from langrila import JSONConversationMemory
 
 chat = OpenAIChatModule(
     api_key_env_name="API_KEY",  # env variable name
-    model_name="gpt-3.5-turbo-0125",
+    model_name="gpt-4o-mini-2024-07-18",
     conversation_memory=JSONConversationMemory("./conversation_memory.json"),
     timeout=60,
     max_retries=2,
@@ -718,10 +742,10 @@ response = chat.run(message)
 response.model_dump()
 
 >>> {'message': {'role': 'assistant',
-  'content': 'Yes, Rude is a character in Final Fantasy 7. He is a member of the Turks, a group of elite operatives working for the Shinra Electric Power Company. Rude is known for his calm and collected demeanor, as well as his impressive physical strength. He often works alongside his partner, Reno, and is skilled in hand-to-hand combat.'},
- 'usage': {'model_name': 'gpt-3.5-turbo-0125',
+  'content': 'Yes, Rude is a character from the "Final Fantasy VII" series, which is part of the larger Final Fantasy franchise created by Square Enix. He is a member of the Turks, a covert operations unit working for the Shinra Electric Power Company. Rude is known for his stoic demeanor, bald head, and sunglasses. He often appears alongside his partner, Reno, and is characterized by his strong sense of loyalty and professionalism. Despite his role as an antagonist, Rude has moments that show a more honorable side, particularly in his interactions with other characters. He also appears in various spin-offs and adaptations of the original game, including "Final Fantasy VII: Advent Children" and "Crisis Core: Final Fantasy VII."'},
+ 'usage': {'model_name': 'gpt-4o-mini-2024-07-18',
   'prompt_tokens': 22,
-  'completion_tokens': 72},
+  'completion_tokens': 148},
  'prompt': [{'role': 'user',
    'content': 'Do you know Rude who is the character in Final Fantasy 7.'}]}
 
@@ -733,14 +757,14 @@ response = chat.run(message)
 response.model_dump()
 
 >>> {'message': {'role': 'assistant',
-  'content': "In Final Fantasy 7, Rude is shown to have a crush on Tifa Lockhart, one of the main protagonists of the game. He admires her strength and beauty, and is often seen blushing or acting shy around her. Despite being a member of the Turks and having conflicting interests with Tifa and her friends, Rude's feelings for her show a more human and compassionate side to his character."},
- 'usage': {'model_name': 'gpt-3.5-turbo-0125',
-  'prompt_tokens': 110,
-  'completion_tokens': 84},
+  'content': 'In "Final Fantasy VII," Rude\'s interactions with Tifa Lockhart are relatively limited, but they do reveal some aspects of his character. Rude generally treats Tifa with a level of respect, and during their encounters, he does not display the same level of aggression that some other characters do. \n\nIn "Final Fantasy VII: Advent Children," Rude shows a sense of honor and professionalism, even when facing off against Tifa. He acknowledges her strength and skills as a fighter. While Rude is primarily focused on his duties as a Turk, he does not seem to harbor any personal animosity towards Tifa, and there are moments that suggest he recognizes her as a formidable opponent.\n\nOverall, Rude\'s attitude towards Tifa can be seen as respectful, and he does not engage in any overtly hostile behavior towards her, which sets him apart from some other characters in the game.'},
+ 'usage': {'model_name': 'gpt-4o-mini-2024-07-18',
+  'prompt_tokens': 186,
+  'completion_tokens': 181},
  'prompt': [{'role': 'user',
    'content': 'Do you know Rude who is the character in Final Fantasy 7.'},
   {'role': 'assistant',
-   'content': 'Yes, Rude is a character in Final Fantasy 7. He is a member of the Turks, a group of elite operatives working for the Shinra Electric Power Company. Rude is known for his calm and collected demeanor, as well as his impressive physical strength. He often works alongside his partner, Reno, and is skilled in hand-to-hand combat.'},
+   'content': 'Yes, Rude is a character from the "Final Fantasy VII" series, which is part of the larger Final Fantasy franchise created by Square Enix. He is a member of the Turks, a covert operations unit working for the Shinra Electric Power Company. Rude is known for his stoic demeanor, bald head, and sunglasses. He often appears alongside his partner, Reno, and is characterized by his strong sense of loyalty and professionalism. Despite his role as an antagonist, Rude has moments that show a more honorable side, particularly in his interactions with other characters. He also appears in various spin-offs and adaptations of the original game, including "Final Fantasy VII: Advent Children" and "Crisis Core: Final Fantasy VII."'},
   {'role': 'user', 'content': 'What does he think about Tifa?'}]}
 ```
 
