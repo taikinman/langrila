@@ -179,23 +179,6 @@ def get_async_client(
         raise ValueError(f"Unknown API type: {api_type}")
 
 
-def get_message_cls(api_type: str):
-    if api_type == "anthropic":
-        from .message import ClaudeMessage
-
-        return ClaudeMessage
-    elif api_type == "bedrock":
-        from .message import ClaudeMessage
-
-        return ClaudeMessage
-    elif api_type == "vertexai":
-        from .message import ClaudeMessage
-
-        return ClaudeMessage
-    else:
-        raise ValueError(f"Unknown API type: {api_type}")
-
-
 def completion(
     client: Anthropic | AnthropicBedrock,
     model_name: Union[
