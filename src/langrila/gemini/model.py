@@ -1,20 +1,14 @@
-import copy
-from typing import Any, AsyncGenerator, Callable, Generator, Literal, Optional, Sequence
+from typing import Any, AsyncGenerator, Callable, Generator, Literal, Sequence
 
 from google.auth import credentials as auth_credentials
 
 from ..base import (
-    BaseChatModule,
-    BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
-    BaseMessage,
 )
-from ..llm_wrapper import ChatWrapperModule
 from ..message_content import ConversationType, InputType
 from ..result import CompletionResults, FunctionCallingResults
-from ..usage import TokenCounter, Usage
-from .gemini_utils import get_message_cls, get_model
+from ..usage import TokenCounter
 from .llm.chat import GeminiChatModule
 from .llm.function_calling import GeminiFunctionCallingModule
 
@@ -72,32 +66,35 @@ class Gemini:
             request_metadata=request_metadata,
         )
 
-        self.function_calling = GeminiFunctionCallingModule(
-            model_name=model_name,
-            api_key_env_name=api_key_env_name,
-            max_tokens=max_tokens,
-            json_mode=json_mode,
-            timeout=timeout,
-            content_filter=content_filter,
-            conversation_memory=conversation_memory,
-            system_instruction=system_instruction,
-            token_counter=token_counter,
-            api_type=api_type,
-            project_id_env_name=project_id_env_name,
-            location_env_name=location_env_name,
-            experiment=experiment,
-            experiment_description=experiment_description,
-            experiment_tensorboard=experiment_tensorboard,
-            staging_bucket=staging_bucket,
-            credentials=credentials,
-            encryption_spec_key_name=encryption_spec_key_name,
-            network=network,
-            service_account=service_account,
-            endpoint_env_name=endpoint_env_name,
-            request_metadata=request_metadata,
-            tools=tools,
-            tool_configs=tool_configs,
-        )
+        if tools:
+            self.function_calling = GeminiFunctionCallingModule(
+                model_name=model_name,
+                api_key_env_name=api_key_env_name,
+                max_tokens=max_tokens,
+                json_mode=json_mode,
+                timeout=timeout,
+                content_filter=content_filter,
+                conversation_memory=conversation_memory,
+                system_instruction=system_instruction,
+                token_counter=token_counter,
+                api_type=api_type,
+                project_id_env_name=project_id_env_name,
+                location_env_name=location_env_name,
+                experiment=experiment,
+                experiment_description=experiment_description,
+                experiment_tensorboard=experiment_tensorboard,
+                staging_bucket=staging_bucket,
+                credentials=credentials,
+                encryption_spec_key_name=encryption_spec_key_name,
+                network=network,
+                service_account=service_account,
+                endpoint_env_name=endpoint_env_name,
+                request_metadata=request_metadata,
+                tools=tools,
+                tool_configs=tool_configs,
+            )
+        else:
+            self.function_calling = None
 
     def run(
         self,
@@ -109,7 +106,7 @@ class Gemini:
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt,
                 init_conversation=init_conversation,
@@ -137,7 +134,7 @@ class Gemini:
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt,
                 init_conversation=init_conversation,
@@ -161,7 +158,7 @@ class Gemini:
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "any"] | str | None = None,
     ) -> Generator[CompletionResults, None, None]:
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt,
                 init_conversation=init_conversation,
@@ -182,7 +179,7 @@ class Gemini:
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "any"] | str | None = None,
     ) -> AsyncGenerator[CompletionResults, None]:
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt,
                 init_conversation=init_conversation,

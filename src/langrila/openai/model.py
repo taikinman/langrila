@@ -13,8 +13,8 @@ class ChatGPT:
         self,
         api_key_env_name: str,
         model_name: str,
-        tools: list[Callable],
-        tool_configs: list[ToolConfig],
+        tools: list[Callable] | None = None,
+        tool_configs: list[ToolConfig] | None = None,
         organization_id_env_name: str | None = None,
         api_type: str = "openai",
         api_version: str | None = None,
@@ -53,27 +53,30 @@ class ChatGPT:
             response_format=response_format,
         )
 
-        self.function_calling = OpenAIFunctionCallingModule(
-            api_key_env_name=api_key_env_name,
-            model_name=model_name,
-            tools=tools,
-            tool_configs=tool_configs,
-            organization_id_env_name=organization_id_env_name,
-            api_type=api_type,
-            api_version=api_version,
-            endpoint_env_name=endpoint_env_name,
-            deployment_id_env_name=deployment_id_env_name,
-            max_tokens=max_tokens,
-            timeout=timeout,
-            max_retries=max_retries,
-            seed=seed,
-            context_length=context_length,
-            conversation_memory=conversation_memory,
-            content_filter=content_filter,
-            system_instruction=system_instruction,
-            conversation_length_adjuster=conversation_length_adjuster,
-            token_counter=token_counter,
-        )
+        if tools:
+            self.function_calling = OpenAIFunctionCallingModule(
+                api_key_env_name=api_key_env_name,
+                model_name=model_name,
+                tools=tools,
+                tool_configs=tool_configs,
+                organization_id_env_name=organization_id_env_name,
+                api_type=api_type,
+                api_version=api_version,
+                endpoint_env_name=endpoint_env_name,
+                deployment_id_env_name=deployment_id_env_name,
+                max_tokens=max_tokens,
+                timeout=timeout,
+                max_retries=max_retries,
+                seed=seed,
+                context_length=context_length,
+                conversation_memory=conversation_memory,
+                content_filter=content_filter,
+                system_instruction=system_instruction,
+                conversation_length_adjuster=conversation_length_adjuster,
+                token_counter=token_counter,
+            )
+        else:
+            self.function_calling = None
 
         self.conversation_memory = conversation_memory
 
@@ -87,7 +90,7 @@ class ChatGPT:
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt=prompt,
                 init_conversation=init_conversation,
@@ -119,7 +122,7 @@ class ChatGPT:
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
                 init_conversation=init_conversation,
@@ -147,7 +150,7 @@ class ChatGPT:
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "required"] | str | None = None,
     ) -> Generator[CompletionResults, None, None]:
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt=prompt,
                 init_conversation=init_conversation,
@@ -172,7 +175,7 @@ class ChatGPT:
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "required"] | str | None = None,
     ) -> Generator[CompletionResults, None, None]:
-        if tool_choice is not None:
+        if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
                 init_conversation=init_conversation,

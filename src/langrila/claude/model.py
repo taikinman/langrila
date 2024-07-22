@@ -86,7 +86,7 @@ class Claude:
             token_counter=token_counter,
         )
 
-        if tools is not None:
+        if tools:
             self.function_calling = AnthropicFunctionCallingModule(
                 model_name=model_name,
                 api_type=api_type,
