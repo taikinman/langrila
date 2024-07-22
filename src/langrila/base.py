@@ -138,45 +138,6 @@ class BaseMessage(ABC):
         return cls.from_client_message(response.message)
 
     @classmethod
-    def _from_function_calling_results(cls, response: FunctionCallingResults) -> list[Message]:
-        return [
-            Message(
-                role="function",  # global role
-                content=[
-                    ToolContent(
-                        output=result.output,
-                        args=result.args,
-                        call_id=result.call_id,
-                        funcname=result.funcname,
-                    )
-                ],
-                name=result.funcname,
-            )
-            if isinstance(result, ToolOutput)
-            else Message(
-                role="assistant",  # global role
-                content=[result],
-            )
-            for result in response.results
-        ]
-
-    @classmethod
-    def _from_function_calling_calls(cls, response: FunctionCallingResults) -> Message:
-        return Message(
-            role="function_call",  # global role
-            content=[
-                ToolCall(
-                    args=result.args,
-                    name=result.name,
-                    call_id=result.call_id,
-                )
-                if isinstance(result, ToolCallResponse)
-                else result
-                for result in response.calls
-            ],
-        )
-
-    @classmethod
     def _format_string_content(cls, content: str) -> Any:
         if Path(content).is_file() and Path(content).suffix in [".png", ".jpg", ".jpeg"]:
             return cls._format_image_content(content=ImageContent(image=content))
@@ -333,14 +294,43 @@ class BaseMessage(ABC):
     @classmethod
     def to_universal_message_from_function_response(
         cls, response: FunctionCallingResults
-    ) -> dict[str, Any]:
-        return cls._from_function_calling_results(response)
+    ) -> list[Message]:
+        return [
+            Message(
+                role="function",  # global role
+                content=[
+                    ToolContent(
+                        output=result.output,
+                        args=result.args,
+                        call_id=result.call_id,
+                        funcname=result.funcname,
+                    )
+                ],
+                name=result.funcname,
+            )
+            if isinstance(result, ToolOutput)
+            else Message(
+                role="assistant",  # global role
+                content=[result],
+            )
+            for result in response.results
+        ]
 
     @classmethod
-    def to_universal_message_from_function_call(
-        cls, response: FunctionCallingResults
-    ) -> dict[str, Any]:
-        return cls._from_function_calling_calls(response)
+    def to_universal_message_from_function_call(cls, response: FunctionCallingResults) -> Message:
+        return Message(
+            role="function_call",  # global role
+            content=[
+                ToolCall(
+                    args=result.args,
+                    name=result.name,
+                    call_id=result.call_id,
+                )
+                if isinstance(result, ToolCallResponse)
+                else result
+                for result in response.calls
+            ],
+        )
 
 
 class BaseMetadataStore(ABC):
