@@ -8,7 +8,7 @@ from .base import (
     BaseFunctionCallingModule,
     BaseMessage,
 )
-from .message_content import ConversationType, InputType
+from .message_content import ConversationType, InputType, Message
 from .mixin import ConversationMixin, FilterMixin
 from .result import CompletionResults, FunctionCallingResults
 from .usage import TokenCounter
@@ -36,6 +36,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        gather_prompts: bool = True,
     ) -> CompletionResults:
         ClientMessage = self._get_client_message_type()
 
@@ -53,7 +54,12 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
         # Convert prompt to UniversalMessage
-        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        if gather_prompts:
+            messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        else:
+            # For chatgpt, prompts must be separated for tool calling
+            for p in prompt:
+                messages.append(ClientMessage.to_universal_message(message=p, role="user"))
 
         # Convert UniversalMessage to ClientMessage
         _messages = [ClientMessage.to_client_message(message=message) for message in messages]
@@ -89,6 +95,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        gather_prompts: bool = True,
     ) -> CompletionResults:
         ClientMessage = self._get_client_message_type()
 
@@ -106,7 +113,12 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
         # Convert prompt to UniversalMessage
-        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        if gather_prompts:
+            messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        else:
+            # For chatgpt, prompts must be separated for tool calling
+            for p in prompt:
+                messages.append(ClientMessage.to_universal_message(message=p, role="user"))
 
         # Convert UniversalMessage to ClientMessage
         _messages = [ClientMessage.to_client_message(message=message) for message in messages]
@@ -142,6 +154,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        gather_prompts: bool = True,
     ) -> Generator[CompletionResults, None, None]:
         ClientMessage = self._get_client_message_type()
 
@@ -159,7 +172,12 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
         # Convert prompt to UniversalMessage
-        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        if gather_prompts:
+            messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        else:
+            # For chatgpt, prompts must be separated for tool calling
+            for p in prompt:
+                messages.append(ClientMessage.to_universal_message(message=p, role="user"))
 
         # Convert UniversalMessage to ClientMessage
         _messages = [ClientMessage.to_client_message(message=message) for message in messages]
@@ -200,6 +218,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        gather_prompts: bool = True,
     ) -> AsyncGenerator[CompletionResults, None]:
         ClientMessage = self._get_client_message_type()
 
@@ -217,7 +236,12 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
         # Convert prompt to UniversalMessage
-        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        if gather_prompts:
+            messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+        else:
+            # For chatgpt, prompts must be separated for tool calling
+            for p in prompt:
+                messages.append(ClientMessage.to_universal_message(message=p, role="user"))
 
         # Convert UniversalMessage to ClientMessage
         _messages = [ClientMessage.to_client_message(message=message) for message in messages]
