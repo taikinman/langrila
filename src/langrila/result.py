@@ -7,7 +7,7 @@ from .usage import Usage
 
 class CompletionResults(BaseModel):
     message: Any
-    usage: Usage
+    usage: Usage = Usage()
     prompt: Any = None
 
 
