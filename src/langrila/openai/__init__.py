@@ -8,3 +8,4 @@ from .llm.function_calling import (
     ToolProperty,
 )
 from .message import OpenAIMessage
+from .model import ChatGPT
