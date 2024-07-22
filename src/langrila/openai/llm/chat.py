@@ -271,6 +271,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             presence_penalty=0,
             stop=None,
             stream=True,
+            stream_options={"include_usage": True},
             **self.additional_inputs,
         )
 
@@ -290,26 +291,23 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
-                    else:
-                        # at the end of stream, return the whole message and usage
-                        usage = Usage(
-                            model_name=self.model_name,
-                            prompt_tokens=sum(
-                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
-                            ),
-                            completion_tokens=get_n_tokens(
-                                {"role": "assistant", "content": all_chunk}, self.model_name
-                            )["total"],
-                        )
 
-                        yield CompletionResults(
-                            usage=usage,
-                            message=ChatCompletionAssistantMessageParam(
-                                role="assistant",
-                                content=[{"type": "text", "text": all_chunk}],
-                            ),
-                            prompt=deepcopy(messages),
-                        )
+            else:
+                # at the end of stream, return the whole message and usage
+                usage = Usage(
+                    model_name=self.model_name,
+                    prompt_tokens=r.usage.prompt_tokens,
+                    completion_tokens=r.usage.completion_tokens,
+                )
+
+        yield CompletionResults(
+            usage=usage,
+            message=ChatCompletionAssistantMessageParam(
+                role="assistant",
+                content=[{"type": "text", "text": all_chunk}],
+            ),
+            prompt=deepcopy(messages),
+        )
 
     async def astream(
         self, messages: list[dict[str, str]]
@@ -346,6 +344,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             presence_penalty=0,
             stop=None,
             stream=True,
+            stream_options={"include_usage": True},
             **self.additional_inputs,
         )
 
@@ -365,26 +364,23 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
-                    else:
-                        # at the end of stream, return the whole message and usage
-                        usage = Usage(
-                            model_name=self.model_name,
-                            prompt_tokens=sum(
-                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
-                            ),
-                            completion_tokens=get_n_tokens(
-                                {"role": "assistant", "content": all_chunk}, self.model_name
-                            )["total"],
-                        )
 
-                        yield CompletionResults(
-                            usage=usage,
-                            message=ChatCompletionAssistantMessageParam(
-                                role="assistant",
-                                content=[{"type": "text", "text": all_chunk}],
-                            ),
-                            prompt=deepcopy(messages),
-                        )
+            else:
+                # at the end of stream, return the whole message and usage
+                usage = Usage(
+                    model_name=self.model_name,
+                    prompt_tokens=r.usage.prompt_tokens,
+                    completion_tokens=r.usage.completion_tokens,
+                )
+
+        yield CompletionResults(
+            usage=usage,
+            message=ChatCompletionAssistantMessageParam(
+                role="assistant",
+                content=[{"type": "text", "text": all_chunk}],
+            ),
+            prompt=deepcopy(messages),
+        )
 
 
 class OpenAIChatModule(ChatWrapperModule):
