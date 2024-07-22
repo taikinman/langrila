@@ -89,7 +89,7 @@ def get_call_config(api_type: str, tool_choice: str | None = "auto"):
     if api_type == "genai":
         from google.generativeai.protos import FunctionCallingConfig, ToolConfig
 
-        if tool_choice != "auto":
+        if tool_choice == "any":
             return ToolConfig(
                 function_calling_config=FunctionCallingConfig(
                     mode=FunctionCallingConfig.Mode.ANY,
@@ -107,7 +107,7 @@ def get_call_config(api_type: str, tool_choice: str | None = "auto"):
     elif api_type == "vertexai":
         from vertexai.preview.generative_models import ToolConfig
 
-        if tool_choice != "auto":
+        if tool_choice == "any":
             return ToolConfig(
                 function_calling_config=ToolConfig.FunctionCallingConfig(
                     mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
