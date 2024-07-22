@@ -1,69 +1,91 @@
+import base64
 import json
-from typing import Any, Optional
+from typing import Any
 
-import numpy as np
 from google.generativeai import protos
 from google.generativeai.types import content_types
 from google.generativeai.types.content_types import BlobDict, ContentDict, PartDict
-from PIL import Image
 
 from ...base import BaseMessage
-from ...utils import pil2bytes
-
-
-def encode_image(image: Image.Image | np.ndarray | bytes) -> str:
-    if isinstance(image, Image.Image):
-        return pil2bytes(image)
-    elif isinstance(image, np.ndarray):
-        image_pil = Image.fromarray(image)
-        return pil2bytes(image_pil)
-    elif isinstance(image, bytes):
-        return image
-    else:
-        raise ValueError(f"Type of {type(image)} is not supported for image.")
+from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
+from ...utils import decode_image
 
 
 class GeminiMessage(BaseMessage):
-    def __init__(
-        self,
-        content: str,
-        name: Optional[str] = None,
-        images: Any | list[Any] | None = None,
-    ):
-        super().__init__(content=content, images=images, name=name)
-
-    @property
-    def as_system(self):
-        raise NotImplementedError
-
     @property
     def as_user(self) -> protos.Content:
-        parts = [PartDict(text=self.content)]
-        if self.images:
-            if not isinstance(self.images, list):
-                images = [self.images]
-            else:
-                images = self.images
-
-            for image in images:
-                image_bytes = BlobDict(mime_type="image/png", data=encode_image(image))
-                parts.append(PartDict(inline_data=image_bytes))
-
-        content_dict = ContentDict(role="user", parts=parts)
+        content_dict = ContentDict(role="user", parts=self.contents)
         return content_types.to_content(content_dict)
 
     @property
     def as_assistant(self) -> protos.Content:
-        content_dict = ContentDict(role="model", parts=[PartDict(text=self.content)])
+        content_dict = ContentDict(role="model", parts=self.contents)
         return content_types.to_content(content_dict)
 
     @property
     def as_function(self) -> protos.Content:
-        content_dict = protos.FunctionResponse(name=self.name, response={"content": self.content})
+        content_dict = ContentDict(
+            role="function",
+            parts=self.contents,
+        )
+        return content_types.to_content(content_dict)
+
+    @property
+    def as_function_call(self) -> protos.Content:
+        content_dict = ContentDict(role="model", parts=self.contents)
         return content_types.to_content(content_dict)
 
     @staticmethod
-    def to_dict(content: protos.Content) -> dict[str, Any]:
+    def _format_text_content(content: TextContent) -> PartDict:
+        return PartDict(text=content.text)
+
+    @staticmethod
+    def _format_image_content(content: ImageContent) -> PartDict:
+        file_format = decode_image(content.image, as_utf8=True).format.lower()
+        _image_bytes = base64.b64decode(content.image.encode("utf-8"))
+
+        image_bytes = BlobDict(mime_type=f"image/{file_format}", data=_image_bytes)
+        return PartDict(inline_data=image_bytes)
+
+    @staticmethod
+    def _format_tool_content(content: ToolContent) -> protos.FunctionResponse:
+        return protos.FunctionResponse(name=content.funcname, response={"content": content.output})
+
+    @staticmethod
+    def _format_tool_call_content(content: ToolCall) -> protos.FunctionCall:
+        return protos.FunctionCall(name=content.name, args=content.args)
+
+    @classmethod
+    def from_client_message(cls, message: protos.Content) -> Message:
+        serializable = cls._to_dict(message)
+
+        common_contents = []
+
+        for part in serializable.get("parts"):
+            if part.get("text"):
+                common_contents.append(TextContent(text=part.get("text")))
+            elif part.get("inlineData"):
+                inline_data = part.get("inlineData", {})
+                mime_type = inline_data.get("mimeType")
+                file_format = mime_type.split("/")[1]
+                if file_format in ["jpeg", "png", "jpg"]:
+                    image_data = inline_data.get("data")
+                    common_contents.append(
+                        ImageContent(
+                            image=image_data,
+                        )
+                    )
+            else:
+                raise ValueError(f"Unsupported part type: {part.get('type')}")
+
+        return Message(
+            role=serializable.get("role").replace("model", "assistant"),
+            content=common_contents,
+            name=serializable.get("name"),
+        )
+
+    @staticmethod
+    def _to_dict(content: protos.Content) -> dict[str, Any]:
         return json.loads(
             type(content).to_json(
                 content,
@@ -71,7 +93,3 @@ class GeminiMessage(BaseMessage):
                 use_integers_for_enums=False,
             )
         )
-
-    @staticmethod
-    def from_dict(content_dict: dict[str, Any]) -> protos.Content:
-        return protos.Content.from_json(json.dumps(content_dict))

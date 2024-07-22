@@ -11,6 +11,12 @@ class CompletionResults(BaseModel):
     prompt: Any = None
 
 
+class ToolCallResponse(BaseModel):
+    name: str
+    args: Any
+    call_id: str | None = None
+
+
 class ToolOutput(BaseModel):
     call_id: str | None
     funcname: str | None
@@ -20,7 +26,8 @@ class ToolOutput(BaseModel):
 
 class FunctionCallingResults(BaseModel):
     usage: Usage
-    results: list[ToolOutput]
+    results: list[Any]
+    calls: list[Any] | None = None
     prompt: Any | None = None
 
 

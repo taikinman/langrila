@@ -1,16 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Generator, Optional
-
-from PIL import Image
+from typing import AsyncGenerator, Generator, Optional
 
 from .base import (
     BaseChatModule,
-    BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
     BaseFunctionCallingModule,
     BaseMessage,
 )
+from .message_content import ConversationType, InputType
 from .mixin import ConversationMixin, FilterMixin
 from .result import CompletionResults, FunctionCallingResults
 from .usage import TokenCounter
@@ -20,9 +18,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
     def __init__(
         self,
         chat_model: BaseChatModule,
-        conversation_memory: Optional[BaseConversationMemory] = None,
-        content_filter: Optional[BaseFilter] = None,
-        token_counter: Optional[TokenCounter] = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        token_counter: TokenCounter | None = None,
     ):
         self.chat_model = chat_model
         self.conversation_memory = conversation_memory
@@ -36,194 +34,225 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
 
     def run(
         self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, Any]]] = None,
-        **kwargs,
+        prompt: InputType,
+        init_conversation: ConversationType | None = None,
     ) -> CompletionResults:
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
+        ClientMessage = self._get_client_message_type()
 
+        # Load conversation memory
         messages = self.load_conversation()
 
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
+        # Convert init_conversation to ClientMessage
+        if init_conversation:
+            if not isinstance(init_conversation, list):
+                init_conversation = [init_conversation]
 
-        if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
-        else:
-            messages.append(prompt)
+        # Convert messages to UniversalMessage
+        messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
+        # Convert prompt to UniversalMessage
+        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+
+        # Convert UniversalMessage to ClientMessage
+        _messages = [ClientMessage.to_client_message(message=message) for message in messages]
+
+        # Apply content filter if available
         if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
+            _messages = self.content_filter.apply(_messages)
 
-        response = self.chat_model.run(messages)
+        response: CompletionResults = self.chat_model.run(_messages)
 
+        # Update total tokens
         if self.token_counter is not None:
             self.token_counter += response.usage
 
+        # Restore content filter if available
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
 
-        if hasattr(Message, "to_dict"):
-            response.message = Message.to_dict(response.message)
-            messages = [Message.to_dict(message) for message in messages]
-            response.prompt = [Message.to_dict(message) for message in response.prompt]
-
+        # Append the response to the conversation with the UniversalMessage format
+        response.message = ClientMessage.to_universal_message_from_completion_response(
+            response=response
+        )
         messages.append(response.message)
 
+        # Save conversation memory
         if self.conversation_memory is not None:
-            self.save_conversation(messages)
+            serializable = [m.model_dump() for m in messages]
+            self.save_conversation(serializable)
 
         return response
 
     async def arun(
         self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, Any]]] = None,
-        **kwargs,
+        prompt: InputType,
+        init_conversation: ConversationType | None = None,
     ) -> CompletionResults:
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
+        ClientMessage = self._get_client_message_type()
 
+        # Load conversation memory
         messages = self.load_conversation()
 
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
+        # Convert init_conversation to ClientMessage
+        if init_conversation:
+            if not isinstance(init_conversation, list):
+                init_conversation = [init_conversation]
 
-        if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
-        else:
-            messages.append(prompt)
+        # Convert messages to UniversalMessage
+        messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
+        # Convert prompt to UniversalMessage
+        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+
+        # Convert UniversalMessage to ClientMessage
+        _messages = [ClientMessage.to_client_message(message=message) for message in messages]
+
+        # Apply content filter if available
         if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
+            _messages = self.content_filter.apply(_messages)
 
-        response = await self.chat_model.arun(messages)
+        response: CompletionResults = await self.chat_model.arun(_messages)
 
+        # Update total tokens
         if self.token_counter is not None:
             self.token_counter += response.usage
 
+        # Restore content filter if available
         if self.content_filter is not None:
             response.message = self.restore_content_filter([response.message])[0]
 
-        if hasattr(Message, "to_dict"):
-            response.message = Message.to_dict(response.message)
-            messages = [Message.to_dict(message) for message in messages]
-            response.prompt = [Message.to_dict(message) for message in response.prompt]
-
+        # Append the response to the conversation with the UniversalMessage format
+        response.message = ClientMessage.to_universal_message_from_completion_response(
+            response=response
+        )
         messages.append(response.message)
 
+        # Save conversation memory
         if self.conversation_memory is not None:
-            self.save_conversation(messages)
+            serializable = [m.model_dump() for m in messages]
+            self.save_conversation(serializable)
 
         return response
 
     def stream(
         self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, Any]]] = None,
-        **kwargs,
+        prompt: InputType,
+        init_conversation: ConversationType | None = None,
     ) -> Generator[CompletionResults, None, None]:
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
+        ClientMessage = self._get_client_message_type()
 
+        # Load conversation memory
         messages = self.load_conversation()
 
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
+        # Convert init_conversation to ClientMessage
+        if init_conversation:
+            if not isinstance(init_conversation, list):
+                init_conversation = [init_conversation]
 
-        if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
-        else:
-            messages.append(prompt)
+        # Convert messages to UniversalMessage
+        messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
+        # Convert prompt to UniversalMessage
+        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+
+        # Convert UniversalMessage to ClientMessage
+        _messages = [ClientMessage.to_client_message(message=message) for message in messages]
+
+        # Apply content filter if available
         if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
+            _messages = self.content_filter.apply(_messages)
 
-        response = self.chat_model.stream(messages)
+        # Run the model
+        response = self.chat_model.stream(_messages)
 
         for chunk in response:
             if isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
                     chunk.message = self.restore_content_filter([chunk.message])[0]
-                chunk.message = Message.to_dict(chunk.message)
-                yield chunk
 
+                # Convert to UniversalMessage
+                chunk.message = ClientMessage.to_universal_message_from_completion_response(
+                    response=chunk
+                )
+
+                yield chunk
             else:
                 raise AssertionError
 
+        # Update total tokens
         if self.token_counter is not None:
             self.token_counter += chunk.usage
 
-        if hasattr(Message, "to_dict"):
-            chunk.prompt = [Message.to_dict(message) for message in chunk.prompt]
-            messages = [Message.to_dict(message) for message in messages]
-
         messages.append(chunk.message)
 
+        # Save conversation memory
         if self.conversation_memory is not None:
-            self.save_conversation(messages)
+            serializable = [m.model_dump() for m in messages]
+            self.save_conversation(serializable)
 
     async def astream(
         self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: Optional[list[dict[str, Any]]] = None,
-        **kwargs,
+        prompt: InputType,
+        init_conversation: ConversationType | None = None,
     ) -> AsyncGenerator[CompletionResults, None]:
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
+        ClientMessage = self._get_client_message_type()
 
+        # Load conversation memory
         messages = self.load_conversation()
 
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
+        # Convert init_conversation to ClientMessage
+        if init_conversation:
+            if not isinstance(init_conversation, list):
+                init_conversation = [init_conversation]
 
-        if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt, images=images, **kwargs).as_user)
-        else:
-            messages.append(prompt)
+        # Convert messages to UniversalMessage
+        messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
+        # Convert prompt to UniversalMessage
+        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+
+        # Convert UniversalMessage to ClientMessage
+        _messages = [ClientMessage.to_client_message(message=message) for message in messages]
+
+        # Apply content filter if available
         if self.content_filter is not None:
-            messages = self.content_filter.apply(messages)
+            _messages = self.content_filter.apply(_messages)
 
-        response = self.chat_model.astream(messages)
+        # Run the model
+        response = self.chat_model.astream(_messages)
 
         async for chunk in response:
             if isinstance(chunk, CompletionResults):
                 if self.content_filter is not None:
                     chunk.message = self.restore_content_filter([chunk.message])[0]
-                chunk.message = Message.to_dict(chunk.message)
+
+                # Convert to UniversalMessage
+                chunk.message = ClientMessage.to_universal_message_from_completion_response(
+                    response=chunk
+                )
+
                 yield chunk
             else:
                 raise AssertionError
 
+        # Update total tokens
         if self.token_counter is not None:
             self.token_counter += chunk.usage
 
-        if hasattr(Message, "to_dict"):
-            chunk.prompt = [Message.to_dict(message) for message in chunk.prompt]
-            messages = [Message.to_dict(message) for message in messages]
-
         messages.append(chunk.message)
 
+        # Save conversation memory
         if self.conversation_memory is not None:
-            self.save_conversation(messages)
+            serializable = [m.model_dump() for m in messages]
+            self.save_conversation(serializable)
 
 
 class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
@@ -246,96 +275,130 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
 
     def run(
         self,
-        prompt: str,
-        init_conversation: Optional[list[dict[str, str]]] = None,
+        prompt: InputType,
+        init_conversation: ConversationType | None = None,
         **kwargs,
     ) -> FunctionCallingResults:
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
+        ClientMessage = self._get_client_message_type()
 
+        # Load conversation memory
         messages = self.load_conversation()
 
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
+        # Convert init_conversation to ClientMessage
+        if init_conversation:
+            if not isinstance(init_conversation, list):
+                init_conversation = [init_conversation]
 
-        if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt).as_user)
-        else:
-            messages.append(prompt)
+        # Convert messages to UniversalMessage
+        messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
+        # Convert prompt to UniversalMessage
+        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+
+        # Convert UniversalMessage to ClientMessage
+        _messages = [ClientMessage.to_client_message(message=message) for message in messages]
+
+        # Apply content filter if available
         if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
+            _messages = self.content_filter.apply(_messages)
 
-        response = self.function_calling_model.run(messages, **kwargs)
+        # Run the model
+        response = self.function_calling_model.run(_messages, **kwargs)
 
+        # Update total tokens
         if self.token_counter is not None:
             self.token_counter += response.usage
 
+        # Restore content filter if available
         if self.content_filter is not None:
             for i, _ in enumerate(response.results):
                 response.results[i].args = self.restore_content_filter([response.results[i].args])[
                     0
                 ]
 
-        for result in response.results:
-            messages.append(Message(content=str(result.output), name=result.funcname).as_function)
+        # Append the response to the conversation
+        response.results = ClientMessage.to_universal_message_from_function_response(
+            response=response
+        )
 
-        if hasattr(Message, "to_dict"):
-            messages = [Message.to_dict(message) for message in messages]
-            response.prompt = [Message.to_dict(message) for message in response.prompt]
+        if response.calls:
+            response.calls = ClientMessage.to_universal_message_from_function_call(
+                response=response
+            )
+            messages.append(response.calls)
+        else:
+            messages.extend(response.results)
 
+        # Save conversation memory
         if self.conversation_memory is not None:
-            self.save_conversation(messages)
+            serializable = [m.model_dump() for m in messages]
+            self.save_conversation(serializable)
 
         return response
 
     async def arun(
         self,
-        prompt: str,
-        init_conversation: Optional[list[dict[str, str]]] = None,
+        prompt: InputType,
+        init_conversation: ConversationType | None = None,
         **kwargs,
     ) -> FunctionCallingResults:
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
+        ClientMessage = self._get_client_message_type()
 
+        # Load conversation memory
         messages = self.load_conversation()
 
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
+        # Convert init_conversation to ClientMessage
+        if init_conversation:
+            if not isinstance(init_conversation, list):
+                init_conversation = [init_conversation]
 
-        if isinstance(init_conversation, list) and len(messages) == 0:
             messages.extend(init_conversation)
 
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt).as_user)
-        else:
-            messages.append(prompt)
+        # Convert messages to UniversalMessage
+        messages = [ClientMessage.to_universal_message(message=message) for message in messages]
 
+        # Convert prompt to UniversalMessage
+        messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
+
+        # Convert UniversalMessage to ClientMessage
+        _messages = [ClientMessage.to_client_message(message=message) for message in messages]
+
+        # Apply content filter if available
         if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
+            _messages = self.content_filter.apply(_messages)
 
-        response = await self.function_calling_model.arun(messages, **kwargs)
+        # Run the model
+        response = await self.function_calling_model.arun(_messages, **kwargs)
 
+        # Update total tokens
         if self.token_counter is not None:
             self.token_counter += response.usage
 
+        # Restore content filter if available
         if self.content_filter is not None:
             for i, _ in enumerate(response.results):
                 response.results[i].args = self.restore_content_filter([response.results[i].args])[
                     0
                 ]
 
-        for result in response.results:
-            messages.append(Message(content=str(result.output), name=result.funcname).as_function)
+        # Append the response to the conversation
+        response.results = ClientMessage.to_universal_message_from_function_response(
+            response=response
+        )
 
-        if hasattr(Message, "to_dict"):
-            messages = [Message.to_dict(message) for message in messages]
-            response.prompt = [Message.to_dict(message) for message in response.prompt]
+        if response.calls:
+            response.calls = ClientMessage.to_universal_message_from_function_call(
+                response=response
+            )
+            messages.append(response.calls)
+        else:
+            messages.extend(response.results)
 
+        # Save conversation memory
         if self.conversation_memory is not None:
-            self.save_conversation(messages)
+            serializable = [m.model_dump() for m in messages]
+            self.save_conversation(serializable)
 
         return response
