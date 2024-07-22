@@ -12,9 +12,7 @@ from anthropic._types import (
     Transport,
 )
 from anthropic.types import TextBlockParam, ToolUseBlock
-from anthropic.types.message_param import MessageParam
 from anthropic.types.text_block import TextBlock
-from langrila.result import ToolOutput
 
 from ...base import (
     BaseChatModule,
@@ -24,7 +22,8 @@ from ...base import (
     BaseMessage,
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
-from ...result import CompletionResults, FunctionCallingResults
+from ...message_content import TextContent
+from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
 from ..claude_utils import acompletion, completion, get_async_client, get_client
 from ..message import ClaudeMessage
@@ -117,8 +116,6 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             _strict_response_validation=self._strict_response_validation,
         )
 
-        self._messages = messages
-
         response = completion(
             client=client,
             model_name=self.model_name,
@@ -131,6 +128,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         )
 
         contents = []
+        calls = []
         model = response.model
         usage = Usage(
             model_name=model,
@@ -140,12 +138,9 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
 
         for content in response.content:
             if isinstance(content, TextBlock):
-                contents.append(
-                    ToolOutput(
-                        call_id=None,
-                        funcname=None,
-                        args=None,
-                        output={"tool_result": None, "content": content},
+                calls.append(
+                    TextContent(
+                        text=content.text,
                     )
                 )
             elif isinstance(content, ToolUseBlock):
@@ -156,17 +151,23 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
                     call_id=call_id,
                     funcname=funcname,
                     args=json.dumps(args),
-                    output={
-                        "tool_result": str(self.tools[funcname](**args)),
-                        "content": content,
-                    },
+                    output=str(self.tools[funcname](**args)),
                 )
+
                 contents.append(output)
+                calls.append(
+                    ToolCallResponse(
+                        call_id=call_id,
+                        name=funcname,
+                        args=args,
+                    )
+                )
 
         return FunctionCallingResults(
             usage=usage,
             results=contents,
             prompt=copy.deepcopy(messages),
+            calls=calls,
         )
 
     async def arun(
@@ -196,8 +197,6 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             _strict_response_validation=self._strict_response_validation,
         )
 
-        self._messages = messages
-
         response = await acompletion(
             client=client,
             model_name=self.model_name,
@@ -210,6 +209,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         )
 
         contents = []
+        calls = []
         model = response.model
         usage = Usage(
             model_name=model,
@@ -219,12 +219,9 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
 
         for content in response.content:
             if isinstance(content, TextBlock):
-                contents.append(
-                    ToolOutput(
-                        call_id=None,
-                        funcname=None,
-                        args=None,
-                        output={"tool_result": None, "content": content},
+                calls.append(
+                    TextContent(
+                        text=content.text,
                     )
                 )
             elif isinstance(content, ToolUseBlock):
@@ -235,17 +232,23 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
                     call_id=call_id,
                     funcname=funcname,
                     args=json.dumps(args),
-                    output={
-                        "tool_result": str(self.tools[funcname](**args)),
-                        "content": content,
-                    },
+                    output=str(self.tools[funcname](**args)),
                 )
+
                 contents.append(output)
+                calls.append(
+                    ToolCallResponse(
+                        call_id=call_id,
+                        name=funcname,
+                        args=args,
+                    )
+                )
 
         return FunctionCallingResults(
             usage=usage,
             results=contents,
             prompt=copy.deepcopy(messages),
+            calls=calls,
         )
 
 
@@ -320,111 +323,3 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
 
     def _get_client_message_type(self) -> type[BaseMessage]:
         return ClaudeMessage
-
-    def run(
-        self,
-        prompt: str,
-        init_conversation: list[dict[str, str]] | None = None,
-        **kwargs,
-    ) -> FunctionCallingResults:
-        """
-        override the run method to handle the conversation memory
-        """
-
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
-
-        messages = self.load_conversation()
-
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt).as_user)
-        else:
-            messages.append(prompt)
-
-        if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
-
-        response = self.function_calling_model.run(messages, **kwargs)
-
-        if self.token_counter is not None:
-            self.token_counter += response.usage
-
-        if self.content_filter is not None:
-            for i, _ in enumerate(response.results):
-                response.results[i].args = self.restore_content_filter([response.results[i].args])[
-                    0
-                ]
-
-        if self.conversation_memory is not None:
-            tool_use_contents = []
-            for result in response.results:
-                tool_use_contents.append(result.output["content"])
-
-            messages.append(Message(content=tool_use_contents).as_function)
-
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
-            self.save_conversation(messages)
-
-        return response
-
-    async def arun(
-        self,
-        prompt: str,
-        init_conversation: list[dict[str, str]] | None = None,
-        **kwargs,
-    ) -> FunctionCallingResults:
-        """
-        override the run method to handle the conversation memory
-        """
-
-        Message = self._get_client_message_type()
-        self._init_conversation_memory(init_conversation=init_conversation)
-
-        messages = self.load_conversation()
-
-        if hasattr(Message, "from_dict"):
-            messages = [Message.from_dict(message) for message in messages]
-
-        if isinstance(init_conversation, list) and len(messages) == 0:
-            messages.extend(init_conversation)
-
-        if isinstance(prompt, str):
-            messages.append(Message(content=prompt).as_user)
-        else:
-            messages.append(prompt)
-
-        if self.content_filter is not None:
-            messages = self.apply_content_filter(messages)
-
-        response = await self.function_calling_model.arun(messages, **kwargs)
-
-        if self.token_counter is not None:
-            self.token_counter += response.usage
-
-        if self.content_filter is not None:
-            for i, _ in enumerate(response.results):
-                response.results[i].args = self.restore_content_filter([response.results[i].args])[
-                    0
-                ]
-
-        if self.conversation_memory is not None:
-            tool_use_contents = []
-            for result in response.results:
-                tool_use_contents.append(result.output["content"])
-
-            messages.append(Message(content=tool_use_contents).as_function)
-
-            if hasattr(Message, "to_dict"):
-                messages = [Message.to_dict(message) for message in messages]
-
-            self.save_conversation(messages)
-
-        return response

@@ -91,12 +91,13 @@ class GeminiChatCoreModule(BaseChatModule):
         )
         response = model.generate_content(contents=messages, **self.additional_kwargs)
         content = response.candidates[0].content
+        usage_metadata = response.usage_metadata
         return CompletionResults(
             message=content,
             usage=Usage(
                 model_name=self.model_name,
-                prompt_tokens=model.count_tokens(messages).total_tokens,
-                completion_tokens=model.count_tokens(content.parts).total_tokens,
+                prompt_tokens=usage_metadata.prompt_token_count,
+                completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
         )
@@ -124,12 +125,13 @@ class GeminiChatCoreModule(BaseChatModule):
         )
         response = await model.generate_content_async(contents=messages, **self.additional_kwargs)
         content = response.candidates[0].content
+        usage_metadata = response.usage_metadata
         return CompletionResults(
             message=content,
             usage=Usage(
                 model_name=self.model_name,
-                prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
-                completion_tokens=(await model.count_tokens_async(content.parts)).total_tokens,
+                prompt_tokens=usage_metadata.prompt_token_count,
+                completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
         )

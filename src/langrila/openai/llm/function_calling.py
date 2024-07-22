@@ -424,23 +424,3 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
 
     def _get_client_message_type(self) -> type[BaseMessage]:
         return OpenAIMessage
-
-    async def abatch_run(
-        self,
-        prompts: list[str],
-        init_conversations: Optional[list[list[dict[str, str]]]] = None,
-        batch_size: int = 4,
-    ) -> list[FunctionCallingResults]:
-        if init_conversations is None:
-            init_conversations = [None] * len(prompts)
-
-        z = zip(prompts, init_conversations, strict=True)
-        batches = make_batch(list(z), batch_size)
-        results = []
-        for batch in batches:
-            async_processes = [
-                self.arun(prompt=prompt, init_conversation=init_conversation)
-                for prompt, init_conversation in batch
-            ]
-            results.extend(await asyncio.gather(*async_processes))
-        return results

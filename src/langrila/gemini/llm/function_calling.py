@@ -13,7 +13,7 @@ from ...base import (
     BaseMessage,
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
-from ...result import FunctionCallingResults, ToolOutput
+from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
 from ..gemini_utils import get_call_config, get_message_cls, get_model, get_tool_cls
 
@@ -113,7 +113,9 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
             **self.additional_kwargs,
         )
         parts = response.candidates[0].content.parts
+
         results = []
+        calls = []
         for part in parts:
             if fn := part.function_call:
                 funcname = fn.name
@@ -125,15 +127,24 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                     args=json.dumps(args),
                     output=func_out,
                 )
+
+                call = ToolCallResponse(
+                    name=funcname,
+                    args=args,
+                )
                 results.append(output)
+                calls.append(call)
+
+        usage_metadata = response.usage_metadata
 
         return FunctionCallingResults(
             usage=Usage(
                 model_name=self.model_name,
-                prompt_tokens=(model.count_tokens(messages)).total_tokens,
-                completion_tokens=(model.count_tokens(parts)).total_tokens,
+                prompt_tokens=usage_metadata.prompt_token_count,
+                completion_tokens=usage_metadata.candidates_token_count,
             ),
             results=results,
+            calls=calls,
             prompt=copy.deepcopy(messages),
         )
 
@@ -170,7 +181,9 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
             **self.additional_kwargs,
         )
         parts = response.candidates[0].content.parts
+
         results = []
+        calls = []
         for part in parts:
             if fn := part.function_call:
                 funcname = fn.name
@@ -182,15 +195,24 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                     args=json.dumps(args),
                     output=func_out,
                 )
+
+                call = ToolCallResponse(
+                    name=funcname,
+                    args=args,
+                )
                 results.append(output)
+                calls.append(call)
+
+        usage_metadata = response.usage_metadata
 
         return FunctionCallingResults(
             usage=Usage(
                 model_name=self.model_name,
-                prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
-                completion_tokens=(await model.count_tokens_async(parts)).total_tokens,
+                prompt_tokens=usage_metadata.prompt_token_count,
+                completion_tokens=usage_metadata.candidates_token_count,
             ),
             results=results,
+            calls=calls,
             prompt=copy.deepcopy(messages),
         )
 

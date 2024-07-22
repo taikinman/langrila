@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, AsyncGenerator, Generator, Literal
+from typing import Any, AsyncGenerator, Generator
 
 from PIL import Image
 
@@ -10,14 +10,14 @@ from .message_content import (
     ApplicationFileContent,
     ContentType,
     ImageContent,
+    InputType,
     Message,
     TextContent,
     ToolCall,
     ToolContent,
 )
 from .result import CompletionResults, EmbeddingResults, FunctionCallingResults
-from .types import PathType
-from .utils import decode_image
+from .types import RoleType
 
 
 class BaseChatModule(ABC):
@@ -108,19 +108,6 @@ class BaseMessage(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def _get_image_from_content(content: ImageContent) -> Image.Image:
-        if isinstance(content.image, Image.Image):
-            return content.image
-        elif isinstance(content.image, bytes):
-            return decode_image(content.image, as_utf8=False)
-        elif isinstance(content.image, PathType):
-            try:
-                assert Path(content.image).is_file(), f"{content.image} is not a file"
-                return Image.open(content.image)
-            except OSError:
-                return decode_image(content.image, as_utf8=True)
-
-    @staticmethod
     @abstractmethod
     def _format_text_content(content: TextContent) -> Any:
         raise NotImplementedError
@@ -151,9 +138,7 @@ class BaseMessage(ABC):
         return cls.from_client_message(response.message)
 
     @classmethod
-    def _from_function_calling_results(
-        cls, response: FunctionCallingResults
-    ) -> list[dict[str, Any]]:
+    def _from_function_calling_results(cls, response: FunctionCallingResults) -> list[Message]:
         return [
             Message(
                 role="function",  # global role
@@ -176,7 +161,7 @@ class BaseMessage(ABC):
         ]
 
     @classmethod
-    def _from_function_calling_calls(cls, response: FunctionCallingResults) -> list[dict[str, Any]]:
+    def _from_function_calling_calls(cls, response: FunctionCallingResults) -> Message:
         return Message(
             role="function_call",  # global role
             content=[
@@ -245,7 +230,7 @@ class BaseMessage(ABC):
     @classmethod
     def _format_message(
         cls,
-        role: Literal["user", "assistant", "system", "function", "function_call"],
+        role: RoleType,
         contents: ContentType | list[ContentType],
         name: str | None = None,
     ) -> Any:
@@ -302,8 +287,8 @@ class BaseMessage(ABC):
     @classmethod
     def to_universal_message(
         cls,
-        message: Message | ContentType | dict[str, Any],
-        role: Literal["system", "user", "assistant", "function", "function_call"] | None = None,
+        message: InputType,
+        role: RoleType | None = None,
         name: str | None = None,
     ) -> Message:
         if isinstance(message, Message):
@@ -320,13 +305,18 @@ class BaseMessage(ABC):
             if role is None:
                 raise ValueError("Role must be provided to create a message")
 
-            for content in message:
-                if not isinstance(content, ContentType):
-                    raise ValueError(f"Invalid content type {type(content)} in the input list.")
-
-            message = Message(role=role, content=message, name=name)
-            message.content = cls.to_contents(contents=message.content)
+            contents = [
+                cls.to_universal_message(role=role, message=m, name=name).content[0]
+                for m in message
+            ]
+            message = Message(role=role, content=contents, name=name)
             return message
+        elif isinstance(message, Image.Image):
+            return Message(
+                role=role,
+                content=[ImageContent(image=message)],
+                name=name,
+            )
         elif isinstance(message, dict):
             message = Message(**message)
             message.content = cls.to_contents(contents=message.content)

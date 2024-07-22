@@ -1,10 +1,8 @@
-import asyncio
 from copy import deepcopy
 from typing import Any, AsyncGenerator, Generator, Optional
 
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from openai.types.chat import ChatCompletionAssistantMessageParam
-from PIL import Image
 
 from ...base import (
     BaseChatModule,
@@ -14,9 +12,9 @@ from ...base import (
     BaseMessage,
 )
 from ...llm_wrapper import ChatWrapperModule
+from ...message_content import ContentType, Message, TextContent
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
-from ...utils import make_batch
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
 from ..model_config import _OLDER_MODEL_CONFIG, _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
@@ -187,7 +185,9 @@ class OpenAIChatCoreModule(BaseChatModule):
         response_message = response.choices[0].message.content.strip("\n")
         return CompletionResults(
             usage=usage,
-            message=ChatCompletionAssistantMessageParam(role="assistant", content=response_message),
+            message=ChatCompletionAssistantMessageParam(
+                role="assistant", content=[{"type": "text", "text": response_message}]
+            ),
             prompt=deepcopy(messages),
         )
 
@@ -232,7 +232,9 @@ class OpenAIChatCoreModule(BaseChatModule):
         response_message = response.choices[0].message.content.strip("\n")
         return CompletionResults(
             usage=usage,
-            message=ChatCompletionAssistantMessageParam(role="assistant", content=response_message),
+            message=ChatCompletionAssistantMessageParam(
+                role="assistant", content=[{"type": "text", "text": response_message}]
+            ),
             prompt=deepcopy(messages),
         )
 
@@ -272,17 +274,20 @@ class OpenAIChatCoreModule(BaseChatModule):
             **self.additional_inputs,
         )
 
-        response_message = ChatCompletionAssistantMessageParam(role="assistant", content="")
+        all_chunk = ""
         for r in response:
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
                 if delta is not None:
                     chunk = delta.content
                     if chunk is not None:
-                        response_message["content"] += chunk
+                        all_chunk += chunk
                         yield CompletionResults(
                             usage=Usage(model_name=self.model_name),
-                            message=response_message,
+                            message=ChatCompletionAssistantMessageParam(
+                                role="assistant",
+                                content=[{"type": "text", "text": all_chunk}],
+                            ),
                             prompt=[{}],
                         )
                     else:
@@ -292,13 +297,18 @@ class OpenAIChatCoreModule(BaseChatModule):
                             prompt_tokens=sum(
                                 [get_n_tokens(m, self.model_name)["total"] for m in messages]
                             ),
-                            completion_tokens=get_n_tokens(response_message, self.model_name)[
-                                "total"
-                            ],
+                            completion_tokens=get_n_tokens(
+                                {"role": "assistant", "content": all_chunk}, self.model_name
+                            )["total"],
                         )
 
                         yield CompletionResults(
-                            usage=usage, message=response_message, prompt=deepcopy(messages)
+                            usage=usage,
+                            message=ChatCompletionAssistantMessageParam(
+                                role="assistant",
+                                content=[{"type": "text", "text": all_chunk}],
+                            ),
+                            prompt=deepcopy(messages),
                         )
 
     async def astream(
@@ -339,17 +349,20 @@ class OpenAIChatCoreModule(BaseChatModule):
             **self.additional_inputs,
         )
 
-        response_message = ChatCompletionAssistantMessageParam(role="assistant", content="")
+        all_chunk = ""
         async for r in response:
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
                 if delta is not None:
                     chunk = delta.content
                     if chunk is not None:
-                        response_message["content"] += chunk
+                        all_chunk += chunk
                         yield CompletionResults(
                             usage=Usage(model_name=self.model_name),
-                            message=response_message,
+                            message=ChatCompletionAssistantMessageParam(
+                                role="assistant",
+                                content=[{"type": "text", "text": all_chunk}],
+                            ),
                             prompt=[{}],
                         )
                     else:
@@ -359,13 +372,18 @@ class OpenAIChatCoreModule(BaseChatModule):
                             prompt_tokens=sum(
                                 [get_n_tokens(m, self.model_name)["total"] for m in messages]
                             ),
-                            completion_tokens=get_n_tokens(response_message, self.model_name)[
-                                "total"
-                            ],
+                            completion_tokens=get_n_tokens(
+                                {"role": "assistant", "content": all_chunk}, self.model_name
+                            )["total"],
                         )
 
                         yield CompletionResults(
-                            usage=usage, message=response_message, prompt=deepcopy(messages)
+                            usage=usage,
+                            message=ChatCompletionAssistantMessageParam(
+                                role="assistant",
+                                content=[{"type": "text", "text": all_chunk}],
+                            ),
+                            prompt=deepcopy(messages),
                         )
 
 
@@ -439,92 +457,3 @@ class OpenAIChatModule(ChatWrapperModule):
 
     def _get_client_message_type(self) -> type[BaseMessage]:
         return OpenAIMessage
-
-    def run(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: list[dict[str, Any]] | None = None,
-        image_resolution: str = "low",
-    ) -> CompletionResults:
-        return super().run(
-            prompt=prompt,
-            images=images,
-            init_conversation=init_conversation,
-            image_resolution=image_resolution,
-        )
-
-    async def arun(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: list[dict[str, Any]] | None = None,
-        image_resolution: str | list[str] = "low",
-    ) -> CompletionResults:
-        return await super().arun(
-            prompt=prompt,
-            images=images,
-            init_conversation=init_conversation,
-            image_resolution=image_resolution,
-        )
-
-    def stream(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: list[dict[str, Any]] | None = None,
-        image_resolution: str = "low",
-    ) -> Generator[CompletionResults, None, None]:
-        return super().stream(
-            prompt=prompt,
-            images=images,
-            init_conversation=init_conversation,
-            image_resolution=image_resolution,
-        )
-
-    async def astream(
-        self,
-        prompt: str,
-        images: Image.Image | bytes | list[Image.Image | bytes] | None = None,
-        init_conversation: list[dict[str, Any]] | None = None,
-        image_resolution: str | list[str] = "low",
-    ) -> AsyncGenerator[CompletionResults, None]:
-        return await super().astream(
-            prompt=prompt,
-            images=images,
-            init_conversation=init_conversation,
-            image_resolution=image_resolution,
-        )
-
-    async def abatch_run(
-        self,
-        prompts: list[str],
-        images: list[Image.Image | bytes | list[Image.Image, bytes]] | None = None,
-        init_conversations: Optional[list[list[dict[str, str]]]] = None,
-        image_resolutions: str | list[str] = "low",
-        batch_size: int = 4,
-    ) -> list[CompletionResults]:
-        if init_conversations is None:
-            init_conversations = [None] * len(prompts)
-
-        if images is None:
-            images = [None] * len(prompts)
-
-        if isinstance(image_resolutions, str):
-            image_resolutions = [image_resolutions] * len(prompts)
-
-        z = zip(prompts, init_conversations, images, image_resolutions, strict=True)
-        batches = make_batch(list(z), batch_size)
-        results = []
-        for batch in batches:
-            async_processes = [
-                self.arun(
-                    prompt=prompt,
-                    images=_images,
-                    init_conversation=init_conversation,
-                    image_resolution=resolution,
-                )
-                for prompt, init_conversation, _images, resolution in batch
-            ]
-            results.extend(await asyncio.gather(*async_processes))
-        return results

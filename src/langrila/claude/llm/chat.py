@@ -213,31 +213,32 @@ class AnthropicChatCoreModule(BaseChatModule):
         )
 
         all_chunks = ""
-        for r in response:
-            if isinstance(r, RawMessageStartEvent):
-                usage = Usage(
-                    model_name=r.message.model,
-                    prompt_tokens=r.message.usage.input_tokens,
-                    completion_tokens=r.message.usage.output_tokens,
-                )
-                role = r.message.role
-            elif isinstance(r, RawContentBlockStartEvent):
-                all_chunks += r.content_block.text
-            elif isinstance(r, RawContentBlockDeltaEvent):
-                all_chunks += r.delta.text
-                yield CompletionResults(
-                    message=MessageParam(
-                        role=role, content=[TextBlockParam(text=all_chunks, type="text")]
-                    ),
-                    usage=Usage(),
-                    prompt="",
-                )
-            elif isinstance(r, RawMessageStopEvent):
-                pass
-            elif isinstance(r, RawMessageDeltaEvent):
-                usage += Usage(
-                    completion_tokens=r.usage.output_tokens,
-                )
+        with response as stream:
+            for r in stream:
+                if isinstance(r, RawMessageStartEvent):
+                    usage = Usage(
+                        model_name=r.message.model,
+                        prompt_tokens=r.message.usage.input_tokens,
+                        completion_tokens=r.message.usage.output_tokens,
+                    )
+                    role = r.message.role
+                elif isinstance(r, RawContentBlockStartEvent):
+                    all_chunks += r.content_block.text
+                elif isinstance(r, RawContentBlockDeltaEvent):
+                    all_chunks += r.delta.text
+                    yield CompletionResults(
+                        message=MessageParam(
+                            role=role, content=[TextBlockParam(text=all_chunks, type="text")]
+                        ),
+                        usage=Usage(),
+                        prompt=[{}],
+                    )
+                elif isinstance(r, RawMessageStopEvent):
+                    pass
+                elif isinstance(r, RawMessageDeltaEvent):
+                    usage += Usage(
+                        completion_tokens=r.usage.output_tokens,
+                    )
 
         yield CompletionResults(
             message=MessageParam(role=role, content=[TextBlockParam(text=all_chunks, type="text")]),
@@ -283,37 +284,40 @@ class AnthropicChatCoreModule(BaseChatModule):
         )
 
         all_chunks = ""
-        async for r in response:
-            if isinstance(r, RawMessageStartEvent):
-                usage = Usage(
-                    model_name=r.message.model,
-                    prompt_tokens=r.message.usage.input_tokens,
-                    completion_tokens=r.message.usage.output_tokens,
-                )
-                role = r.message.role
-            elif isinstance(r, RawContentBlockStartEvent):
-                all_chunks += r.content_block.text
-            elif isinstance(r, RawContentBlockDeltaEvent):
-                all_chunks += r.delta.text
-                yield CompletionResults(
-                    message=MessageParam(
-                        role=role, content=[TextBlockParam(text=all_chunks, type="text")]
-                    ),
-                    usage=Usage(),
-                    prompt="",
-                )
-            elif isinstance(r, RawMessageStopEvent):
-                pass
-            elif isinstance(r, RawMessageDeltaEvent):
-                usage += Usage(
-                    completion_tokens=r.usage.output_tokens,
-                )
+        async with response as stream:
+            async for r in stream:
+                if isinstance(r, RawMessageStartEvent):
+                    usage = Usage(
+                        model_name=r.message.model,
+                        prompt_tokens=r.message.usage.input_tokens,
+                        completion_tokens=r.message.usage.output_tokens,
+                    )
+                    role = r.message.role
+                elif isinstance(r, RawContentBlockStartEvent):
+                    all_chunks += r.content_block.text
+                elif isinstance(r, RawContentBlockDeltaEvent):
+                    all_chunks += r.delta.text
+                    yield CompletionResults(
+                        message=MessageParam(
+                            role=role, content=[TextBlockParam(text=all_chunks, type="text")]
+                        ),
+                        usage=Usage(),
+                        prompt=[{}],
+                    )
+                elif isinstance(r, RawMessageStopEvent):
+                    pass
+                elif isinstance(r, RawMessageDeltaEvent):
+                    usage += Usage(
+                        completion_tokens=r.usage.output_tokens,
+                    )
 
-        yield CompletionResults(
-            message=MessageParam(role=role, content=[TextBlockParam(text=all_chunks, type="text")]),
-            usage=usage,
-            prompt=copy.deepcopy(messages),
-        )
+            yield CompletionResults(
+                message=MessageParam(
+                    role=role, content=[TextBlockParam(text=all_chunks, type="text")]
+                ),
+                usage=usage,
+                prompt=copy.deepcopy(messages),
+            )
 
 
 class AnthropicChatModule(ChatWrapperModule):
