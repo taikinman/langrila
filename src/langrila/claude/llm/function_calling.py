@@ -89,8 +89,18 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         self.tools = {f.__name__: f for f in tools}
         self.tool_configs = [f.format() for f in tool_configs]
 
+    def _get_tool_choice(self, tool_choice: str | None) -> dict[str, Any]:
+        if tool_choice is None:
+            return None
+        elif tool_choice == "auto":
+            return {"type": "auto"}
+        elif tool_choice == "any":
+            return {"type": "any"}
+        else:
+            return {"type": "tool", "tool": tool_choice}
+
     def run(
-        self, messages: list[dict[str, Any]], tool_choice: dict[str, Any] | None = None
+        self, messages: list[dict[str, Any]], tool_choice: str | None = None
     ) -> FunctionCallingResults:
         client = get_client(
             api_type=self.api_type,
@@ -124,7 +134,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             max_tokens=self.max_tokens,
             timeout=self.timeout,
             tools=self.tool_configs,
-            tool_choice=tool_choice if tool_choice is not None else {"type": "auto"},
+            tool_choice=self._get_tool_choice(tool_choice),
         )
 
         contents = []
@@ -171,7 +181,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         )
 
     async def arun(
-        self, messages: list[dict[str, Any]], tool_choice: dict[str, Any] | None = None
+        self, messages: list[dict[str, Any]], tool_choice: str | None = None
     ) -> FunctionCallingResults:
         client = get_async_client(
             api_type=self.api_type,
@@ -205,7 +215,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             max_tokens=self.max_tokens,
             timeout=self.timeout,
             tools=self.tool_configs,
-            tool_choice=tool_choice if tool_choice is not None else {"type": "auto"},
+            tool_choice=self._get_tool_choice(tool_choice),
         )
 
         contents = []
