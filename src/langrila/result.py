@@ -11,6 +11,12 @@ class CompletionResults(BaseModel):
     prompt: Any = None
 
 
+class ToolCallResponse(BaseModel):
+    name: str
+    args: Any
+    call_id: str | None = None
+
+
 class ToolOutput(BaseModel):
     call_id: str | None
     funcname: str | None
