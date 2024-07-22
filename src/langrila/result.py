@@ -20,7 +20,7 @@ class ToolCallResponse(BaseModel):
 class ToolOutput(BaseModel):
     call_id: str | None
     funcname: str | None
-    args: str | None
+    args: Any | None
     output: Any
 
 
