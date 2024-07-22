@@ -195,7 +195,7 @@ class BaseMessage(ABC):
         contents: ContentType | list[ContentType],
         name: str | None = None,
     ) -> Any:
-        if role not in ["user", "assistant", "system", "function", "function_call"]:
+        if role not in ["user", "assistant", "system", "function", "function_call", "tool"]:
             raise ValueError(f"Invalid role: {role}")
 
         _contents = cls._format_contents(contents=contents)
