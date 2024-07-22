@@ -13,6 +13,7 @@ from anthropic._types import (
 )
 from anthropic.types import TextBlockParam, ToolUseBlock
 from anthropic.types.message_create_params import (
+    ToolChoice,
     ToolChoiceToolChoiceAny,
     ToolChoiceToolChoiceAuto,
     ToolChoiceToolChoiceTool,
@@ -94,7 +95,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         self.tools = {f.__name__: f for f in tools}
         self.tool_configs = [f.format() for f in tool_configs]
 
-    def _get_tool_choice(self, tool_choice: str | None) -> dict[str, Any]:
+    def _get_tool_choice(self, tool_choice: str | None) -> ToolChoice:
         if tool_choice is None:
             return NOT_GIVEN
         elif tool_choice == "auto":
