@@ -14,7 +14,7 @@ from ...base import (
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...mixin import ConversationMixin, FilterMixin
-from ...result import FunctionCallingResults, ToolOutput
+from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
 from ...utils import make_batch
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
@@ -168,8 +168,8 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
     def _set_tool_choice(self, tool_choice: str = "auto"):
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():
             self.additional_inputs["tool_choice"] = (
-                tool_choice
-                if tool_choice == "auto"
+                str(tool_choice).lower()
+                if tool_choice in ["auto", "required", None]
                 else {"type": "function", "function": {"name": tool_choice}}
             )
         else:
@@ -215,9 +215,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
 
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
+            self._response_message = response_message
             tool_calls = response_message.tool_calls
 
             results = []
+            calls = []
             if tool_calls is not None:
                 for tool_call in tool_calls:
                     call_id = tool_call.id
@@ -230,10 +232,19 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                         args=args,
                         output=func_out,
                     )
+
                     results.append(output)
 
+                    call = ToolCallResponse(
+                        call_id=call_id,
+                        name=funcname,
+                        args=args,
+                    )
+
+                    calls.append(call)
+
             return FunctionCallingResults(
-                usage=usage, results=results, prompt=copy.deepcopy(messages)
+                usage=usage, results=results, prompt=copy.deepcopy(messages), calls=calls
             )
 
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
@@ -302,9 +313,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
 
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():
             response_message = response.choices[0].message
+            self._response_message = response_message
             tool_calls = response_message.tool_calls
 
             results = []
+            calls = []
             if tool_calls is not None:
                 for tool_call in tool_calls:
                     call_id = tool_call.id
@@ -317,10 +330,19 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                         args=args,
                         output=func_out,
                     )
+
                     results.append(output)
 
+                    call = ToolCallResponse(
+                        call_id=call_id,
+                        name=funcname,
+                        args=args,
+                    )
+
+                    calls.append(call)
+
             return FunctionCallingResults(
-                usage=usage, results=results, prompt=copy.deepcopy(messages)
+                usage=usage, results=results, prompt=copy.deepcopy(messages), calls=calls
             )
 
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
