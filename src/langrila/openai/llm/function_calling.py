@@ -1,9 +1,6 @@
-import asyncio
 import copy
 import json
 from typing import Callable, Optional
-
-from pydantic import BaseModel, field_validator
 
 from ...base import (
     BaseConversationLengthAdjuster,
@@ -13,94 +10,17 @@ from ...base import (
     BaseMessage,
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
-from ...mixin import ConversationMixin, FilterMixin
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
-from ...utils import make_batch
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
 from ..model_config import (
-    _NEWER_MODEL_CONFIG,
     _OLDER_MODEL_CONFIG,
     MODEL_CONFIG,
     MODEL_POINT,
 )
 from ..openai_utils import get_async_client, get_client, get_token_limit
-
-
-class ToolProperty(BaseModel):
-    name: str
-    type: str
-    description: str
-    enum: list[str | int | float] | None = None
-
-    def model_dump(self):
-        return {
-            self.name: super().model_dump(exclude=["name"]) | {"enum": self.enum}
-            if self.enum
-            else {}
-        }
-
-    @field_validator("type")
-    def check_type_value(cls, v):
-        if v not in {"string", "number", "boolean"}:
-            raise ValueError("type must be one of string or number.")
-
-        return v
-
-
-class ToolParameter(BaseModel):
-    type: str = "object"
-    properties: list[ToolProperty]
-    required: Optional[list[str]] = None
-
-    def model_dump(self):
-        dumped = super().model_dump(exclude=["properties", "required"])
-
-        _properties = {}
-        for p in self.properties:
-            _properties.update(p.model_dump())
-        dumped["properties"] = _properties
-
-        if self.required is not None:
-            dumped["required"] = self.required
-        return dumped
-
-    @field_validator("type")
-    def check_type_value(cls, v):
-        if v not in {"object"}:
-            raise ValueError("supported type is only object")
-
-        return v
-
-    @field_validator("required")
-    def check_required_value(cls, required, values):
-        properties = values.data["properties"]
-        property_names = {p.name for p in properties}
-        if required is not None:
-            for r in required:
-                if r not in property_names:
-                    raise ValueError(f"required property '{r}' is not defined in properties.")
-        return required
-
-
-class ToolConfig(BaseModel):
-    name: str
-    type: str = "function"
-    description: str
-    parameters: ToolParameter
-
-    def model_dump(self):
-        dumped = super().model_dump(exclude=["parameters", "type"])
-        dumped["parameters"] = self.parameters.model_dump()
-        return {"type": self.type, self.type: dumped}
-
-    @field_validator("type")
-    def check_type_value(cls, v):
-        if v not in {"function"}:
-            raise ValueError("supported type is only function")
-
-        return v
+from ..tools import ToolConfig
 
 
 class FunctionCallingCoreModule(BaseFunctionCallingModule):
