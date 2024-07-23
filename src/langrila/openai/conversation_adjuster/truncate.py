@@ -52,41 +52,49 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
     def adjust_message_length_and_update_total_tokens(
         self, message: dict[str, dict[str, str]], total_n_tokens: int = 0
     ) -> dict[str, Any]:
-        n_tokens = get_n_tokens(message, self.model_name)
-        if total_n_tokens + n_tokens["total"] <= self.context_length:
-            total_n_tokens += n_tokens["total"]
-            return message, total_n_tokens
-        else:
-            available_n_tokens = max(
-                self.context_length - total_n_tokens - n_tokens["other"], 0
-            )  # available_n_tokens for content
-            if available_n_tokens > 0:
-                role = message["role"]
-                name = message["name"]
-                new_contents = []
-                for content in message["content"]:
-                    if content["type"] == "text":
-                        total_n_tokens += available_n_tokens + n_tokens["other"]
-                        new_text = self._truncate_text(
-                            text=content["text"],
-                            available_n_tokens=available_n_tokens,
-                        )
+        # Tool call and tool results are not truncated
+        # TODO: How to?
+        if message["role"] not in ["tool", "function"] and "tool_calls" not in message:
+            n_tokens = get_n_tokens(message, self.model_name)
 
-                        new_contents.append(self._to_text_message(new_text))
-                    elif content["type"] == "image_url":
-                        pass  # Image is entirely truncated
-                    else:
-                        raise ValueError(f"Unknown type {content['type']} in message['content'].")
-
-                new_message = {
-                    "role": role,
-                    "name": name,
-                    "content": new_contents,
-                }
-                return new_message, total_n_tokens
-
+            if total_n_tokens + n_tokens["total"] <= self.context_length:
+                total_n_tokens += n_tokens["total"]
+                return message, total_n_tokens
             else:
-                return None, total_n_tokens
+                available_n_tokens = max(
+                    self.context_length - total_n_tokens - n_tokens["other"], 0
+                )  # available_n_tokens for content
+                if available_n_tokens > 0:
+                    role = message["role"]
+                    name = message["name"]
+                    new_contents = []
+                    for content in message["content"]:
+                        if content["type"] == "text":
+                            total_n_tokens += available_n_tokens + n_tokens["other"]
+                            new_text = self._truncate_text(
+                                text=content["text"],
+                                available_n_tokens=available_n_tokens,
+                            )
+
+                            new_contents.append(self._to_text_message(new_text))
+                        elif content["type"] == "image_url":
+                            pass  # Image is entirely truncated
+                        else:
+                            raise ValueError(
+                                f"Unknown type {content['type']} in message['content']."
+                            )
+
+                    new_message = {
+                        "role": role,
+                        "name": name,
+                        "content": new_contents,
+                    }
+                    return new_message, total_n_tokens
+
+                else:
+                    return None, total_n_tokens
+        else:
+            return message, total_n_tokens
 
     def truncate(self, text: str, n_tokens: int) -> str:
         if n_tokens > 0:
