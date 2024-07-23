@@ -9,11 +9,9 @@ class ToolProperty(BaseModel):
     description: str
     enum: list[str | int | float] | None = None
 
-    def model_dump(self):
+    def format(self):
         return {
-            self.name: super().model_dump(exclude=["name"]) | {"enum": self.enum}
-            if self.enum
-            else {}
+            self.name: self.model_dump(exclude=["name"]) | {"enum": self.enum} if self.enum else {}
         }
 
     @field_validator("type")
@@ -29,12 +27,12 @@ class ToolParameter(BaseModel):
     properties: list[ToolProperty]
     required: Optional[list[str]] = None
 
-    def model_dump(self):
-        dumped = super().model_dump(exclude=["properties", "required"])
+    def format(self):
+        dumped = self.model_dump(exclude=["properties", "required"])
 
         _properties = {}
         for p in self.properties:
-            _properties.update(p.model_dump())
+            _properties.update(p.format())
         dumped["properties"] = _properties
 
         if self.required is not None:
@@ -65,9 +63,9 @@ class ToolConfig(BaseModel):
     description: str
     parameters: ToolParameter
 
-    def model_dump(self):
-        dumped = super().model_dump(exclude=["parameters", "type"])
-        dumped["parameters"] = self.parameters.model_dump()
+    def format(self):
+        dumped = self.model_dump(exclude=["parameters", "type"])
+        dumped["parameters"] = self.parameters.format()
         return {"type": self.type, self.type: dumped}
 
     @field_validator("type")
