@@ -193,7 +193,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             message=ChatCompletionAssistantMessageParam(
                 role="assistant", content=[{"type": "text", "text": response_message}]
             ),
-            prompt=deepcopy(messages),
+            prompt=deepcopy(_messages),
         )
 
     async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
@@ -240,7 +240,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             message=ChatCompletionAssistantMessageParam(
                 role="assistant", content=[{"type": "text", "text": response_message}]
             ),
-            prompt=deepcopy(messages),
+            prompt=deepcopy(_messages),
         )
 
     def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
@@ -311,7 +311,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                 role="assistant",
                 content=[{"type": "text", "text": all_chunk}],
             ),
-            prompt=deepcopy(messages),
+            prompt=deepcopy(_messages),
         )
 
     async def astream(
@@ -384,7 +384,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                 role="assistant",
                 content=[{"type": "text", "text": all_chunk}],
             ),
-            prompt=deepcopy(messages),
+            prompt=deepcopy(_messages),
         )
 
 

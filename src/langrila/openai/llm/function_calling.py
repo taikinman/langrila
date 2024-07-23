@@ -169,7 +169,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                     calls.append(call)
 
             return FunctionCallingResults(
-                usage=usage, results=results, prompt=copy.deepcopy(messages), calls=calls
+                usage=usage, results=results, prompt=copy.deepcopy(_messages), calls=calls
             )
 
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
@@ -192,7 +192,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                 ]
 
             return FunctionCallingResults(
-                usage=usage, results=output, prompt=copy.deepcopy(messages)
+                usage=usage, results=output, prompt=copy.deepcopy(_messages)
             )
 
         else:
@@ -267,7 +267,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                     calls.append(call)
 
             return FunctionCallingResults(
-                usage=usage, results=results, prompt=copy.deepcopy(messages), calls=calls
+                usage=usage, results=results, prompt=copy.deepcopy(_messages), calls=calls
             )
 
         elif self.model_name in _OLDER_MODEL_CONFIG.keys():
@@ -290,7 +290,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                 ]
 
             return FunctionCallingResults(
-                usage=usage, results=output, prompt=copy.deepcopy(messages)
+                usage=usage, results=output, prompt=copy.deepcopy(_messages)
             )
 
         else:
