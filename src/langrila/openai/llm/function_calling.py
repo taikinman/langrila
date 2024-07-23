@@ -336,12 +336,12 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         ), f"max_tokens({max_tokens}) + context_length({context_length}) must be less than or equal to the token limit of the model ({token_lim})."
         assert context_length > 0, "context_length must be positive."
 
-        # FIXME
-        # conversation_length_adjuster = (
-        #     OldConversationTruncationModule(model_name=model_name, context_length=context_length)
-        #     if conversation_length_adjuster is None
-        #     else conversation_length_adjuster
-        # )
+        conversation_length_adjuster = (
+            OldConversationTruncationModule(model_name=model_name, context_length=context_length)
+            if conversation_length_adjuster is None
+            else conversation_length_adjuster
+        )
+
         function_calling_model = FunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,

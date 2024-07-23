@@ -23,8 +23,8 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
         self.context_length = context_length
         self.encoding = get_encoding(self.model_name)
 
-    def run(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        adjusted_messages: list[dict[str, str]] = []
+    def run(self, messages: list[dict[str, dict[str, str]]]) -> list[dict[str, dict[str, str]]]:
+        adjusted_messages: list[dict[str, dict[str, str]]] = []
         total_n_tokens: int = 0
 
         for message in messages[::-1]:
@@ -41,8 +41,16 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
 
         return adjusted_messages[::-1]
 
+    def _truncate_text(self, text: str, available_n_tokens: int) -> tuple[dict[str, str], int]:
+        new_text = self.truncate(text, available_n_tokens)
+        print("Input message is truncated because total length of messages exceeds context length.")
+        return new_text
+
+    def _to_text_message(self, text) -> dict[str, str]:
+        return {"type": "text", "text": text}
+
     def adjust_message_length_and_update_total_tokens(
-        self, message: dict[str, Any], total_n_tokens: int = 0
+        self, message: dict[str, dict[str, str]], total_n_tokens: int = 0
     ) -> dict[str, Any]:
         n_tokens = get_n_tokens(message, self.model_name)
         if total_n_tokens + n_tokens["total"] <= self.context_length:
@@ -54,29 +62,29 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
             )  # available_n_tokens for content
             if available_n_tokens > 0:
                 role = message["role"]
-                if isinstance(message["content"], str):
-                    new_content = self.truncate(message["content"], available_n_tokens)
-                    total_n_tokens += available_n_tokens + n_tokens["other"]
-                    print(
-                        "Input message is truncated because total length of messages exceeds context length."
-                    )
-                    new_message = {"role": role, "content": new_content} | (
-                        {"name": message["name"]} if "name" in message else {}
-                    )
-                    return new_message, total_n_tokens
+                name = message["name"]
+                new_contents = []
+                for content in message["content"]:
+                    if content["type"] == "text":
+                        total_n_tokens += available_n_tokens + n_tokens["other"]
+                        new_text = self._truncate_text(
+                            text=content["text"],
+                            available_n_tokens=available_n_tokens,
+                        )
 
-                elif self.model_name in _VISION_MODEL and isinstance(message["content"], list):
-                    # truncate whole image
-                    new_message = {
-                        "role": role,
-                        "content": "(Image was truncated.)",
-                    } | ({"name": message["name"]} if "name" in message else {})
-                    return new_message, total_n_tokens
+                        new_contents.append(self._to_text_message(new_text))
+                    elif content["type"] == "image_url":
+                        pass  # Image is entirely truncated
+                    else:
+                        raise ValueError(f"Unknown type {content['type']} in message['content'].")
 
-                else:
-                    raise ValueError(
-                        f"message['content'] must be str or list, but {type(message['content'])} is given."
-                    )
+                new_message = {
+                    "role": role,
+                    "name": name,
+                    "content": new_contents,
+                }
+                return new_message, total_n_tokens
+
             else:
                 return None, total_n_tokens
 
