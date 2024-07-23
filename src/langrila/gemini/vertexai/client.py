@@ -24,6 +24,7 @@ def get_vertexai_model(
     service_account: str | None = None,
     endpoint_env_name: str | None = None,
     request_metadata: Sequence[tuple[str, str]] | None = None,
+    response_schema: dict[str, Any] | None = None,
 ):
     vertexai.init(
         project=os.getenv(project_id_env_name),
@@ -46,6 +47,7 @@ def get_vertexai_model(
         temperature=0.0,
         top_p=0.0,
         response_mime_type="text/plain" if not json_mode else "application/json",
+        response_schema=response_schema,
     )
 
     return GenerativeModel(

@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import google.generativeai as genai
 from google.generativeai.types.content_types import ContentType
@@ -12,6 +12,7 @@ def get_genai_model(
     system_instruction: Optional[ContentType] = None,
     max_output_tokens: int = 2048,
     json_mode: bool = False,
+    response_schema: dict[str, Any] | None = None,
 ):
     if api_key_env_name is None:
         raise ValueError("api_key_env_name must be provided to use the Gemini API.")
@@ -22,6 +23,7 @@ def get_genai_model(
         temperature=0.0,
         top_p=0.0,
         response_mime_type="text/plain" if not json_mode else "application/json",
+        response_schema=response_schema,
     )
 
     genai.configure(api_key=os.getenv(api_key_env_name))

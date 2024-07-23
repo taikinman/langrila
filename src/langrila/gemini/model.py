@@ -41,6 +41,7 @@ class Gemini(BaseAssembly):
         request_metadata: Sequence[tuple[str, str]] | None = None,
         tools: list[Callable] | None = None,
         tool_configs: list[Any] | None = None,
+        response_schema: dict[str, Any] | None = None,
     ):
         super().__init__(conversation_memory=conversation_memory)
 
@@ -67,6 +68,7 @@ class Gemini(BaseAssembly):
             service_account=service_account,
             endpoint_env_name=endpoint_env_name,
             request_metadata=request_metadata,
+            response_schema=response_schema,
         )
 
         if tools:
