@@ -4,8 +4,6 @@ from typing import Any, AsyncGenerator, Generator
 
 from PIL import Image
 
-from langrila.result import ToolCallResponse, ToolOutput
-
 from .message_content import (
     ApplicationFileContent,
     ContentType,
@@ -16,7 +14,13 @@ from .message_content import (
     ToolCall,
     ToolContent,
 )
-from .result import CompletionResults, EmbeddingResults, FunctionCallingResults
+from .result import (
+    CompletionResults,
+    EmbeddingResults,
+    FunctionCallingResults,
+    ToolCallResponse,
+    ToolOutput,
+)
 from .types import RoleType
 
 

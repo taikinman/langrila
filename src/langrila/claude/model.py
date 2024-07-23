@@ -84,7 +84,7 @@ class Claude(BaseAssembly):
             _strict_response_validation=_strict_response_validation,
             conversation_length_adjuster=conversation_length_adjuster,
             system_instruction=system_instruction,
-            conversation_memory=conversation_memory,
+            conversation_memory=self.conversation_memory,
             content_filter=content_filter,
             token_counter=token_counter,
         )
@@ -115,7 +115,7 @@ class Claude(BaseAssembly):
                 _strict_response_validation=_strict_response_validation,
                 conversation_length_adjuster=conversation_length_adjuster,
                 system_instruction=system_instruction,
-                conversation_memory=conversation_memory,
+                conversation_memory=self.conversation_memory,
                 content_filter=content_filter,
                 token_counter=token_counter,
                 tools=tools,
@@ -123,8 +123,6 @@ class Claude(BaseAssembly):
             )
         else:
             self.function_calling = None
-
-        self.conversation_memory = conversation_memory
 
     def run(
         self,
