@@ -80,9 +80,14 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             self.tool_configs = [f.format()["function"] for f in tool_configs]
             self.additional_inputs["functions"] = self.tool_configs
 
-        self.system_instruction = (
-            OpenAIMessage(content=system_instruction).as_system if system_instruction else None
-        )
+        if system_instruction:
+            system_instruction = OpenAIMessage.to_universal_message(
+                role="system", message=system_instruction
+            )
+            self.system_instruction = OpenAIMessage.to_client_message(system_instruction)
+        else:
+            self.system_instruction = None
+
         self.conversation_length_adjuster = conversation_length_adjuster
 
     def _set_tool_choice(self, tool_choice: str = "auto"):

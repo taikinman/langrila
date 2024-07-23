@@ -139,9 +139,14 @@ class OpenAIChatCoreModule(BaseChatModule):
                     f"response_format is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
 
-        self.system_instruction = (
-            OpenAIMessage(content=system_instruction).as_system if system_instruction else None
-        )
+        if system_instruction:
+            system_instruction = OpenAIMessage.to_universal_message(
+                role="system", message=system_instruction
+            )
+            self.system_instruction = OpenAIMessage.to_client_message(system_instruction)
+        else:
+            self.system_instruction = None
+
         self.conversation_length_adjuster = conversation_length_adjuster
 
     def run(self, messages: list[dict[str, str]]) -> CompletionResults:
