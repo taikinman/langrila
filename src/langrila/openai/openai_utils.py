@@ -1,5 +1,6 @@
 import math
 import os
+import re
 from typing import Any, Optional
 
 import openai
@@ -185,9 +186,9 @@ def get_n_tokens(message: dict[str, dict[str, str]], model_name: str) -> dict[st
                         elif item["type"] == "image_url":
                             n_content_tokens += 85  # Base tokens
                             if item["image_url"]["detail"] in ["high", "auto"]:
-                                if item["image_url"]["url"].startswith("data:image/jpeg;base64,"):
-                                    img_encoded = item["image_url"]["url"].replace(
-                                        "data:image/jpeg;base64,", ""
+                                if item["image_url"]["url"].startswith("data:image/"):
+                                    img_encoded = re.sub(
+                                        "^(data:image/.+;base64,)", "", item["image_url"]["url"]
                                     )
                                     n_content_tokens += calculate_high_resolution_image_tokens(
                                         decode_image(img_encoded).size
