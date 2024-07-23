@@ -99,7 +99,7 @@ class OpenAIChatCoreModule(BaseChatModule):
         timeout: int = 60,
         max_retries: int = 2,
         seed: Optional[int] = None,
-        response_format: Optional[dict[str, str]] = None,
+        json_mode: bool = False,
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> None:
@@ -123,18 +123,18 @@ class OpenAIChatCoreModule(BaseChatModule):
         self.additional_inputs = {}
         if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
-            self.response_format = response_format
+            self.response_format = {"type": "json_object"} if json_mode else None
             self.additional_inputs["seed"] = seed
 
             if model_name not in _VISION_MODEL:
-                self.additional_inputs["response_format"] = response_format
+                self.additional_inputs["response_format"] = self.response_format
         else:
             # TODO : add logging message
             if seed:
                 print(
                     f"seed is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
-            if response_format:
+            if json_mode:
                 print(
                     f"response_format is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
@@ -402,7 +402,7 @@ class OpenAIChatModule(ChatWrapperModule):
         timeout: int = 60,
         max_retries: int = 2,
         seed: Optional[int] = None,
-        response_format: Optional[dict[str, str]] = None,
+        json_mode: bool = False,
         context_length: Optional[int] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
@@ -445,7 +445,7 @@ class OpenAIChatModule(ChatWrapperModule):
             timeout=timeout,
             max_retries=max_retries,
             seed=seed,
-            response_format=response_format,
+            json_mode=json_mode,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
         )

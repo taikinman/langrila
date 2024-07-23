@@ -31,7 +31,7 @@ class ChatGPT(BaseAssembly):
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         token_counter: TokenCounter | None = None,
-        response_format: dict[str, str] | None = None,
+        json_mode: bool = False,
     ) -> None:
         super().__init__(conversation_memory=conversation_memory)
 
@@ -53,7 +53,7 @@ class ChatGPT(BaseAssembly):
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
             token_counter=token_counter,
-            response_format=response_format,
+            json_mode=json_mode,
         )
 
         if tools:
