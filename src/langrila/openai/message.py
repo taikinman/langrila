@@ -54,11 +54,11 @@ class OpenAIMessage(BaseMessage):
         }
 
     @property
-    def as_function_call(self) -> ChatCompletionMessage:
+    def as_function_call(self) -> dict[str, Any]:
         return ChatCompletionMessage(
             role="assistant",
             tool_calls=self.contents,
-        )
+        ).model_dump()
 
     @staticmethod
     def _format_text_content(content: TextContent) -> ChatCompletionContentPartTextParam:
