@@ -135,6 +135,9 @@ class Claude(BaseAssembly):
         tool_choice: Literal["auto", "any"] | str | None = None,
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
+        if self.function_calling and tool_choice is None:
+            tool_choice = "auto"
+
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
@@ -190,6 +193,9 @@ class Claude(BaseAssembly):
         tool_choice: Literal["auto", "any"] | str | None = None,
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
+        if self.function_calling and tool_choice is None:
+            tool_choice = "auto"
+
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 

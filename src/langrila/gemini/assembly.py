@@ -108,6 +108,9 @@ class Gemini(BaseAssembly):
         tool_choice: Literal["auto", "any"] | str | None = None,
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
+        if self.function_calling and tool_choice is None:
+            tool_choice = "auto"
+
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
@@ -140,6 +143,9 @@ class Gemini(BaseAssembly):
         tool_choice: Literal["auto", "any"] | str | None = None,
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
+        if self.function_calling and tool_choice is None:
+            tool_choice = "auto"
+
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
@@ -171,6 +177,9 @@ class Gemini(BaseAssembly):
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "any"] | str | None = None,
     ) -> Generator[CompletionResults, None, None]:
+        if self.function_calling and tool_choice is None:
+            tool_choice = "auto"
+
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt,
@@ -194,6 +203,9 @@ class Gemini(BaseAssembly):
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "any"] | str | None = None,
     ) -> AsyncGenerator[CompletionResults, None]:
+        if self.function_calling and tool_choice is None:
+            tool_choice = "auto"
+
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt,
