@@ -8,7 +8,7 @@ from .base import (
     BaseFunctionCallingModule,
     BaseMessage,
 )
-from .message_content import ConversationType, InputType, Message
+from .message_content import ConversationType, InputType
 from .mixin import ConversationMixin, FilterMixin
 from .result import CompletionResults, FunctionCallingResults
 from .usage import TokenCounter
