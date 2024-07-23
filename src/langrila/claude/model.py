@@ -160,7 +160,11 @@ class Claude(BaseAssembly):
                     prompt=response_function_calling.prompt,
                     message=Message(
                         role="assistant",
-                        content=response_function_calling.calls,
+                        content=[
+                            c
+                            for c in response_function_calling.calls.content
+                            if isinstance(c, TextContent)
+                        ],
                     ),
                 )
 
@@ -213,7 +217,11 @@ class Claude(BaseAssembly):
                     prompt=response_function_calling.prompt,
                     message=Message(
                         role="assistant",
-                        content=response_function_calling.calls,
+                        content=[
+                            c
+                            for c in response_function_calling.calls.content
+                            if isinstance(c, TextContent)
+                        ],
                     ),
                 )
             else:

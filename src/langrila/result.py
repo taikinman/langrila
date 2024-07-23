@@ -27,7 +27,7 @@ class ToolOutput(BaseModel):
 class FunctionCallingResults(BaseModel):
     usage: Usage
     results: list[Any]
-    calls: list[Any] | None = None
+    calls: Any | None = None
     prompt: Any | None = None
 
 
