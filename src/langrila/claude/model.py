@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Callable, Generator, Iterable, Literal, Mapping, Union
+from typing import Any, Callable, Iterable, Literal, Mapping, Union
 
 import httpx
 from anthropic._base_client import DEFAULT_MAX_RETRIES
@@ -16,6 +16,7 @@ from ..base import (
     BaseConversationMemory,
     BaseFilter,
 )
+from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType
 from ..result import CompletionResults, FunctionCallingResults
 from ..usage import TokenCounter
@@ -23,7 +24,7 @@ from .llm.chat import AnthropicChatModule
 from .llm.function_calling import AnthropicFunctionCallingModule
 
 
-class Claude:
+class Claude(BaseAssembly):
     def __init__(
         self,
         model_name: str,
@@ -56,6 +57,8 @@ class Claude:
         tools: list[Callable] | None = None,
         tool_configs: Any | None = None,
     ):
+        super().__init__(conversation_memory=conversation_memory)
+
         self.chat = AnthropicChatModule(
             model_name=model_name,
             api_type=api_type,
@@ -142,6 +145,8 @@ class Claude:
                 )
 
                 if tool_only:
+                    self._clear_memory()
+
                     return response_function_calling
 
                 prompt = [c for r in response_function_calling.results for c in r.content]
@@ -150,6 +155,8 @@ class Claude:
                     prompt, init_conversation=init_conversation
                 )
 
+                self._clear_memory()
+
                 return response_function_calling
             else:
                 raise ValueError("tool_choice must be provided when the model has tools available")
@@ -157,6 +164,8 @@ class Claude:
             response_chat: CompletionResults = self.chat.run(
                 prompt, init_conversation=init_conversation
             )
+
+            self._clear_memory()
 
             return response_chat
 
@@ -181,6 +190,8 @@ class Claude:
                 )
 
                 if tool_only:
+                    self._clear_memory()
+
                     return response_function_calling
 
                 prompt = [c for r in response_function_calling.results for c in r.content]
@@ -189,6 +200,8 @@ class Claude:
                     prompt, init_conversation=init_conversation
                 )
 
+                self._clear_memory()
+
                 return response_function_calling
             else:
                 raise ValueError("tool_choice must be provided when the model has tools available")
@@ -196,5 +209,7 @@ class Claude:
             response_chat: CompletionResults = await self.chat.arun(
                 prompt, init_conversation=init_conversation
             )
+
+            self._clear_memory()
 
             return response_chat

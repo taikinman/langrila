@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Callable, Generator, Literal
 
 from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter
+from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType, Message
 from ..result import CompletionResults, FunctionCallingResults
 from ..usage import TokenCounter
@@ -8,7 +9,7 @@ from .llm.chat import OpenAIChatModule
 from .llm.function_calling import OpenAIFunctionCallingModule, ToolConfig
 
 
-class ChatGPT:
+class ChatGPT(BaseAssembly):
     def __init__(
         self,
         api_key_env_name: str,
@@ -32,6 +33,8 @@ class ChatGPT:
         token_counter: TokenCounter | None = None,
         response_format: dict[str, str] | None = None,
     ) -> None:
+        super().__init__(conversation_memory=conversation_memory)
+
         self.chat = OpenAIChatModule(
             api_key_env_name=api_key_env_name,
             model_name=model_name,
@@ -45,7 +48,7 @@ class ChatGPT:
             max_retries=max_retries,
             seed=seed,
             context_length=context_length,
-            conversation_memory=conversation_memory,
+            conversation_memory=self.conversation_memory,
             content_filter=content_filter,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
@@ -69,7 +72,7 @@ class ChatGPT:
                 max_retries=max_retries,
                 seed=seed,
                 context_length=context_length,
-                conversation_memory=conversation_memory,
+                conversation_memory=self.conversation_memory,
                 content_filter=content_filter,
                 system_instruction=system_instruction,
                 conversation_length_adjuster=conversation_length_adjuster,
@@ -77,8 +80,6 @@ class ChatGPT:
             )
         else:
             self.function_calling = None
-
-        self.conversation_memory = conversation_memory
 
     def run(
         self,
@@ -98,6 +99,8 @@ class ChatGPT:
             )
 
             if tool_only:
+                self._clear_memory()
+
                 return response_function_calling
 
             prompt = [
@@ -109,6 +112,8 @@ class ChatGPT:
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
         )
+
+        self._clear_memory()
 
         return response_chat
 
@@ -130,6 +135,8 @@ class ChatGPT:
             )
 
             if tool_only:
+                self._clear_memory()
+
                 return response_function_calling
 
             prompt = [
@@ -141,6 +148,8 @@ class ChatGPT:
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
         )
+
+        self._clear_memory()
 
         return response_chat
 
@@ -167,6 +176,8 @@ class ChatGPT:
             gather_prompts=False if tool_choice is not None else True,
         )
 
+        self._clear_memory()
+
         return response_chat
 
     async def astream(
@@ -174,7 +185,7 @@ class ChatGPT:
         prompt: InputType,
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "required"] | str | None = None,
-    ) -> Generator[CompletionResults, None, None]:
+    ) -> AsyncGenerator[CompletionResults, None]:
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
@@ -191,5 +202,7 @@ class ChatGPT:
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
         )
+
+        self._clear_memory()
 
         return response_chat

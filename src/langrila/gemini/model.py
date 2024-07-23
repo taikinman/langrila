@@ -6,6 +6,7 @@ from ..base import (
     BaseConversationMemory,
     BaseFilter,
 )
+from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType
 from ..result import CompletionResults, FunctionCallingResults
 from ..usage import TokenCounter
@@ -13,7 +14,7 @@ from .llm.chat import GeminiChatModule
 from .llm.function_calling import GeminiFunctionCallingModule
 
 
-class Gemini:
+class Gemini(BaseAssembly):
     def __init__(
         self,
         model_name: str,
@@ -41,6 +42,8 @@ class Gemini:
         tools: list[Callable] | None = None,
         tool_configs: list[Any] | None = None,
     ):
+        super().__init__(conversation_memory=conversation_memory)
+
         self.chat = GeminiChatModule(
             model_name=model_name,
             api_key_env_name=api_key_env_name,
@@ -114,6 +117,8 @@ class Gemini:
             )
 
             if tool_only:
+                self._clear_memory()
+
                 return response_function_calling
 
             prompt = [c for r in response_function_calling.results for c in r.content]
@@ -121,6 +126,8 @@ class Gemini:
         response_chat: CompletionResults = self.chat.run(
             prompt, init_conversation=init_conversation
         )
+
+        self._clear_memory()
 
         return response_chat
 
@@ -142,6 +149,8 @@ class Gemini:
             )
 
             if tool_only:
+                self._clear_memory()
+
                 return response_function_calling
 
             prompt = [c for r in response_function_calling.results for c in r.content]
@@ -149,6 +158,8 @@ class Gemini:
         response_chat: CompletionResults = await self.chat.arun(
             prompt, init_conversation=init_conversation
         )
+
+        self._clear_memory()
 
         return response_chat
 
@@ -171,6 +182,8 @@ class Gemini:
             prompt, init_conversation=init_conversation
         )
 
+        self._clear_memory()
+
         return response_chat
 
     async def astream(
@@ -191,5 +204,7 @@ class Gemini:
         response_chat: CompletionResults = self.chat.astream(
             prompt, init_conversation=init_conversation
         )
+
+        self._clear_memory()
 
         return response_chat
