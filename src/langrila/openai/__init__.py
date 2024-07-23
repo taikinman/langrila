@@ -1,3 +1,4 @@
+from .assembly import ChatGPT
 from .embedding import OpenAIEmbeddingModule
 from .llm.chat import OpenAIChatModule
 from .llm.function_calling import (
@@ -5,5 +6,4 @@ from .llm.function_calling import (
     ToolOutput,
 )
 from .message import OpenAIMessage
-from .model import ChatGPT
 from .tools import ToolConfig, ToolParameter, ToolProperty
