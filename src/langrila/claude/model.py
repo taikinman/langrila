@@ -17,7 +17,7 @@ from ..base import (
     BaseFilter,
 )
 from ..base_assembly import BaseAssembly
-from ..message_content import ConversationType, InputType
+from ..message_content import ConversationType, InputType, Message, TextContent
 from ..result import CompletionResults, FunctionCallingResults
 from ..usage import TokenCounter
 from .llm.chat import AnthropicChatModule
@@ -155,7 +155,24 @@ class Claude(BaseAssembly):
 
                 self._clear_memory()
 
-                return response_function_calling
+                if response_function_calling.calls:
+                    content = [
+                        content
+                        for content in response_function_calling.calls.content
+                        if isinstance(content, TextContent)
+                    ]
+                else:
+                    content = []
+
+                return CompletionResults(
+                    usage=response_function_calling.usage,
+                    prompt=response_function_calling.prompt,
+                    message=Message(
+                        role="assistant",
+                        content=content,
+                    ),
+                )
+
             else:
                 raise ValueError("tool_choice must be provided when the model has tools available")
         else:
@@ -200,7 +217,23 @@ class Claude(BaseAssembly):
 
                 self._clear_memory()
 
-                return response_function_calling
+                if response_function_calling.calls:
+                    content = [
+                        content
+                        for content in response_function_calling.calls.content
+                        if isinstance(content, TextContent)
+                    ]
+                else:
+                    content = []
+
+                return CompletionResults(
+                    usage=response_function_calling.usage,
+                    prompt=response_function_calling.prompt,
+                    message=Message(
+                        role="assistant",
+                        content=content,
+                    ),
+                )
             else:
                 raise ValueError("tool_choice must be provided when the model has tools available")
         else:
