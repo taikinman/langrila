@@ -342,6 +342,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             else conversation_length_adjuster
         )
 
+        # The module to call client API
         function_calling_model = FunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,

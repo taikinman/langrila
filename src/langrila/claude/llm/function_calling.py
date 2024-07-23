@@ -301,6 +301,7 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         content_filter: BaseFilter | None = None,
         token_counter: TokenCounter | None = None,
     ):
+        # The module to call client API
         function_calling_model = AnthropicFunctionCallingCoreModule(
             model_name=model_name,
             tools=tools,

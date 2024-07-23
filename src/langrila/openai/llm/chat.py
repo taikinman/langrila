@@ -432,6 +432,7 @@ class OpenAIChatModule(ChatWrapperModule):
             else conversation_length_adjuster
         )
 
+        # The module to call client API
         chat_model = OpenAIChatCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,

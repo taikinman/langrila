@@ -283,6 +283,7 @@ class GeminiChatModule(ChatWrapperModule):
         request_metadata: Sequence[tuple[str, str]] | None = None,
         response_schema: dict[str, Any] | None = None,
     ):
+        # The module to call client API
         chat_model = GeminiChatCoreModule(
             api_key_env_name=api_key_env_name,
             model_name=model_name,
