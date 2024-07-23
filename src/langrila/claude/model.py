@@ -155,21 +155,12 @@ class Claude(BaseAssembly):
 
                 self._clear_memory()
 
-                if response_function_calling.calls:
-                    content = [
-                        content
-                        for content in response_function_calling.calls.content
-                        if isinstance(content, TextContent)
-                    ]
-                else:
-                    content = []
-
                 return CompletionResults(
                     usage=response_function_calling.usage,
                     prompt=response_function_calling.prompt,
                     message=Message(
                         role="assistant",
-                        content=content,
+                        content=response_function_calling.calls,
                     ),
                 )
 
@@ -211,27 +202,18 @@ class Claude(BaseAssembly):
 
                 prompt = [c for r in response_function_calling.results for c in r.content]
 
-                response_function_calling: CompletionResults = await self.chat.arun(
-                    prompt, init_conversation=init_conversation
-                )
+                response_function_calling: (
+                    FunctionCallingResults
+                ) = await self.function_calling.arun(prompt, init_conversation=init_conversation)
 
                 self._clear_memory()
-
-                if response_function_calling.calls:
-                    content = [
-                        content
-                        for content in response_function_calling.calls.content
-                        if isinstance(content, TextContent)
-                    ]
-                else:
-                    content = []
 
                 return CompletionResults(
                     usage=response_function_calling.usage,
                     prompt=response_function_calling.prompt,
                     message=Message(
                         role="assistant",
-                        content=content,
+                        content=response_function_calling.calls,
                     ),
                 )
             else:
