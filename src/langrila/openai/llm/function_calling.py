@@ -70,14 +70,14 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
             self.additional_inputs["seed"] = seed
-            self.tool_configs = [f.model_dump() for f in tool_configs]
+            self.tool_configs = [f.format() for f in tool_configs]
             self.additional_inputs["tools"] = self.tool_configs
         else:
             if seed:
                 print(
                     f"seed is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
-            self.tool_configs = [f.model_dump()["function"] for f in tool_configs]
+            self.tool_configs = [f.format()["function"] for f in tool_configs]
             self.additional_inputs["functions"] = self.tool_configs
 
         self.system_instruction = (

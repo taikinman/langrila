@@ -10,9 +10,7 @@ class ToolProperty(BaseModel):
     enum: list[str | int | float] | None = None
 
     def format(self):
-        return {
-            self.name: self.model_dump(exclude=["name"]) | {"enum": self.enum} if self.enum else {}
-        }
+        return {self.name: self.model_dump(exclude=["name"] if self.enum else ["name", "enum"])}
 
     @field_validator("type")
     def check_type_value(cls, v):
