@@ -126,7 +126,9 @@ class Gemini(BaseAssembly):
 
                 return response_function_calling
 
-            prompt = [c for r in response_function_calling.results for c in r.content]
+            _prompt = [c for r in response_function_calling.results for c in r.content]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = self.chat.run(
             prompt, init_conversation=init_conversation
@@ -161,7 +163,9 @@ class Gemini(BaseAssembly):
 
                 return response_function_calling
 
-            prompt = [c for r in response_function_calling.results for c in r.content]
+            _prompt = [c for r in response_function_calling.results for c in r.content]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = await self.chat.arun(
             prompt, init_conversation=init_conversation
@@ -187,7 +191,9 @@ class Gemini(BaseAssembly):
                 tool_choice=tool_choice,
             )
 
-            prompt = [c for r in response_function_calling.results for c in r.content]
+            _prompt = [c for r in response_function_calling.results for c in r.content]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = self.chat.stream(
             prompt, init_conversation=init_conversation
@@ -213,7 +219,9 @@ class Gemini(BaseAssembly):
                 tool_choice=tool_choice,
             )
 
-            prompt = [c for r in response_function_calling.results for c in r.content]
+            _prompt = [c for r in response_function_calling.results for c in r.content]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = self.chat.astream(
             prompt, init_conversation=init_conversation

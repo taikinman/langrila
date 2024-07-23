@@ -154,7 +154,9 @@ class Claude(BaseAssembly):
 
                     return response_function_calling
 
-                prompt = [c for r in response_function_calling.results for c in r.content]
+                _prompt = [c for r in response_function_calling.results for c in r.content]
+                if _prompt:
+                    prompt = _prompt
 
                 response_function_calling: FunctionCallingResults = self.function_calling.run(
                     prompt, init_conversation=init_conversation
@@ -214,7 +216,9 @@ class Claude(BaseAssembly):
 
                     return response_function_calling
 
-                prompt = [c for r in response_function_calling.results for c in r.content]
+                _prompt = [c for r in response_function_calling.results for c in r.content]
+                if _prompt:
+                    prompt = _prompt
 
                 response_function_calling: (
                     FunctionCallingResults

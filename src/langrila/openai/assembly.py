@@ -106,10 +106,12 @@ class ChatGPT(BaseAssembly):
 
                 return response_function_calling
 
-            prompt = [
+            _prompt = [
                 Message(role="function", content=result.content)
                 for result in response_function_calling.results
             ]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = self.chat.run(
             prompt=prompt,
@@ -145,10 +147,12 @@ class ChatGPT(BaseAssembly):
 
                 return response_function_calling
 
-            prompt = [
+            _prompt = [
                 Message(role="function", content=result.content)
                 for result in response_function_calling.results
             ]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = await self.chat.arun(
             prompt=prompt,
@@ -175,10 +179,12 @@ class ChatGPT(BaseAssembly):
                 tool_choice=tool_choice,
             )
 
-            prompt = [
+            _prompt = [
                 Message(role="function", content=result.content)
                 for result in response_function_calling.results
             ]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = self.chat.stream(
             prompt=prompt,
@@ -205,10 +211,12 @@ class ChatGPT(BaseAssembly):
                 tool_choice=tool_choice,
             )
 
-            prompt = [
+            _prompt = [
                 Message(role="function", content=result.content)
                 for result in response_function_calling.results
             ]
+            if _prompt:
+                prompt = _prompt
 
         response_chat: CompletionResults = self.chat.astream(
             prompt=prompt,
