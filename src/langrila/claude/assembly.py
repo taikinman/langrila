@@ -26,7 +26,7 @@ from .llm.function_calling import AnthropicFunctionCallingModule
 
 class Claude(BaseAssembly):
     """
-    FIXME : This module might not work well when we need multi-turn conversation using tools.
+    FIXME : This module might not work for multi-turn conversation using tools.
     """
 
     def __init__(
