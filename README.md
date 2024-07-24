@@ -127,7 +127,7 @@ poetry add --editable /path/to/langrila/ --extras all
 - gemini-1.5-flash
 
 ## Platform
-- GenerativeAI
+- Google AI
 - VertexAI
 
 # Supported models for Claude
