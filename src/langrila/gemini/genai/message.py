@@ -4,7 +4,7 @@ from typing import Any
 
 from google.generativeai import protos
 from google.generativeai.types import content_types
-from google.generativeai.types.content_types import BlobDict, ContentDict, PartDict
+from google.generativeai.types.content_types import ContentDict
 
 from ...base import BaseMessage
 from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
@@ -14,48 +14,50 @@ from ...utils import decode_image
 class GeminiMessage(BaseMessage):
     @property
     def as_user(self) -> protos.Content:
-        content_dict = ContentDict(role="user", parts=self.contents)
-        return content_types.to_content(content_dict)
+        return protos.Content(role="user", parts=self.contents)
 
     @property
     def as_assistant(self) -> protos.Content:
-        content_dict = ContentDict(role="model", parts=self.contents)
-        return content_types.to_content(content_dict)
+        return protos.Content(role="model", parts=self.contents)
 
     @property
     def as_function(self) -> protos.Content:
-        content_dict = ContentDict(
+        return protos.Content(
             role="function",
             parts=self.contents,
         )
-        return content_types.to_content(content_dict)
 
     @property
     def as_function_call(self) -> protos.Content:
-        content_dict = ContentDict(role="model", parts=self.contents)
-        return content_types.to_content(content_dict)
+        return protos.Content(role="model", parts=self.contents)
 
     @staticmethod
-    def _format_text_content(content: TextContent) -> PartDict:
-        return PartDict(text=content.text)
+    def _format_text_content(content: TextContent) -> protos.Part:
+        return protos.Part(text=content.text)
 
     @staticmethod
-    def _format_image_content(content: ImageContent) -> PartDict:
+    def _format_image_content(content: ImageContent) -> protos.Part:
         file_format = decode_image(content.image, as_utf8=True).format.lower()
         _image_bytes = base64.b64decode(content.image.encode("utf-8"))
 
-        image_bytes = BlobDict(mime_type=f"image/{file_format}", data=_image_bytes)
-        return PartDict(inline_data=image_bytes)
+        image_bytes = protos.Blob(mime_type=f"image/{file_format}", data=_image_bytes)
+        return protos.Part(inline_data=image_bytes)
 
     @staticmethod
-    def _format_tool_content(content: ToolContent) -> protos.FunctionResponse:
-        return protos.FunctionResponse(name=content.funcname, response={"content": content.output})
+    def _format_tool_content(content: ToolContent) -> protos.Part:
+        return protos.Part(
+            function_response=protos.FunctionResponse(
+                name=content.funcname, response={"content": content.output}
+            )
+        )
 
     @staticmethod
-    def _format_tool_call_content(content: ToolCall) -> protos.FunctionCall:
-        return protos.FunctionCall(
-            name=content.name,
-            args=content.args if isinstance(content.args, dict) else json.loads(content.args),
+    def _format_tool_call_content(content: ToolCall) -> protos.Part:
+        return protos.Part(
+            function_call=protos.FunctionCall(
+                name=content.name,
+                args=content.args if isinstance(content.args, dict) else json.loads(content.args),
+            )
         )
 
     @classmethod
