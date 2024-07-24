@@ -191,7 +191,7 @@ Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) inclu
     - Gemini on Google AI
     - Gemini on VertexAI
     - Claude of Anthropic
-    - Claude using Amazon bedrock
+    - Claude using Amazon Bedrock
 - Image input
 - Message system in langrila
 - Multi-turn conversation with multiple client
