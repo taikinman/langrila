@@ -1,4 +1,5 @@
 import base64
+import json
 from typing import Any
 
 from google.cloud.aiplatform_v1beta1.types import (
@@ -61,7 +62,10 @@ class VertexAIMessage(BaseMessage):
 
     @staticmethod
     def _format_tool_call_content(content: ToolCall) -> Part:
-        return CustomPart.from_function_call(name=content.name, args=content.args)
+        return CustomPart.from_function_call(
+            name=content.name,
+            args=content.args if isinstance(content.args, dict) else json.loads(content.args),
+        )
 
     @classmethod
     def from_client_message(cls, message: Content) -> Message:
@@ -72,9 +76,9 @@ class VertexAIMessage(BaseMessage):
         for part in serializable.get("parts"):
             if part.get("text"):
                 common_contents.append(TextContent(text=part.get("text")))
-            elif part.get("inlineData"):
-                inline_data = part.get("inlineData", {})
-                mime_type = inline_data.get("mimeType")
+            elif part.get("inline_data"):
+                inline_data = part.get("inline_data", {})
+                mime_type = inline_data.get("mime_type")
                 file_format = mime_type.split("/")[1]
                 if file_format in ["jpeg", "png", "jpg"]:
                     image_data = inline_data.get("data")

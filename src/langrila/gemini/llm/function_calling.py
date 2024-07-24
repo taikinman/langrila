@@ -245,6 +245,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         request_metadata: Sequence[tuple[str, str]] | None = None,
         system_instruction: str | None = None,
     ):
+        # The module to call client API
         function_calling_model = GeminiFunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
             model_name=model_name,

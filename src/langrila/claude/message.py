@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, overload
 
 from anthropic.types import (
     ImageBlockParam,
@@ -11,7 +11,7 @@ from anthropic.types.image_block_param import Source
 
 from ..base import BaseMessage
 from ..message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
-from ..utils import decode_image, encode_image
+from ..utils import decode_image
 
 
 class ClaudeMessage(BaseMessage):
@@ -52,14 +52,31 @@ class ClaudeMessage(BaseMessage):
             content=content.output,
         )
 
+    @overload
+    @staticmethod
+    def _format_tool_call_content(content: TextContent) -> TextBlockParam:
+        ...
+
+    @overload
     @staticmethod
     def _format_tool_call_content(content: ToolCall) -> ToolUseBlockParam:
-        return ToolUseBlockParam(
-            id=content.call_id,
-            type="tool_use",
-            input=content.args,
-            name=content.name,
-        )
+        ...
+
+    @staticmethod
+    def _format_tool_call_content(
+        content: TextContent | ToolCall
+    ) -> TextBlockParam | ToolUseBlockParam:
+        if isinstance(content, TextContent):
+            return TextBlockParam(text=content.text, type="text")
+        elif isinstance(content, ToolCall):
+            return ToolUseBlockParam(
+                id=content.call_id,
+                type="tool_use",
+                input=content.args,
+                name=content.name,
+            )
+        else:
+            raise ValueError("Invalid content type")
 
     @classmethod
     def from_client_message(cls, message: Any) -> Message:

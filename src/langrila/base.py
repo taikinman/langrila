@@ -4,8 +4,6 @@ from typing import Any, AsyncGenerator, Generator
 
 from PIL import Image
 
-from langrila.result import ToolCallResponse, ToolOutput
-
 from .message_content import (
     ApplicationFileContent,
     ContentType,
@@ -16,8 +14,15 @@ from .message_content import (
     ToolCall,
     ToolContent,
 )
-from .result import CompletionResults, EmbeddingResults, FunctionCallingResults
+from .result import (
+    CompletionResults,
+    EmbeddingResults,
+    FunctionCallingResults,
+    ToolCallResponse,
+    ToolOutput,
+)
 from .types import RoleType
+from .utils import decode_image
 
 
 class BaseChatModule(ABC):
@@ -195,7 +200,7 @@ class BaseMessage(ABC):
         contents: ContentType | list[ContentType],
         name: str | None = None,
     ) -> Any:
-        if role not in ["user", "assistant", "system", "function", "function_call"]:
+        if role not in ["user", "assistant", "system", "function", "function_call", "tool"]:
             raise ValueError(f"Invalid role: {role}")
 
         _contents = cls._format_contents(contents=contents)
@@ -216,12 +221,19 @@ class BaseMessage(ABC):
 
     @classmethod
     def _string2content(cls, content: str) -> ContentType:
-        if Path(content).is_file() and Path(content).suffix in [".png", ".jpg", ".jpeg"]:
-            return ImageContent(image=content)
-        elif Path(content).is_file() and Path(content).suffix in [".pdf"]:
-            return ApplicationFileContent(file=content)
-        else:
-            return TextContent(text=content)
+        try:
+            if Path(content).is_file() and Path(content).suffix in [".png", ".jpg", ".jpeg"]:
+                return ImageContent(image=content)
+            elif Path(content).is_file() and Path(content).suffix in [".pdf"]:
+                return ApplicationFileContent(file=content)
+            else:
+                return TextContent(text=content)
+        except OSError:
+            try:
+                decode_image(content, as_utf8=True)
+                return ImageContent(image=content)
+            except Exception:
+                return TextContent(text=content)
 
     @classmethod
     def to_contents(

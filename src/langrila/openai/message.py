@@ -5,14 +5,17 @@ from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
     ChatCompletionContentPartImageParam,
     ChatCompletionContentPartTextParam,
+    ChatCompletionMessage,
+    ChatCompletionMessageToolCall,
     ChatCompletionSystemMessageParam,
     ChatCompletionToolMessageParam,
     ChatCompletionUserMessageParam,
 )
 from openai.types.chat.chat_completion_content_part_image_param import ImageURL
+from openai.types.chat.chat_completion_message_tool_call import Function
 
 from ..base import BaseMessage
-from ..message_content import ImageContent, Message, TextContent, ToolContent
+from ..message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
 from ..utils import decode_image, encode_image
 
 
@@ -43,11 +46,19 @@ class OpenAIMessage(BaseMessage):
 
     @property
     def as_function(self):
-        return ChatCompletionToolMessageParam(
-            role="function",
-            content=self.contents,
-            name=self.name,
-        )
+        return {
+            "role": "tool",
+            "tool_call_id": self.contents[0]["tool_call_id"],
+            "name": self.contents[0]["name"],
+            "content": self.contents[0]["content"],
+        }
+
+    @property
+    def as_function_call(self) -> dict[str, Any]:
+        return ChatCompletionMessage(
+            role="assistant",
+            tool_calls=self.contents,
+        ).model_dump()
 
     @staticmethod
     def _format_text_content(content: TextContent) -> ChatCompletionContentPartTextParam:
@@ -68,11 +79,20 @@ class OpenAIMessage(BaseMessage):
         )
 
     @staticmethod
-    def _format_tool_content(content: ToolContent) -> ChatCompletionContentPartTextParam:
-        return ChatCompletionContentPartTextParam(
-            type="text",
-            text=content.output,
-        )
+    def _format_tool_content(content: ToolContent) -> dict[str, str]:
+        return {
+            "tool_call_id": content.call_id,
+            "name": content.funcname,
+            "content": content.output,
+        }
+
+    @staticmethod
+    def _format_tool_call_content(content: ToolCall) -> ChatCompletionMessageToolCall:
+        return ChatCompletionMessageToolCall(
+            id=content.call_id,
+            type="function",
+            function=Function(arguments=content.args, name=content.name),
+        ).model_dump()
 
     @classmethod
     def from_client_message(cls, message: dict[str, Any]) -> Message:

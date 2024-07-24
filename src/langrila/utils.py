@@ -28,7 +28,7 @@ def make_batch(
 
 def pil2bytes(image: Image.Image) -> bytes:
     num_byteio = io.BytesIO()
-    image.save(num_byteio, format="jpeg")
+    image.save(num_byteio, format=image.format.lower())
     image_bytes = num_byteio.getvalue()
     return image_bytes
 

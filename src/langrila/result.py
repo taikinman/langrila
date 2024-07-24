@@ -7,7 +7,7 @@ from .usage import Usage
 
 class CompletionResults(BaseModel):
     message: Any
-    usage: Usage
+    usage: Usage = Usage()
     prompt: Any = None
 
 
@@ -20,14 +20,14 @@ class ToolCallResponse(BaseModel):
 class ToolOutput(BaseModel):
     call_id: str | None
     funcname: str | None
-    args: str | None
+    args: Any | None
     output: Any
 
 
 class FunctionCallingResults(BaseModel):
     usage: Usage
     results: list[Any]
-    calls: list[Any] | None = None
+    calls: Any | None = None
     prompt: Any | None = None
 
 

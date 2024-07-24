@@ -53,7 +53,10 @@ class GeminiMessage(BaseMessage):
 
     @staticmethod
     def _format_tool_call_content(content: ToolCall) -> protos.FunctionCall:
-        return protos.FunctionCall(name=content.name, args=content.args)
+        return protos.FunctionCall(
+            name=content.name,
+            args=content.args if isinstance(content.args, dict) else json.loads(content.args),
+        )
 
     @classmethod
     def from_client_message(cls, message: protos.Content) -> Message:

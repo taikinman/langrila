@@ -99,7 +99,7 @@ class OpenAIChatCoreModule(BaseChatModule):
         timeout: int = 60,
         max_retries: int = 2,
         seed: Optional[int] = None,
-        response_format: Optional[dict[str, str]] = None,
+        json_mode: bool = False,
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> None:
@@ -123,25 +123,30 @@ class OpenAIChatCoreModule(BaseChatModule):
         self.additional_inputs = {}
         if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
-            self.response_format = response_format
+            self.response_format = {"type": "json_object"} if json_mode else None
             self.additional_inputs["seed"] = seed
 
             if model_name not in _VISION_MODEL:
-                self.additional_inputs["response_format"] = response_format
+                self.additional_inputs["response_format"] = self.response_format
         else:
             # TODO : add logging message
             if seed:
                 print(
                     f"seed is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
-            if response_format:
+            if json_mode:
                 print(
                     f"response_format is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
 
-        self.system_instruction = (
-            OpenAIMessage(content=system_instruction).as_system if system_instruction else None
-        )
+        if system_instruction:
+            system_instruction = OpenAIMessage.to_universal_message(
+                role="system", message=system_instruction
+            )
+            self.system_instruction = OpenAIMessage.to_client_message(system_instruction)
+        else:
+            self.system_instruction = None
+
         self.conversation_length_adjuster = conversation_length_adjuster
 
     def run(self, messages: list[dict[str, str]]) -> CompletionResults:
@@ -188,7 +193,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             message=ChatCompletionAssistantMessageParam(
                 role="assistant", content=[{"type": "text", "text": response_message}]
             ),
-            prompt=deepcopy(messages),
+            prompt=deepcopy(_messages),
         )
 
     async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
@@ -235,7 +240,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             message=ChatCompletionAssistantMessageParam(
                 role="assistant", content=[{"type": "text", "text": response_message}]
             ),
-            prompt=deepcopy(messages),
+            prompt=deepcopy(_messages),
         )
 
     def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
@@ -271,6 +276,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             presence_penalty=0,
             stop=None,
             stream=True,
+            stream_options={"include_usage": True},
             **self.additional_inputs,
         )
 
@@ -290,26 +296,23 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
-                    else:
-                        # at the end of stream, return the whole message and usage
-                        usage = Usage(
-                            model_name=self.model_name,
-                            prompt_tokens=sum(
-                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
-                            ),
-                            completion_tokens=get_n_tokens(
-                                {"role": "assistant", "content": all_chunk}, self.model_name
-                            )["total"],
-                        )
 
-                        yield CompletionResults(
-                            usage=usage,
-                            message=ChatCompletionAssistantMessageParam(
-                                role="assistant",
-                                content=[{"type": "text", "text": all_chunk}],
-                            ),
-                            prompt=deepcopy(messages),
-                        )
+            else:
+                # at the end of stream, return the whole message and usage
+                usage = Usage(
+                    model_name=self.model_name,
+                    prompt_tokens=r.usage.prompt_tokens,
+                    completion_tokens=r.usage.completion_tokens,
+                )
+
+        yield CompletionResults(
+            usage=usage,
+            message=ChatCompletionAssistantMessageParam(
+                role="assistant",
+                content=[{"type": "text", "text": all_chunk}],
+            ),
+            prompt=deepcopy(_messages),
+        )
 
     async def astream(
         self, messages: list[dict[str, str]]
@@ -346,6 +349,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             presence_penalty=0,
             stop=None,
             stream=True,
+            stream_options={"include_usage": True},
             **self.additional_inputs,
         )
 
@@ -365,26 +369,23 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
-                    else:
-                        # at the end of stream, return the whole message and usage
-                        usage = Usage(
-                            model_name=self.model_name,
-                            prompt_tokens=sum(
-                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
-                            ),
-                            completion_tokens=get_n_tokens(
-                                {"role": "assistant", "content": all_chunk}, self.model_name
-                            )["total"],
-                        )
 
-                        yield CompletionResults(
-                            usage=usage,
-                            message=ChatCompletionAssistantMessageParam(
-                                role="assistant",
-                                content=[{"type": "text", "text": all_chunk}],
-                            ),
-                            prompt=deepcopy(messages),
-                        )
+            else:
+                # at the end of stream, return the whole message and usage
+                usage = Usage(
+                    model_name=self.model_name,
+                    prompt_tokens=r.usage.prompt_tokens,
+                    completion_tokens=r.usage.completion_tokens,
+                )
+
+        yield CompletionResults(
+            usage=usage,
+            message=ChatCompletionAssistantMessageParam(
+                role="assistant",
+                content=[{"type": "text", "text": all_chunk}],
+            ),
+            prompt=deepcopy(_messages),
+        )
 
 
 class OpenAIChatModule(ChatWrapperModule):
@@ -401,7 +402,7 @@ class OpenAIChatModule(ChatWrapperModule):
         timeout: int = 60,
         max_retries: int = 2,
         seed: Optional[int] = None,
-        response_format: Optional[dict[str, str]] = None,
+        json_mode: bool = False,
         context_length: Optional[int] = None,
         conversation_memory: Optional[BaseConversationMemory] = None,
         content_filter: Optional[BaseFilter] = None,
@@ -431,6 +432,7 @@ class OpenAIChatModule(ChatWrapperModule):
             else conversation_length_adjuster
         )
 
+        # The module to call client API
         chat_model = OpenAIChatCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,
@@ -443,7 +445,7 @@ class OpenAIChatModule(ChatWrapperModule):
             timeout=timeout,
             max_retries=max_retries,
             seed=seed,
-            response_format=response_format,
+            json_mode=json_mode,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
         )

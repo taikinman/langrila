@@ -351,6 +351,7 @@ class AnthropicChatModule(ChatWrapperModule):
         content_filter: BaseFilter | None = None,
         token_counter: TokenCounter | None = None,
     ):
+        # The module to call client API
         chat_model = AnthropicChatCoreModule(
             model_name=model_name,
             api_type=api_type,

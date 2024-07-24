@@ -12,6 +12,12 @@ from anthropic._types import (
     Transport,
 )
 from anthropic.types import TextBlockParam, ToolUseBlock
+from anthropic.types.message_create_params import (
+    ToolChoice,
+    ToolChoiceToolChoiceAny,
+    ToolChoiceToolChoiceAuto,
+    ToolChoiceToolChoiceTool,
+)
 from anthropic.types.text_block import TextBlock
 
 from ...base import (
@@ -89,8 +95,18 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         self.tools = {f.__name__: f for f in tools}
         self.tool_configs = [f.format() for f in tool_configs]
 
+    def _get_tool_choice(self, tool_choice: str | None) -> ToolChoice:
+        if tool_choice is None:
+            return NOT_GIVEN
+        elif tool_choice == "auto":
+            return ToolChoiceToolChoiceAuto(type="auto")
+        elif tool_choice == "any":
+            return ToolChoiceToolChoiceAny(type="any")
+        else:
+            return ToolChoiceToolChoiceTool(type="tool", name=tool_choice)
+
     def run(
-        self, messages: list[dict[str, Any]], tool_choice: dict[str, Any] | None = None
+        self, messages: list[dict[str, Any]], tool_choice: str | None = None
     ) -> FunctionCallingResults:
         client = get_client(
             api_type=self.api_type,
@@ -124,7 +140,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             max_tokens=self.max_tokens,
             timeout=self.timeout,
             tools=self.tool_configs,
-            tool_choice=tool_choice if tool_choice is not None else {"type": "auto"},
+            tool_choice=self._get_tool_choice(tool_choice),
         )
 
         contents = []
@@ -171,7 +187,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         )
 
     async def arun(
-        self, messages: list[dict[str, Any]], tool_choice: dict[str, Any] | None = None
+        self, messages: list[dict[str, Any]], tool_choice: str | None = None
     ) -> FunctionCallingResults:
         client = get_async_client(
             api_type=self.api_type,
@@ -205,7 +221,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             max_tokens=self.max_tokens,
             timeout=self.timeout,
             tools=self.tool_configs,
-            tool_choice=tool_choice if tool_choice is not None else {"type": "auto"},
+            tool_choice=self._get_tool_choice(tool_choice),
         )
 
         contents = []
@@ -285,6 +301,7 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         content_filter: BaseFilter | None = None,
         token_counter: TokenCounter | None = None,
     ):
+        # The module to call client API
         function_calling_model = AnthropicFunctionCallingCoreModule(
             model_name=model_name,
             tools=tools,

@@ -22,6 +22,7 @@ def get_model(
     service_account: str | None = None,
     endpoint_env_name: str | None = None,
     request_metadata: Sequence[tuple[str, str]] | None = None,
+    response_schema: dict[str, Any] | None = None,
 ):
     if api_type == "genai":
         from .genai.client import get_genai_model
@@ -32,6 +33,7 @@ def get_model(
             system_instruction=system_instruction,
             max_output_tokens=max_output_tokens,
             json_mode=json_mode,
+            response_schema=response_schema,
         )
     elif api_type == "vertexai":
         from .vertexai.client import get_vertexai_model
@@ -53,6 +55,7 @@ def get_model(
             service_account=service_account,
             endpoint_env_name=endpoint_env_name,
             request_metadata=request_metadata,
+            response_schema=response_schema,
         )
     else:
         raise ValueError(f"Unknown API type: {api_type}")
@@ -89,41 +92,41 @@ def get_call_config(api_type: str, tool_choice: str | None = "auto"):
     if api_type == "genai":
         from google.generativeai.protos import FunctionCallingConfig, ToolConfig
 
-        if tool_choice == "any":
+        if tool_choice is None:
+            return ToolConfig(
+                function_calling_config=FunctionCallingConfig(mode=FunctionCallingConfig.Mode.NONE)
+            )
+        elif tool_choice == "auto":
+            return ToolConfig(
+                function_calling_config=FunctionCallingConfig(mode=FunctionCallingConfig.Mode.AUTO)
+            )
+        else:
             return ToolConfig(
                 function_calling_config=FunctionCallingConfig(
                     mode=FunctionCallingConfig.Mode.ANY,
                     allowed_function_names=[tool_choice],
                 )
             )
-        elif tool_choice is None:
-            return ToolConfig(
-                function_calling_config=FunctionCallingConfig(mode=FunctionCallingConfig.Mode.NONE)
-            )
-        else:
-            return ToolConfig(
-                function_calling_config=FunctionCallingConfig(mode=FunctionCallingConfig.Mode.AUTO)
-            )
     elif api_type == "vertexai":
         from vertexai.preview.generative_models import ToolConfig
 
-        if tool_choice == "any":
-            return ToolConfig(
-                function_calling_config=ToolConfig.FunctionCallingConfig(
-                    mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
-                    allowed_function_names=[tool_choice],
-                )
-            )
-        elif tool_choice is None:
+        if tool_choice is None:
             return ToolConfig(
                 function_calling_config=ToolConfig.FunctionCallingConfig(
                     mode=ToolConfig.FunctionCallingConfig.Mode.NONE
                 )
             )
-        else:
+        elif tool_choice == "auto":
             return ToolConfig(
                 function_calling_config=ToolConfig.FunctionCallingConfig(
                     mode=ToolConfig.FunctionCallingConfig.Mode.AUTO
+                )
+            )
+        else:
+            return ToolConfig(
+                function_calling_config=ToolConfig.FunctionCallingConfig(
+                    mode=ToolConfig.FunctionCallingConfig.Mode.ANY,
+                    allowed_function_names=[tool_choice],
                 )
             )
     else:

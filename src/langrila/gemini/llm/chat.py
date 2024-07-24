@@ -1,5 +1,5 @@
 import copy
-from typing import AsyncGenerator, Generator, Optional, Sequence
+from typing import Any, AsyncGenerator, Generator, Optional, Sequence
 
 from google.auth import credentials as auth_credentials
 
@@ -38,6 +38,7 @@ class GeminiChatCoreModule(BaseChatModule):
         json_mode: bool = False,
         timeout: int = 60,
         system_instruction: str | None = None,
+        response_schema: dict[str, Any] | None = None,
     ):
         self.api_key_env_name = api_key_env_name
         self.model_name = model_name
@@ -56,6 +57,7 @@ class GeminiChatCoreModule(BaseChatModule):
         self.endpoint_env_name = endpoint_env_name
         self.request_metadata = request_metadata
         self.json_mode = json_mode
+        self.response_schema = response_schema
 
         self.additional_kwargs = {}
         if api_type == "genai":
@@ -88,6 +90,7 @@ class GeminiChatCoreModule(BaseChatModule):
             service_account=self.service_account,
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
+            response_schema=self.response_schema,
         )
         response = model.generate_content(contents=messages, **self.additional_kwargs)
         content = response.candidates[0].content
@@ -122,6 +125,7 @@ class GeminiChatCoreModule(BaseChatModule):
             service_account=self.service_account,
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
+            response_schema=self.response_schema,
         )
         response = await model.generate_content_async(contents=messages, **self.additional_kwargs)
         content = response.candidates[0].content
@@ -158,6 +162,7 @@ class GeminiChatCoreModule(BaseChatModule):
             service_account=self.service_account,
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
+            response_schema=self.response_schema,
         )
         responses = model.generate_content(contents=messages, stream=True, **self.additional_kwargs)
 
@@ -213,6 +218,7 @@ class GeminiChatCoreModule(BaseChatModule):
             service_account=self.service_account,
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
+            response_schema=self.response_schema,
         )
         responses = await model.generate_content_async(
             contents=messages, stream=True, **self.additional_kwargs
@@ -275,7 +281,9 @@ class GeminiChatModule(ChatWrapperModule):
         service_account: str | None = None,
         endpoint_env_name: str | None = None,
         request_metadata: Sequence[tuple[str, str]] | None = None,
+        response_schema: dict[str, Any] | None = None,
     ):
+        # The module to call client API
         chat_model = GeminiChatCoreModule(
             api_key_env_name=api_key_env_name,
             model_name=model_name,
@@ -296,6 +304,7 @@ class GeminiChatModule(ChatWrapperModule):
             service_account=service_account,
             endpoint_env_name=endpoint_env_name,
             request_metadata=request_metadata,
+            response_schema=response_schema,
         )
 
         super().__init__(
