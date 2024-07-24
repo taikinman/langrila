@@ -1,70 +1,121 @@
-from typing import Any, Optional
+import re
+from typing import Any
+
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionContentPartImageParam,
+    ChatCompletionContentPartTextParam,
+    ChatCompletionMessage,
+    ChatCompletionMessageToolCall,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionToolMessageParam,
+    ChatCompletionUserMessageParam,
+)
+from openai.types.chat.chat_completion_content_part_image_param import ImageURL
+from openai.types.chat.chat_completion_message_tool_call import Function
 
 from ..base import BaseMessage
-from ..utils import encode_image
+from ..message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
+from ..utils import decode_image, encode_image
 
 
 class OpenAIMessage(BaseMessage):
-    def __init__(
-        self,
-        content: str,
-        name: Optional[str] = None,
-        images: Any | list[Any] | None = None,
-        image_resolution: str | None = None,
-    ):
-        super().__init__(content=content, images=images, name=name)
-        self._valid_image_resolution_value(image_resolution)
-
-        self.image_resolution = image_resolution
-
-    @property
-    def as_system(self):
-        return {"role": "system", "content": self.content}
-
     @property
     def as_user(self):
-        if self.images:
-            content = [{"type": "text", "text": self.content}]
-            if not isinstance(self.images, list):
-                images = [self.images]
-            else:
-                images = self.images
-
-            for image in images:
-                content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{encode_image(image)}",
-                            "detail": self.image_resolution if self.image_resolution else "low",
-                        },
-                    }
-                )
-            return {"role": "user", "content": content} | ({"name": self.name} if self.name else {})
-        else:
-            return {"role": "user", "content": self.content} | (
-                {"name": self.name} if self.name else {}
-            )
+        return ChatCompletionUserMessageParam(
+            role="user",
+            content=self.contents,
+            name=self.name,
+        )
 
     @property
     def as_assistant(self):
-        return {"role": "assistant", "content": self.content}
+        return ChatCompletionAssistantMessageParam(
+            role="assistant",
+            content=self.contents,
+            name=self.name,
+        )
 
-    # @property
-    # def as_tool(self):
-    #     return {"role": "tool", "content": self.content}
+    @property
+    def as_system(self):
+        return ChatCompletionSystemMessageParam(
+            role="system",
+            content=self.contents,
+            name=self.name,
+        )
 
     @property
     def as_function(self):
         return {
-            "role": "function",
-            "name": self.name,
-            "content": self.content,
+            "role": "tool",
+            "tool_call_id": self.contents[0]["tool_call_id"],
+            "name": self.contents[0]["name"],
+            "content": self.contents[0]["content"],
         }
 
-    def _valid_image_resolution_value(self, image_resolution: str) -> None:
-        if image_resolution:
-            if image_resolution not in ["low", "high"]:
-                raise ValueError(
-                    "image_resolution must be either 'low' or 'high' due to token management."
+    @property
+    def as_function_call(self) -> dict[str, Any]:
+        return ChatCompletionMessage(
+            role="assistant",
+            tool_calls=self.contents,
+        ).model_dump()
+
+    @staticmethod
+    def _format_text_content(content: TextContent) -> ChatCompletionContentPartTextParam:
+        return ChatCompletionContentPartTextParam(
+            type="text",
+            text=content.text,
+        )
+
+    @staticmethod
+    def _format_image_content(content: ImageContent) -> ChatCompletionContentPartImageParam:
+        file_format = decode_image(content.image, as_utf8=True).format.lower()
+        return ChatCompletionContentPartImageParam(
+            type="image_url",
+            image_url=ImageURL(
+                url=f"data:image/{file_format};base64,{content.image}",
+                detail=content.resolution if content.resolution else "auto",
+            ),
+        )
+
+    @staticmethod
+    def _format_tool_content(content: ToolContent) -> dict[str, str]:
+        return {
+            "tool_call_id": content.call_id,
+            "name": content.funcname,
+            "content": content.output,
+        }
+
+    @staticmethod
+    def _format_tool_call_content(content: ToolCall) -> ChatCompletionMessageToolCall:
+        return ChatCompletionMessageToolCall(
+            id=content.call_id,
+            type="function",
+            function=Function(arguments=content.args, name=content.name),
+        ).model_dump()
+
+    @classmethod
+    def from_client_message(cls, message: dict[str, Any]) -> Message:
+        contents = message.get("content", [])
+        common_contents = []
+        for content in contents:
+            if content["type"] == "text":
+                common_contents.append(TextContent(text=content["text"]))
+            elif content["type"] == "image_url":
+                pattern = re.compile("^(data:image/.+;base64,)")
+                url = pattern.sub("", content["image_url"]["url"])
+                common_contents.append(
+                    ImageContent(
+                        image=decode_image(url, as_utf8=True),
+                        resolution=content["image_url"]["detail"],
+                    )
                 )
+
+            else:
+                raise ValueError(f"Unknown content type: {content['type']}")
+
+        return Message(
+            role=message.get("role"),
+            content=common_contents,
+            name=message.get("name"),
+        )

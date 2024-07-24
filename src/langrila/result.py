@@ -6,22 +6,29 @@ from .usage import Usage
 
 
 class CompletionResults(BaseModel):
-    message: dict[str, str | list[str]]
-    usage: Usage
+    message: Any
+    usage: Usage = Usage()
     prompt: Any = None
+
+
+class ToolCallResponse(BaseModel):
+    name: str
+    args: Any
+    call_id: str | None = None
 
 
 class ToolOutput(BaseModel):
     call_id: str | None
     funcname: str | None
-    args: str | None
+    args: Any | None
     output: Any
 
 
 class FunctionCallingResults(BaseModel):
     usage: Usage
-    results: list[ToolOutput]
-    prompt: Optional[str | dict[str, str | list[str]] | list[dict[str, str | list[str]]]] = None
+    results: list[Any]
+    calls: Any | None = None
+    prompt: Any | None = None
 
 
 class EmbeddingResults(BaseModel):
