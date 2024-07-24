@@ -265,6 +265,13 @@ class OpenAIChatCoreModule(BaseChatModule):
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
+        if self.api_type == "openai":
+            stream_options = {"include_usage": True}
+            additional_inputs = self.additional_inputs | {"stream_options": stream_options}
+        else:
+            # Azure OpenAI does not support stream_options
+            additional_inputs = self.additional_inputs
+
         response = completion(
             client=client,
             model_name=self.model_name,
@@ -276,11 +283,12 @@ class OpenAIChatCoreModule(BaseChatModule):
             presence_penalty=0,
             stop=None,
             stream=True,
-            stream_options={"include_usage": True},
-            **self.additional_inputs,
+            **additional_inputs,
         )
 
         all_chunk = ""
+        prompt_tokens = 0
+        completion_tokens = 0
         for r in response:
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
@@ -296,14 +304,32 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
+                    else:
+                        if self.api_type == "azure":
+                            # Azure OpenAI does not return prompt_tokens and completion_tokens
+                            prompt_tokens = sum(
+                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
+                            )
+
+                            completion_tokens = get_n_tokens(
+                                ChatCompletionAssistantMessageParam(
+                                    role="assistant",
+                                    content=[{"type": "text", "text": all_chunk}],
+                                ),
+                                self.model_name,
+                            )["total"]
 
             else:
-                # at the end of stream, return the whole message and usage
-                usage = Usage(
-                    model_name=self.model_name,
-                    prompt_tokens=r.usage.prompt_tokens,
-                    completion_tokens=r.usage.completion_tokens,
-                )
+                if self.api_type == "openai":
+                    prompt_tokens = r.usage.prompt_tokens
+                    completion_tokens = r.usage.completion_tokens
+
+        # at the end of stream, return the whole message and usage
+        usage = Usage(
+            model_name=self.model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
 
         yield CompletionResults(
             usage=usage,
@@ -338,6 +364,13 @@ class OpenAIChatCoreModule(BaseChatModule):
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
+        if self.api_type == "openai":
+            stream_options = {"include_usage": True}
+            additional_inputs = self.additional_inputs | {"stream_options": stream_options}
+        else:
+            # Azure OpenAI does not support stream_options
+            additional_inputs = self.additional_inputs
+
         response = await acompletion(
             client=client,
             model_name=self.model_name,
@@ -349,11 +382,12 @@ class OpenAIChatCoreModule(BaseChatModule):
             presence_penalty=0,
             stop=None,
             stream=True,
-            stream_options={"include_usage": True},
-            **self.additional_inputs,
+            **additional_inputs,
         )
 
         all_chunk = ""
+        prompt_tokens = 0
+        completion_tokens = 0
         async for r in response:
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
@@ -369,14 +403,32 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
+                    else:
+                        if self.api_type == "azure":
+                            # Azure OpenAI does not return prompt_tokens and completion_tokens
+                            prompt_tokens = sum(
+                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
+                            )
+
+                            completion_tokens = get_n_tokens(
+                                ChatCompletionAssistantMessageParam(
+                                    role="assistant",
+                                    content=[{"type": "text", "text": all_chunk}],
+                                ),
+                                self.model_name,
+                            )["total"]
 
             else:
-                # at the end of stream, return the whole message and usage
-                usage = Usage(
-                    model_name=self.model_name,
-                    prompt_tokens=r.usage.prompt_tokens,
-                    completion_tokens=r.usage.completion_tokens,
-                )
+                if self.api_type == "openai":
+                    prompt_tokens = r.usage.prompt_tokens
+                    completion_tokens = r.usage.completion_tokens
+
+        # at the end of stream, return the whole message and usage
+        usage = Usage(
+            model_name=self.model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
 
         yield CompletionResults(
             usage=usage,
