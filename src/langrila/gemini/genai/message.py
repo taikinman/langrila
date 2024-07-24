@@ -3,8 +3,6 @@ import json
 from typing import Any
 
 from google.generativeai import protos
-from google.generativeai.types import content_types
-from google.generativeai.types.content_types import ContentDict
 
 from ...base import BaseMessage
 from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
