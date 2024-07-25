@@ -23,6 +23,12 @@ def get_model(
     endpoint_env_name: str | None = None,
     request_metadata: Sequence[tuple[str, str]] | None = None,
     response_schema: dict[str, Any] | None = None,
+    presence_penalty: float | None = None,
+    frequency_penalty: float | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    top_k: int | None = None,
+    n_results: int = 1,
 ):
     if api_type == "genai":
         from .genai.client import get_genai_model
@@ -34,6 +40,10 @@ def get_model(
             max_output_tokens=max_output_tokens,
             json_mode=json_mode,
             response_schema=response_schema,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            n_results=n_results,
         )
     elif api_type == "vertexai":
         from .vertexai.client import get_vertexai_model
@@ -56,6 +66,12 @@ def get_model(
             endpoint_env_name=endpoint_env_name,
             request_metadata=request_metadata,
             response_schema=response_schema,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            n_results=n_results,
         )
     else:
         raise ValueError(f"Unknown API type: {api_type}")

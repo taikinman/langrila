@@ -2,6 +2,8 @@ import copy
 import json
 from typing import Callable, Optional
 
+from openai._types import NOT_GIVEN, NotGiven
+
 from ...base import (
     BaseConversationLengthAdjuster,
     BaseConversationMemory,
@@ -39,6 +41,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         max_retries: int = 2,
         max_tokens: int = 2048,
         seed: Optional[int] = None,
+        top_p: Optional[float] | NotGiven = NOT_GIVEN,
+        frequency_penalty: float | NotGiven = NOT_GIVEN,
+        presence_penalty: float | NotGiven = NOT_GIVEN,
+        temperature: float | NotGiven = NOT_GIVEN,
+        user: str | NotGiven = NOT_GIVEN,
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> None:
@@ -57,6 +64,12 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         self.model_name = model_name
         self.timeout = timeout
         self.max_retries = max_retries
+        self.top_p = top_p
+        self.frequency_penalty = frequency_penalty
+        self.presence_penalty = presence_penalty
+        self.temperature = temperature
+        self.user = user
+
         self.tools = {f.__name__: f for f in tools}
 
         _tool_names_from_config = {f.name for f in tool_configs}
@@ -126,12 +139,14 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         response = client.chat.completions.create(
             model=self.model_name,
             messages=_messages,
-            temperature=0,
+            temperature=self.temperature,
             max_tokens=self.max_tokens,
-            top_p=0,
-            frequency_penalty=0,
-            presence_penalty=0,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
             stop=None,
+            stream=False,
+            user=self.user,
             **self.additional_inputs,
         )
 
@@ -224,12 +239,14 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         response = await client.chat.completions.create(
             model=self.model_name,
             messages=_messages,
-            temperature=0,
+            temperature=self.temperature,
             max_tokens=self.max_tokens,
-            top_p=0,
-            frequency_penalty=0,
-            presence_penalty=0,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
             stop=None,
+            stream=False,
+            user=self.user,
             **self.additional_inputs,
         )
 
@@ -319,6 +336,11 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         system_instruction: Optional[str] = None,
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
         token_counter: Optional[TokenCounter] = None,
+        top_p: Optional[float] | NotGiven = NOT_GIVEN,
+        frequency_penalty: float | NotGiven = NOT_GIVEN,
+        presence_penalty: float | NotGiven = NOT_GIVEN,
+        temperature: float | NotGiven = NOT_GIVEN,
+        user: str | NotGiven = NOT_GIVEN,
     ) -> None:
         if model_name in MODEL_POINT.keys():
             print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
@@ -359,6 +381,11 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             seed=seed,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            temperature=temperature,
+            user=user,
         )
 
         content_filter = content_filter

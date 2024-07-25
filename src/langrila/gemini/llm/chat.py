@@ -39,6 +39,11 @@ class GeminiChatCoreModule(BaseChatModule):
         timeout: int = 60,
         system_instruction: str | None = None,
         response_schema: dict[str, Any] | None = None,
+        presence_penalty: float | None = None,
+        frequency_penalty: float | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
     ):
         self.api_key_env_name = api_key_env_name
         self.model_name = model_name
@@ -58,6 +63,11 @@ class GeminiChatCoreModule(BaseChatModule):
         self.request_metadata = request_metadata
         self.json_mode = json_mode
         self.response_schema = response_schema
+        self.presence_penalty = presence_penalty
+        self.frequency_penalty = frequency_penalty
+        self.temperature = temperature
+        self.top_p = top_p
+        self.top_k = top_k
 
         self.additional_kwargs = {}
         if api_type == "genai":
@@ -70,7 +80,12 @@ class GeminiChatCoreModule(BaseChatModule):
 
         self.system_instruction = system_instruction
 
-    def run(self, messages: list[dict[str, str]]) -> CompletionResults:
+    def run(
+        self, messages: list[dict[str, str]], n_results: int | None = None
+    ) -> CompletionResults:
+        if n_results is not None and (self.api_type == "genai" and n_results > 1):
+            raise ValueError("n_results > 1 is not supported for Google AI API")
+
         model = get_model(
             model_name=self.model_name,
             api_key_env_name=self.api_key_env_name,
@@ -91,10 +106,30 @@ class GeminiChatCoreModule(BaseChatModule):
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
             response_schema=self.response_schema,
+            n_results=n_results,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
         )
         response = model.generate_content(contents=messages, **self.additional_kwargs)
-        content = response.candidates[0].content
+
         usage_metadata = response.usage_metadata
+        parts = []
+        candidates = response.candidates
+        for candidate in candidates:
+            content = candidate.content
+            parts.extend(content.parts)
+
+        if self.api_type == "genai":
+            from google.generativeai.protos import Content
+
+        else:
+            from vertexai.generative_models import Content
+
+        content = Content(role="model", parts=parts)
+
         return CompletionResults(
             message=content,
             usage=Usage(
@@ -105,7 +140,12 @@ class GeminiChatCoreModule(BaseChatModule):
             prompt=copy.deepcopy(messages),
         )
 
-    async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
+    async def arun(
+        self, messages: list[dict[str, str]], n_results: int | None = None
+    ) -> CompletionResults:
+        if n_results is not None and (self.api_type == "genai" and n_results > 1):
+            raise ValueError("n_results > 1 is not supported for Google AI API")
+
         model = get_model(
             model_name=self.model_name,
             api_key_env_name=self.api_key_env_name,
@@ -126,10 +166,31 @@ class GeminiChatCoreModule(BaseChatModule):
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
             response_schema=self.response_schema,
+            n_results=n_results,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
         )
+
         response = await model.generate_content_async(contents=messages, **self.additional_kwargs)
-        content = response.candidates[0].content
+
         usage_metadata = response.usage_metadata
+        parts = []
+        candidates = response.candidates
+        for candidate in candidates:
+            content = candidate.content
+            parts.extend(content.parts)
+
+        if self.api_type == "genai":
+            from google.generativeai.protos import Content
+
+        else:
+            from vertexai.generative_models import Content
+
+        content = Content(role="model", parts=parts)
+
         return CompletionResults(
             message=content,
             usage=Usage(
@@ -163,6 +224,12 @@ class GeminiChatCoreModule(BaseChatModule):
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
             response_schema=self.response_schema,
+            n_results=1,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
         )
         responses = model.generate_content(contents=messages, stream=True, **self.additional_kwargs)
 
@@ -219,6 +286,12 @@ class GeminiChatCoreModule(BaseChatModule):
             endpoint_env_name=self.endpoint_env_name,
             request_metadata=self.request_metadata,
             response_schema=self.response_schema,
+            n_results=1,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
         )
         responses = await model.generate_content_async(
             contents=messages, stream=True, **self.additional_kwargs
@@ -282,6 +355,11 @@ class GeminiChatModule(ChatWrapperModule):
         endpoint_env_name: str | None = None,
         request_metadata: Sequence[tuple[str, str]] | None = None,
         response_schema: dict[str, Any] | None = None,
+        presence_penalty: float | None = None,
+        frequency_penalty: float | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
     ):
         # The module to call client API
         chat_model = GeminiChatCoreModule(
@@ -305,6 +383,11 @@ class GeminiChatModule(ChatWrapperModule):
             endpoint_env_name=endpoint_env_name,
             request_metadata=request_metadata,
             response_schema=response_schema,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
         )
 
         super().__init__(
