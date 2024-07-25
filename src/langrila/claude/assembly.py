@@ -60,6 +60,9 @@ class Claude(BaseAssembly):
         token_counter: TokenCounter | None = None,
         tools: list[Callable] | None = None,
         tool_configs: Any | None = None,
+        temperature: float | NotGiven = NOT_GIVEN,
+        top_k: int | NotGiven = NOT_GIVEN,
+        top_p: float | NotGiven = NOT_GIVEN,
     ):
         super().__init__(conversation_memory=conversation_memory)
 
@@ -91,6 +94,9 @@ class Claude(BaseAssembly):
             conversation_memory=self.conversation_memory,
             content_filter=content_filter,
             token_counter=token_counter,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
         )
 
         if tools:
@@ -124,6 +130,9 @@ class Claude(BaseAssembly):
                 token_counter=token_counter,
                 tools=tools,
                 tool_configs=tool_configs,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
             )
         else:
             self.function_calling = None
@@ -203,12 +212,12 @@ class Claude(BaseAssembly):
 
         if self.function_calling:
             if tool_choice is not None:
-                response_function_calling: (
-                    FunctionCallingResults
-                ) = await self.function_calling.arun(
-                    prompt,
-                    init_conversation=init_conversation,
-                    tool_choice=tool_choice,
+                response_function_calling: FunctionCallingResults = (
+                    await self.function_calling.arun(
+                        prompt,
+                        init_conversation=init_conversation,
+                        tool_choice=tool_choice,
+                    )
                 )
 
                 if tool_only:
@@ -220,9 +229,9 @@ class Claude(BaseAssembly):
                 if _prompt:
                     prompt = _prompt
 
-                response_function_calling: (
-                    FunctionCallingResults
-                ) = await self.function_calling.arun(prompt, init_conversation=init_conversation)
+                response_function_calling: FunctionCallingResults = (
+                    await self.function_calling.arun(prompt, init_conversation=init_conversation)
+                )
 
                 self._clear_memory()
 

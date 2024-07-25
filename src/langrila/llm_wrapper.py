@@ -37,6 +37,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         prompt: InputType,
         init_conversation: ConversationType | None = None,
         gather_prompts: bool = True,
+        **kwargs,
     ) -> CompletionResults:
         ClientMessage = self._get_client_message_type()
 
@@ -68,7 +69,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             _messages = self.content_filter.apply(_messages)
 
-        response: CompletionResults = self.chat_model.run(_messages)
+        response: CompletionResults = self.chat_model.run(_messages, **kwargs)
 
         # Update total tokens
         if self.token_counter is not None:
@@ -96,6 +97,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         prompt: InputType,
         init_conversation: ConversationType | None = None,
         gather_prompts: bool = True,
+        **kwargs,
     ) -> CompletionResults:
         ClientMessage = self._get_client_message_type()
 
@@ -127,7 +129,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         if self.content_filter is not None:
             _messages = self.content_filter.apply(_messages)
 
-        response: CompletionResults = await self.chat_model.arun(_messages)
+        response: CompletionResults = await self.chat_model.arun(_messages, **kwargs)
 
         # Update total tokens
         if self.token_counter is not None:

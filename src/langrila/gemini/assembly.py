@@ -42,6 +42,11 @@ class Gemini(BaseAssembly):
         tools: list[Callable] | None = None,
         tool_configs: list[Any] | None = None,
         response_schema: dict[str, Any] | None = None,
+        presence_penalty: float | None = None,
+        frequency_penalty: float | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
     ):
         super().__init__(conversation_memory=conversation_memory)
 
@@ -69,6 +74,11 @@ class Gemini(BaseAssembly):
             endpoint_env_name=endpoint_env_name,
             request_metadata=request_metadata,
             response_schema=response_schema,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
         )
 
         if tools:
@@ -97,6 +107,11 @@ class Gemini(BaseAssembly):
                 request_metadata=request_metadata,
                 tools=tools,
                 tool_configs=tool_configs,
+                presence_penalty=presence_penalty,
+                frequency_penalty=frequency_penalty,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
             )
         else:
             self.function_calling = None
@@ -107,6 +122,7 @@ class Gemini(BaseAssembly):
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "any"] | str | None = None,
         tool_only: bool = False,
+        n_results: int | None = None,
     ) -> CompletionResults | FunctionCallingResults:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
@@ -131,7 +147,7 @@ class Gemini(BaseAssembly):
                 prompt = _prompt
 
         response_chat: CompletionResults = self.chat.run(
-            prompt, init_conversation=init_conversation
+            prompt, init_conversation=init_conversation, n_results=n_results
         )
 
         self._clear_memory()
@@ -144,6 +160,7 @@ class Gemini(BaseAssembly):
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "any"] | str | None = None,
         tool_only: bool = False,
+        n_results: int | None = None,
     ) -> CompletionResults | FunctionCallingResults:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
@@ -168,7 +185,7 @@ class Gemini(BaseAssembly):
                 prompt = _prompt
 
         response_chat: CompletionResults = await self.chat.arun(
-            prompt, init_conversation=init_conversation
+            prompt, init_conversation=init_conversation, n_results=n_results
         )
 
         self._clear_memory()

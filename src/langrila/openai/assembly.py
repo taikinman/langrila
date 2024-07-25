@@ -1,5 +1,7 @@
 from typing import AsyncGenerator, Callable, Generator, Literal
 
+from openai._types import NOT_GIVEN, NotGiven
+
 from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter
 from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType, Message
@@ -32,6 +34,10 @@ class ChatGPT(BaseAssembly):
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         token_counter: TokenCounter | None = None,
         json_mode: bool = False,
+        frequency_penalty: float | NotGiven = NOT_GIVEN,
+        presence_penalty: float | None | NotGiven = NOT_GIVEN,
+        temperature: float | None | NotGiven = NOT_GIVEN,
+        user: str | NotGiven = NOT_GIVEN,
     ) -> None:
         super().__init__(conversation_memory=conversation_memory)
 
@@ -54,6 +60,10 @@ class ChatGPT(BaseAssembly):
             conversation_length_adjuster=conversation_length_adjuster,
             token_counter=token_counter,
             json_mode=json_mode,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            temperature=temperature,
+            user=user,
         )
 
         if tools:
@@ -77,6 +87,10 @@ class ChatGPT(BaseAssembly):
                 system_instruction=system_instruction,
                 conversation_length_adjuster=conversation_length_adjuster,
                 token_counter=token_counter,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                temperature=temperature,
+                user=user,
             )
         else:
             self.function_calling = None
@@ -87,6 +101,7 @@ class ChatGPT(BaseAssembly):
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "required"] | str | None = None,
         tool_only: bool = False,
+        n_results: int | NotGiven = NOT_GIVEN,
     ) -> CompletionResults | FunctionCallingResults:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
@@ -116,6 +131,7 @@ class ChatGPT(BaseAssembly):
         response_chat: CompletionResults = self.chat.run(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
+            n_results=n_results,
         )
 
         self._clear_memory()
@@ -128,6 +144,7 @@ class ChatGPT(BaseAssembly):
         init_conversation: ConversationType | None = None,
         tool_choice: Literal["auto", "required"] | str | None = None,
         tool_only: bool = False,
+        n_results: int | NotGiven = NOT_GIVEN,
     ) -> CompletionResults | FunctionCallingResults:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
@@ -157,6 +174,7 @@ class ChatGPT(BaseAssembly):
         response_chat: CompletionResults = await self.chat.arun(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
+            n_results=n_results,
         )
 
         self._clear_memory()

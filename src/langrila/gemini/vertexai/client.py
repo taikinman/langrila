@@ -11,6 +11,7 @@ def get_vertexai_model(
     model_name: str,
     project_id_env_name: str,
     location_env_name: str,
+    n_results: int = 1,
     system_instruction: str | None = None,
     max_output_tokens: int = 2048,
     json_mode: bool = False,
@@ -25,6 +26,11 @@ def get_vertexai_model(
     endpoint_env_name: str | None = None,
     request_metadata: Sequence[tuple[str, str]] | None = None,
     response_schema: dict[str, Any] | None = None,
+    presence_penalty: float | None = None,
+    frequency_penalty: float | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    top_k: int | None = None,
 ):
     vertexai.init(
         project=os.getenv(project_id_env_name),
@@ -42,12 +48,16 @@ def get_vertexai_model(
     )
 
     generation_config = GenerationConfig(
+        candidate_count=n_results,
         stop_sequences=None,
         max_output_tokens=max_output_tokens,
-        temperature=0.0,
-        top_p=0.0,
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
         response_mime_type="text/plain" if not json_mode else "application/json",
         response_schema=response_schema,
+        presence_penalty=presence_penalty,
+        frequency_penalty=frequency_penalty,
     )
 
     return GenerativeModel(

@@ -62,6 +62,9 @@ class AnthropicChatCoreModule(BaseChatModule):
         _strict_response_validation: bool = False,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         system_instruction: Union[str, Iterable[TextBlockParam]] | NotGiven = NOT_GIVEN,
+        temperature: float | NotGiven = NOT_GIVEN,
+        top_k: int | NotGiven = NOT_GIVEN,
+        top_p: float | NotGiven = NOT_GIVEN,
     ):
         self.model_name = model_name
         self.api_type = api_type
@@ -88,6 +91,9 @@ class AnthropicChatCoreModule(BaseChatModule):
         self.gc_project_id_env_name = gc_project_id_env_name
         self.gc_access_token_env_name = gc_access_token_env_name
         self.credentials = credentials
+        self.temperature = temperature
+        self.top_k = top_k
+        self.top_p = top_p
 
     def run(self, messages: list[dict[str, Any]]) -> CompletionResults:
         client = get_client(
@@ -121,6 +127,9 @@ class AnthropicChatCoreModule(BaseChatModule):
             system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
             timeout=self.timeout,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
         )
 
         return CompletionResults(
@@ -165,6 +174,9 @@ class AnthropicChatCoreModule(BaseChatModule):
             system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
             timeout=self.timeout,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
         )
 
         return CompletionResults(
@@ -210,6 +222,9 @@ class AnthropicChatCoreModule(BaseChatModule):
             max_tokens=self.max_tokens,
             timeout=self.timeout,
             stream=True,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
         )
 
         all_chunks = ""
@@ -281,6 +296,9 @@ class AnthropicChatCoreModule(BaseChatModule):
             max_tokens=self.max_tokens,
             timeout=self.timeout,
             stream=True,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
         )
 
         all_chunks = ""
@@ -350,6 +368,9 @@ class AnthropicChatModule(ChatWrapperModule):
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,
         token_counter: TokenCounter | None = None,
+        temperature: float | NotGiven = NOT_GIVEN,
+        top_k: int | NotGiven = NOT_GIVEN,
+        top_p: float | NotGiven = NOT_GIVEN,
     ):
         # The module to call client API
         chat_model = AnthropicChatCoreModule(
@@ -377,6 +398,9 @@ class AnthropicChatModule(ChatWrapperModule):
             _strict_response_validation=_strict_response_validation,
             conversation_length_adjuster=conversation_length_adjuster,
             system_instruction=system_instruction,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
         )
 
         super().__init__(

@@ -65,6 +65,9 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         _strict_response_validation: bool = False,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         system_instruction: Union[str, Iterable[TextBlockParam]] | NotGiven = NOT_GIVEN,
+        temperature: float | NotGiven = NOT_GIVEN,
+        top_k: int | NotGiven = NOT_GIVEN,
+        top_p: float | NotGiven = NOT_GIVEN,
     ):
         self.model_name = model_name
         self.api_type = api_type
@@ -91,6 +94,9 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         self.gc_project_id_env_name = gc_project_id_env_name
         self.gc_access_token_env_name = gc_access_token_env_name
         self.credentials = credentials
+        self.temperature = temperature
+        self.top_k = top_k
+        self.top_p = top_p
 
         self.tools = {f.__name__: f for f in tools}
         self.tool_configs = [f.format() for f in tool_configs]
@@ -141,6 +147,9 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             timeout=self.timeout,
             tools=self.tool_configs,
             tool_choice=self._get_tool_choice(tool_choice),
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
         )
 
         contents = []
@@ -222,6 +231,9 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
             timeout=self.timeout,
             tools=self.tool_configs,
             tool_choice=self._get_tool_choice(tool_choice),
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
         )
 
         contents = []
@@ -300,6 +312,9 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,
         token_counter: TokenCounter | None = None,
+        temperature: float | NotGiven = NOT_GIVEN,
+        top_k: int | NotGiven = NOT_GIVEN,
+        top_p: float | NotGiven = NOT_GIVEN,
     ):
         # The module to call client API
         function_calling_model = AnthropicFunctionCallingCoreModule(
@@ -329,6 +344,9 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
             _strict_response_validation=_strict_response_validation,
             conversation_length_adjuster=conversation_length_adjuster,
             system_instruction=system_instruction,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
         )
 
         super().__init__(

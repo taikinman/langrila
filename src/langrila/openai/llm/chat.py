@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import Any, AsyncGenerator, Generator, Optional
 
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
+from openai._types import NOT_GIVEN, NotGiven
 from openai.types.chat import ChatCompletionAssistantMessageParam
 
 from ...base import (
@@ -12,7 +13,6 @@ from ...base import (
     BaseMessage,
 )
 from ...llm_wrapper import ChatWrapperModule
-from ...message_content import ContentType, Message, TextContent
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
@@ -26,12 +26,14 @@ def completion(
     model_name: str,
     messages: Any,
     max_tokens: int,
-    temperature: float,
-    top_p: float,
-    frequency_penalty: float,
-    presence_penalty: float,
     stream: bool,
-    stop: Optional[str] = None,
+    top_p: Optional[float] | NotGiven = NOT_GIVEN,
+    stop: str | None = None,
+    frequency_penalty: float | NotGiven = NOT_GIVEN,
+    n_results: int | NotGiven = NOT_GIVEN,
+    presence_penalty: float | NotGiven = NOT_GIVEN,
+    temperature: float | NotGiven = NOT_GIVEN,
+    user: str | NotGiven = NOT_GIVEN,
     **kwargs,
 ):
     params = dict(
@@ -44,6 +46,8 @@ def completion(
         presence_penalty=presence_penalty,
         stop=stop,
         stream=stream,
+        n=n_results,
+        user=user,
         **kwargs,
     )
 
@@ -58,12 +62,14 @@ async def acompletion(
     model_name: str,
     messages: Any,
     max_tokens: int,
-    temperature: float,
-    top_p: float,
-    frequency_penalty: float,
-    presence_penalty: float,
-    stop: bool,
     stream: bool,
+    top_p: float | NotGiven = NOT_GIVEN,
+    stop: str | None = None,
+    frequency_penalty: float | NotGiven = NOT_GIVEN,
+    n_results: int | NotGiven = NOT_GIVEN,
+    presence_penalty: float | NotGiven = NOT_GIVEN,
+    temperature: float | NotGiven = NOT_GIVEN,
+    user: str | NotGiven = NOT_GIVEN,
     **kwargs,
 ):
     params = dict(
@@ -76,6 +82,8 @@ async def acompletion(
         presence_penalty=presence_penalty,
         stop=stop,
         stream=stream,
+        n=n_results,
+        user=user,
         **kwargs,
     )
 
@@ -102,6 +110,11 @@ class OpenAIChatCoreModule(BaseChatModule):
         json_mode: bool = False,
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
+        top_p: float | NotGiven = NOT_GIVEN,
+        frequency_penalty: float | NotGiven = NOT_GIVEN,
+        presence_penalty: float | NotGiven = NOT_GIVEN,
+        temperature: float | NotGiven = NOT_GIVEN,
+        user: str | NotGiven = NOT_GIVEN,
     ) -> None:
         assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
         if api_type == "azure":
@@ -119,6 +132,11 @@ class OpenAIChatCoreModule(BaseChatModule):
         self.api_version = api_version
         self.endpoint_env_name = endpoint_env_name
         self.deployment_id_env_name = deployment_id_env_name
+        self.frequency_penalty = frequency_penalty
+        self.presence_penalty = presence_penalty
+        self.temperature = temperature
+        self.user = user
+        self.top_p = top_p
 
         self.additional_inputs = {}
         if model_name not in _OLDER_MODEL_CONFIG.keys():
@@ -149,7 +167,9 @@ class OpenAIChatCoreModule(BaseChatModule):
 
         self.conversation_length_adjuster = conversation_length_adjuster
 
-    def run(self, messages: list[dict[str, str]]) -> CompletionResults:
+    def run(
+        self, messages: list[dict[str, str]], n_results: int | NotGiven = NOT_GIVEN
+    ) -> CompletionResults:
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
@@ -175,28 +195,35 @@ class OpenAIChatCoreModule(BaseChatModule):
             client=client,
             model_name=self.model_name,
             messages=_messages,
-            temperature=0,
+            temperature=self.temperature,
             max_tokens=self.max_tokens,
-            top_p=0,
-            frequency_penalty=0,
-            presence_penalty=0,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
             stop=None,
             stream=False,
+            n_results=n_results,
+            user=self.user,
             **self.additional_inputs,
         )
 
         usage = Usage(model_name=self.model_name)
         usage += response.usage
-        response_message = response.choices[0].message.content.strip("\n")
+        choices = response.choices
+        contents = []
+        for choice in choices:
+            response_message = choice.message.content.strip("\n")
+            contents.append({"type": "text", "text": response_message})
+
         return CompletionResults(
             usage=usage,
-            message=ChatCompletionAssistantMessageParam(
-                role="assistant", content=[{"type": "text", "text": response_message}]
-            ),
+            message=ChatCompletionAssistantMessageParam(role="assistant", content=contents),
             prompt=deepcopy(_messages),
         )
 
-    async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
+    async def arun(
+        self, messages: list[dict[str, str]], n_results: int | NotGiven = NOT_GIVEN
+    ) -> CompletionResults:
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
@@ -222,24 +249,29 @@ class OpenAIChatCoreModule(BaseChatModule):
             client=client,
             model_name=self.model_name,
             messages=_messages,
-            temperature=0,
+            temperature=self.temperature,
             max_tokens=self.max_tokens,
-            top_p=0,
-            frequency_penalty=0,
-            presence_penalty=0,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
             stop=None,
             stream=False,
+            n_results=n_results,
+            user=self.user,
             **self.additional_inputs,
         )
 
         usage = Usage(model_name=self.model_name)
         usage += response.usage
-        response_message = response.choices[0].message.content.strip("\n")
+        choices = response.choices
+        contents = []
+        for choice in choices:
+            response_message = choice.message.content.strip("\n")
+            contents.append({"type": "text", "text": response_message})
+
         return CompletionResults(
             usage=usage,
-            message=ChatCompletionAssistantMessageParam(
-                role="assistant", content=[{"type": "text", "text": response_message}]
-            ),
+            message=ChatCompletionAssistantMessageParam(role="assistant", content=contents),
             prompt=deepcopy(_messages),
         )
 
@@ -276,13 +308,15 @@ class OpenAIChatCoreModule(BaseChatModule):
             client=client,
             model_name=self.model_name,
             messages=_messages,
-            temperature=0,
+            temperature=self.temperature,
             max_tokens=self.max_tokens,
-            top_p=0,
-            frequency_penalty=0,
-            presence_penalty=0,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
             stop=None,
             stream=True,
+            n_results=1,
+            user=self.user,
             **additional_inputs,
         )
 
@@ -375,13 +409,15 @@ class OpenAIChatCoreModule(BaseChatModule):
             client=client,
             model_name=self.model_name,
             messages=_messages,
-            temperature=0,
+            temperature=self.temperature,
             max_tokens=self.max_tokens,
-            top_p=0,
-            frequency_penalty=0,
-            presence_penalty=0,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
             stop=None,
             stream=True,
+            n_results=1,
+            user=self.user,
             **additional_inputs,
         )
 
@@ -461,6 +497,11 @@ class OpenAIChatModule(ChatWrapperModule):
         conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
         system_instruction: str | None = None,
         token_counter: TokenCounter | None = None,
+        top_p: float | None | NotGiven = NOT_GIVEN,
+        frequency_penalty: float | None | NotGiven = NOT_GIVEN,
+        presence_penalty: float | None | NotGiven = NOT_GIVEN,
+        temperature: float | None | NotGiven = NOT_GIVEN,
+        user: str | NotGiven = NOT_GIVEN,
     ):
         if model_name in MODEL_POINT.keys():
             print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
@@ -500,6 +541,11 @@ class OpenAIChatModule(ChatWrapperModule):
             json_mode=json_mode,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            temperature=temperature,
+            user=user,
         )
 
         super().__init__(
