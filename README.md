@@ -1,17 +1,8 @@
 # Langri-La
 Langrila is a useful tool to use API-based LLM in an easy way. This library put emphasis on simple architecture for readability.
 
-# Dependencies
-## must
-- Python >=3.10,<3.13
-
-## as needed
-- openai and tiktoken for OpenAI API
-- google-generativeai for Gemini API
-- qdrant-client, chromadb or usearch for retrieval
-
 # Contribution
-## Coding policy
+## Coding style
 1. Sticking to simplicity : This library is motivated by simplifying architecture for readability. Thus too much abstraction should be avoided.
 2. Implementing minimum modules : The more functions each module has, the more complex the source code becomes. Langrila focuses on implementing minimum necessary functions in each module Basically module has only a responsibility expressed by thier module name and main function is implemented in a method easy to understand like `run()` or `arun()` methods except for some.
 
@@ -19,71 +10,8 @@ Langrila is a useful tool to use API-based LLM in an easy way. This library put 
 - Topic branch are checkout from main branch.
 - Topic branch should be small.
 
-# Installation
-## clone
-```
-git clone git@github.com:taikinman/langrila.git
-```
-
-## pip
-See [pyproject.toml](./pyproject.toml) for more detailed installation options.
-
-```
-cd langrila
-
-# For OpenAI
-pip install -e .[openai]
-
-# For Gemini
-pip install -e .[gemini]
-
-# For both
-pip install -e .[openai,gemini]
-
-# For OpenAI and Qdrant
-pip install -e .[openai,qdrant]
-
-# For OpenAI and Chroma
-pip install -e .[openai,chroma]
-
-# For OpenAI and Usearch
-pip install -e .[openai,usearch]
-
-# For All
-pip install -e .[all]
-```
-
-## poetry
-See [pyproject.toml](./pyproject.toml) for more detailed installation options.
-
-```
-# For OpenAI
-poetry add --editable /path/to/langrila/ --extras openai
-
-# For Gemini
-poetry add --editable /path/to/langrila/ --extras gemini
-
-# For Claude
-poetry add --editable /path/to/langrila/ --extras claude
-
-# For both OpenAI and Gemini (can choose Claude as well)
-poetry add --editable /path/to/langrila/ --extras "openai gemini"
-
-# For OpenAI and Qdrant
-poetry add --editable /path/to/langrila/ --extras "openai qdrant"
-
-# For OpenAI and Chroma
-poetry add --editable /path/to/langrila/ --extras "openai chroma"
-
-# For OpenAI and Usearch
-poetry add --editable /path/to/langrila/ --extras "openai usearch"
-
-# For all extra dependencies
-poetry add --editable /path/to/langrila/ --extras all
-```
-
 # Pre-requirement
-1. Pre-configure environment variables to use OpenAI API, Azure OpenAI Service or Gemini API.
+If necessary, set environment variables to use OpenAI API, Azure OpenAI Service, Gemini API, and Claude API; if using VertexAI or Amazon Bedrock, check each platform's user guide and authenticate in advance VertexAI and Amazon Bedrock.
 
 # Supported models for OpenAI
 ## Chat models
@@ -208,6 +136,80 @@ Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) inclu
 - Multi-turn conversation using tools with multiple client
 
 
+# Dependencies
+## must
+- Python >=3.10,<3.13
+
+## as needed
+Langrila has various extra installation options. See the following installation section and [pyproject.toml](./pyproject.toml).
+
+# Installation
+## clone
+```
+git clone git@github.com:taikinman/langrila.git
+```
+
+## pip
+See [pyproject.toml](./pyproject.toml) for more detailed installation options.
+
+```
+cd langrila
+
+# For OpenAI
+pip install -e .[openai]
+
+# For Gemini
+pip install -e .[gemini]
+
+# For Claude
+pip install -e .[claude]
+
+# For both
+pip install -e .[openai,gemini]
+
+# For OpenAI and Qdrant
+pip install -e .[openai,qdrant]
+
+# For OpenAI and Chroma
+pip install -e .[openai,chroma]
+
+# For OpenAI and Usearch
+pip install -e .[openai,usearch]
+
+# For All
+pip install -e .[all]
+```
+
+## poetry
+See [pyproject.toml](./pyproject.toml) for more detailed installation options.
+
+```
+# For OpenAI
+poetry add --editable /path/to/langrila/ --extras openai
+
+# For Gemini
+poetry add --editable /path/to/langrila/ --extras gemini
+
+# For Claude
+poetry add --editable /path/to/langrila/ --extras claude
+
+# For both OpenAI and Gemini (can choose Claude as well)
+poetry add --editable /path/to/langrila/ --extras "openai gemini"
+
+# For OpenAI and Qdrant
+poetry add --editable /path/to/langrila/ --extras "openai qdrant"
+
+# For OpenAI and Chroma
+poetry add --editable /path/to/langrila/ --extras "openai chroma"
+
+# For OpenAI and Usearch
+poetry add --editable /path/to/langrila/ --extras "openai usearch"
+
+# For all extra dependencies
+poetry add --editable /path/to/langrila/ --extras all
+```
+
+# Optional
 ## Retrieval
 Now langrila supports qdrant, chroma and usearch for retrieval.
 
