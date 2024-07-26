@@ -90,7 +90,7 @@ class GeminiMessage(BaseMessage):
     @staticmethod
     def _to_dict(content: protos.Content) -> dict[str, Any]:
         return json.loads(
-            type(content).to_json(
+            protos.Content.to_json(
                 content,
                 including_default_value_fields=False,
                 use_integers_for_enums=False,
