@@ -11,7 +11,7 @@ from .llm.chat import OpenAIChatModule
 from .llm.function_calling import OpenAIFunctionCallingModule, ToolConfig
 
 
-class ChatGPT(BaseAssembly):
+class OpenAIFunctionalChat(BaseAssembly):
     def __init__(
         self,
         api_key_env_name: str,
@@ -34,6 +34,7 @@ class ChatGPT(BaseAssembly):
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         token_counter: TokenCounter | None = None,
         json_mode: bool = False,
+        top_p: float | None | NotGiven = NOT_GIVEN,
         frequency_penalty: float | NotGiven = NOT_GIVEN,
         presence_penalty: float | None | NotGiven = NOT_GIVEN,
         temperature: float | None | NotGiven = NOT_GIVEN,
@@ -60,6 +61,7 @@ class ChatGPT(BaseAssembly):
             conversation_length_adjuster=conversation_length_adjuster,
             token_counter=token_counter,
             json_mode=json_mode,
+            top_p=top_p,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
             temperature=temperature,
@@ -87,6 +89,7 @@ class ChatGPT(BaseAssembly):
                 system_instruction=system_instruction,
                 conversation_length_adjuster=conversation_length_adjuster,
                 token_counter=token_counter,
+                top_p=top_p,
                 frequency_penalty=frequency_penalty,
                 presence_penalty=presence_penalty,
                 temperature=temperature,

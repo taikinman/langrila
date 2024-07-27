@@ -14,7 +14,7 @@ from .llm.chat import GeminiChatModule
 from .llm.function_calling import GeminiFunctionCallingModule
 
 
-class Gemini(BaseAssembly):
+class GeminiFunctionalChat(BaseAssembly):
     def __init__(
         self,
         model_name: str,
