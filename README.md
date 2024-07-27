@@ -1,5 +1,5 @@
 # Langri-La
-Langrila is a useful tool to use API-based LLM in an easy way. This library put emphasis on simple architecture for readability.
+Langrila is an open-source third-party python package that is useful to use API-based LLM in the same interface. This package puts emphasis on simple architecture for readability. This package is just personal project.
 
 # Contribution
 ## Coding style
@@ -107,11 +107,11 @@ Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) inclu
 
 - Basic usage with simple text prompt
     - ChatGPT of OpenAI
-    - ChatGPT of Azure OpenAI
-    - Gemini on Google AI
+    - ChatGPT on Azure OpenAI
+    - Gemini of Google AI
     - Gemini on VertexAI
     - Claude of Anthropic
-    - Claude using Amazon Bedrock
+    - Claude on Amazon Bedrock
 - Image input
 - Message system in langrila
 - Multi-turn conversation with multiple client
