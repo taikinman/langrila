@@ -1,4 +1,4 @@
-from .assembly import ChatGPT
+from .assembly import OpenAIFunctionalChat
 from .embedding import OpenAIEmbeddingModule
 from .llm.chat import OpenAIChatModule
 from .llm.function_calling import (

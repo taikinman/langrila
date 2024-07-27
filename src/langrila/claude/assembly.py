@@ -24,7 +24,7 @@ from .llm.chat import AnthropicChatModule
 from .llm.function_calling import AnthropicFunctionCallingModule
 
 
-class Claude(BaseAssembly):
+class ClaudeFunctionalChat(BaseAssembly):
     """
     FIXME : This module might not work for multi-turn conversation using tools.
     """

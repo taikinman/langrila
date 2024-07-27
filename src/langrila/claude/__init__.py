@@ -1,4 +1,4 @@
-from .assembly import Claude
+from .assembly import ClaudeFunctionalChat
 from .llm.chat import AnthropicChatModule
 from .llm.function_calling import AnthropicFunctionCallingModule
 from .message import ClaudeMessage
