@@ -179,7 +179,7 @@ def get_n_tokens(message: dict[str, dict[str, str]], model_name: str) -> dict[st
     for key, value in message.items():
         if value is not None:
             if key == "content" and not isinstance(value, str):
-                if model_name in _VISION_MODEL and isinstance(value, list):
+                if model_name in _VISION_MODEL or isinstance(value, list):
                     for item in value:
                         if item["type"] == "text":
                             n_content_tokens += len(encoding.encode(item["text"]))
