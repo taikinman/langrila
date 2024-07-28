@@ -20,4 +20,5 @@ from .message_content import (
 )
 from .prompt_template import PromptTemplate
 from .result import CompletionResults, EmbeddingResults, FunctionCallingResults, RetrievalResults
+from .tools import ToolConfig, ToolParameter, ToolProperty
 from .usage import TokenCounter, Usage
