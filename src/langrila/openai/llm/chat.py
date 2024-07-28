@@ -555,5 +555,5 @@ class OpenAIChatModule(ChatWrapperModule):
             token_counter=token_counter,
         )
 
-    def _get_client_message_type(self) -> type[BaseMessage]:
+    def _get_client_message_type(self) -> OpenAIMessage:
         return OpenAIMessage
