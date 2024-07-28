@@ -2,13 +2,10 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
+from ..tools import ToolConfig, ToolParameter, ToolProperty
 
-class ToolProperty(BaseModel):
-    name: str
-    type: str
-    description: str
-    enum: list[str | int | float] | None = None
 
+class OpenAIToolProperty(ToolProperty):
     def format(self):
         return {self.name: self.model_dump(exclude=["name"] if self.enum else ["name", "enum"])}
 
@@ -20,9 +17,9 @@ class ToolProperty(BaseModel):
         return v
 
 
-class ToolParameter(BaseModel):
+class OpenAIToolParameter(ToolParameter):
     type: str = "object"
-    properties: list[ToolProperty]
+    properties: list[OpenAIToolProperty]
     required: Optional[list[str]] = None
 
     def format(self):
@@ -55,11 +52,11 @@ class ToolParameter(BaseModel):
         return required
 
 
-class ToolConfig(BaseModel):
+class OpenAIToolConfig(ToolConfig):
     name: str
     type: str = "function"
     description: str
-    parameters: ToolParameter
+    parameters: OpenAIToolParameter
 
     def format(self):
         dumped = self.model_dump(exclude=["parameters", "type"])
@@ -72,3 +69,7 @@ class ToolConfig(BaseModel):
             raise ValueError("supported type is only function")
 
         return v
+
+    @classmethod
+    def from_universal_configs(cls, configs: list[ToolConfig]) -> list["OpenAIToolConfig"]:
+        return [cls(**config.model_dump()) for config in configs]

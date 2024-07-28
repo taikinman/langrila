@@ -22,7 +22,7 @@ from ..model_config import (
     MODEL_POINT,
 )
 from ..openai_utils import get_async_client, get_client, get_token_limit
-from ..tools import ToolConfig
+from ..tools import OpenAIToolConfig, ToolConfig
 
 
 class FunctionCallingCoreModule(BaseFunctionCallingModule):
@@ -79,18 +79,21 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
 
         self.max_tokens = max_tokens
 
+        ClientToolConfig = self._get_client_tool_config_type()
+        client_tool_config = ClientToolConfig.from_universal_configs(tool_configs)
+
         self.additional_inputs = {}
         if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
             self.additional_inputs["seed"] = seed
-            self.tool_configs = [f.format() for f in tool_configs]
+            self.tool_configs = [f.format() for f in client_tool_config]
             self.additional_inputs["tools"] = self.tool_configs
         else:
             if seed:
                 print(
                     f"seed is ignored because it's not supported for {model_name} (api_type:{api_type})"
                 )
-            self.tool_configs = [f.format()["function"] for f in tool_configs]
+            self.tool_configs = [f.format()["function"] for f in client_tool_config]
             self.additional_inputs["functions"] = self.tool_configs
 
         if system_instruction:
@@ -102,6 +105,9 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             self.system_instruction = None
 
         self.conversation_length_adjuster = conversation_length_adjuster
+
+    def _get_client_tool_config_type(self) -> ToolConfig:
+        return OpenAIToolConfig
 
     def _set_tool_choice(self, tool_choice: str = "auto"):
         if self.model_name not in _OLDER_MODEL_CONFIG.keys():

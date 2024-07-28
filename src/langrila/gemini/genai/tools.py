@@ -3,8 +3,10 @@ from typing import Optional
 import google.generativeai as genai
 from pydantic import BaseModel
 
+from ...tools import ToolConfig, ToolParameter, ToolProperty
 
-class ToolProperty(BaseModel):
+
+class GeminiToolProperty(ToolProperty):
     name: str
     type: str
     description: str
@@ -20,9 +22,9 @@ class ToolProperty(BaseModel):
         }
 
 
-class ToolParameter(BaseModel):
+class GeminiToolParameter(ToolParameter):
     type: str = "object"
-    properties: list[ToolProperty]
+    properties: list[GeminiToolProperty]
     required: Optional[list[str]] = []
 
     def format(self):
@@ -39,10 +41,10 @@ class ToolParameter(BaseModel):
         )
 
 
-class ToolConfig(BaseModel):
+class GeminiToolConfig(ToolConfig):
     name: str
     description: str
-    parameters: ToolParameter
+    parameters: GeminiToolParameter
 
     def format(self):
         return genai.protos.FunctionDeclaration(
@@ -50,3 +52,7 @@ class ToolConfig(BaseModel):
             description=self.description,
             parameters=self.parameters.format(),
         )
+
+    @classmethod
+    def from_universal_configs(cls, configs: list[ToolConfig]) -> list["GeminiToolConfig"]:
+        return [cls(**config.model_dump()) for config in configs]

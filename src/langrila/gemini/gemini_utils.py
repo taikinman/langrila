@@ -104,6 +104,19 @@ def get_tool_cls(api_type: str):
         raise ValueError(f"Unknown API type: {api_type}")
 
 
+def get_client_tool_type(api_type: str):
+    if api_type == "genai":
+        from .genai.tools import GeminiToolConfig
+
+        return GeminiToolConfig
+    elif api_type == "vertexai":
+        from .vertexai.tools import VertexAIToolConfig
+
+        return VertexAIToolConfig
+    else:
+        raise ValueError(f"Unknown API type: {api_type}")
+
+
 def get_call_config(api_type: str, tool_choice: str | None = "auto"):
     if api_type == "genai":
         from google.generativeai.protos import FunctionCallingConfig, ToolConfig
