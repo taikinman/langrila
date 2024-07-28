@@ -364,7 +364,7 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
             messages.extend(response.results)
 
         # Save conversation memory
-        if self.conversation_memory is not None and (response.calls or response.results):
+        if self.conversation_memory is not None or (response.calls and response.results):
             serializable = [m.model_dump() for m in messages]
             self.save_conversation(serializable)
 
@@ -435,7 +435,7 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
             messages.extend(response.results)
 
         # Save conversation memory
-        if self.conversation_memory is not None and (response.calls or response.results):
+        if self.conversation_memory is not None or (response.calls and response.results):
             serializable = [m.model_dump() for m in messages]
             self.save_conversation(serializable)
 
