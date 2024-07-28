@@ -19,6 +19,7 @@ from ..base import (
 from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType, Message, TextContent
 from ..result import CompletionResults, FunctionCallingResults
+from ..tools import ToolConfig
 from ..usage import TokenCounter
 from .llm.chat import AnthropicChatModule
 from .llm.function_calling import AnthropicFunctionCallingModule
@@ -59,7 +60,7 @@ class ClaudeFunctionalChat(BaseAssembly):
         content_filter: BaseFilter | None = None,
         token_counter: TokenCounter | None = None,
         tools: list[Callable] | None = None,
-        tool_configs: Any | None = None,
+        tool_configs: list[ToolConfig] | None = None,
         temperature: float | NotGiven = NOT_GIVEN,
         top_k: int | NotGiven = NOT_GIVEN,
         top_p: float | NotGiven = NOT_GIVEN,

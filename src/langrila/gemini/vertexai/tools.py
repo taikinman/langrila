@@ -3,8 +3,10 @@ from typing import Optional
 from pydantic import BaseModel
 from vertexai.generative_models import FunctionDeclaration
 
+from ...tools import ToolConfig, ToolParameter, ToolProperty
 
-class ToolProperty(BaseModel):
+
+class VertexAIToolProperty(ToolProperty):
     name: str
     type: str
     description: str
@@ -14,9 +16,9 @@ class ToolProperty(BaseModel):
         return {self.name: {"type": self.type, "description": self.description, "enum": self.enum}}
 
 
-class ToolParameter(BaseModel):
+class VertexAIToolParameter(ToolParameter):
     type: str = "object"
-    properties: list[ToolProperty]
+    properties: list[VertexAIToolProperty]
     required: Optional[list[str]] = []
 
     def format(self):
@@ -33,10 +35,10 @@ class ToolParameter(BaseModel):
         }
 
 
-class ToolConfig(BaseModel):
+class VertexAIToolConfig(ToolConfig):
     name: str
     description: str
-    parameters: ToolParameter
+    parameters: VertexAIToolParameter
 
     def format(self):
         return FunctionDeclaration(
@@ -44,3 +46,7 @@ class ToolConfig(BaseModel):
             description=self.description,
             parameters=self.parameters.format(),
         )
+
+    @classmethod
+    def from_universal_configs(cls, configs: list[ToolConfig]) -> list["VertexAIToolConfig"]:
+        return [cls(**config.model_dump()) for config in configs]

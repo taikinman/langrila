@@ -6,9 +6,10 @@ from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseF
 from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType, Message
 from ..result import CompletionResults, FunctionCallingResults
+from ..tools import ToolConfig
 from ..usage import TokenCounter
 from .llm.chat import OpenAIChatModule
-from .llm.function_calling import OpenAIFunctionCallingModule, ToolConfig
+from .llm.function_calling import OpenAIFunctionCallingModule
 
 
 class OpenAIFunctionalChat(BaseAssembly):

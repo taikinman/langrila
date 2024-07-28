@@ -7,4 +7,4 @@ from .llm.function_calling import (
 )
 from .message import OpenAIMessage
 from .openai_utils import get_n_tokens
-from .tools import ToolConfig, ToolParameter, ToolProperty
+from .tools import OpenAIToolConfig, OpenAIToolParameter, OpenAIToolProperty

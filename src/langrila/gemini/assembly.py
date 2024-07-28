@@ -9,6 +9,7 @@ from ..base import (
 from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType
 from ..result import CompletionResults, FunctionCallingResults
+from ..tools import ToolConfig
 from ..usage import TokenCounter
 from .llm.chat import GeminiChatModule
 from .llm.function_calling import GeminiFunctionCallingModule
@@ -40,7 +41,7 @@ class GeminiFunctionalChat(BaseAssembly):
         endpoint_env_name: str | None = None,
         request_metadata: Sequence[tuple[str, str]] | None = None,
         tools: list[Callable] | None = None,
-        tool_configs: list[Any] | None = None,
+        tool_configs: list[ToolConfig] | None = None,
         response_schema: dict[str, Any] | None = None,
         presence_penalty: float | None = None,
         frequency_penalty: float | None = None,

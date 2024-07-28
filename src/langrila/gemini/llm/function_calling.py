@@ -14,8 +14,15 @@ from ...base import (
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
+from ...tools import ToolConfig
 from ...usage import TokenCounter, Usage
-from ..gemini_utils import get_call_config, get_message_cls, get_model, get_tool_cls
+from ..gemini_utils import (
+    get_call_config,
+    get_client_tool_type,
+    get_message_cls,
+    get_model,
+    get_tool_cls,
+)
 
 
 class GeminiFunctionCallingCoreModule(BaseChatModule):
@@ -23,7 +30,7 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
         self,
         model_name: str,
         tools: list[Callable],
-        tool_configs: list[Any],
+        tool_configs: list[ToolConfig],
         api_key_env_name: str | None = None,
         api_type: str = "genai",
         project_id_env_name: str | None = None,
@@ -81,14 +88,19 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
             )
             self.additional_kwargs["request_options"] = request_options
 
+        ClientToolConfig = self._get_client_tool_config_type(api_type)
+        client_tool_configs = ClientToolConfig.from_universal_configs(tool_configs)
         self.tools = {func.__name__: func for func in tools}
 
         tool_cls = get_tool_cls(api_type=api_type)
-        function_declarations = [config.format() for config in tool_configs]
+        function_declarations = [config.format() for config in client_tool_configs]
         self.tool_configs = [tool_cls(function_declarations=function_declarations)]
 
     def _get_call_config(self, tool_choice: str | None = "auto"):
         return get_call_config(api_type=self.api_type, tool_choice=tool_choice)
+
+    def _get_client_tool_config_type(self, api_type: str):
+        return get_client_tool_type(api_type=api_type)
 
     def run(
         self, messages: list[dict[str, str]], tool_choice: list[str] | str | None = "auto"
@@ -244,7 +256,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         model_name: str,
         tools: list[Callable],
-        tool_configs: list[Any],
+        tool_configs: list[ToolConfig],
         api_key_env_name: str | None = None,
         max_tokens: int = 2048,
         json_mode: bool = False,

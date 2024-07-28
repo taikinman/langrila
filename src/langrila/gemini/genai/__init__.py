@@ -1,2 +1,2 @@
 from .message import GeminiMessage
-from .tools import ToolConfig, ToolParameter, ToolProperty
+from .tools import GeminiToolConfig, GeminiToolParameter, GeminiToolProperty

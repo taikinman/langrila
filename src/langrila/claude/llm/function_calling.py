@@ -30,9 +30,11 @@ from ...base import (
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...message_content import TextContent
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
+from ...tools import ToolConfig
 from ...usage import TokenCounter, Usage
 from ..claude_utils import acompletion, completion, get_async_client, get_client
 from ..message import ClaudeMessage
+from ..tools import ClaudeToolConfig
 
 
 class AnthropicFunctionCallingCoreModule(BaseChatModule):
@@ -40,7 +42,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         self,
         model_name: str,
         tools: list[Callable],
-        tool_configs: Any,
+        tool_configs: list[ToolConfig],
         api_type: str = "anthropic",
         api_key_env_name: str | None = None,
         auth_token_env_name: str | None = None,
@@ -98,8 +100,14 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         self.top_k = top_k
         self.top_p = top_p
 
+        ClientToolConfig = self._get_client_tool_type()
+        client_tool_configs = ClientToolConfig.from_universal_configs(tool_configs)
+
         self.tools = {f.__name__: f for f in tools}
-        self.tool_configs = [f.format() for f in tool_configs]
+        self.tool_configs = [f.format() for f in client_tool_configs]
+
+    def _get_client_tool_type(self) -> ClaudeToolConfig:
+        return ClaudeToolConfig
 
     def _get_tool_choice(self, tool_choice: str | None) -> ToolChoice:
         if tool_choice is None:
@@ -285,7 +293,7 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         model_name: str,
         tools: list[Callable],
-        tool_configs: Any,
+        tool_configs: list[ToolConfig],
         api_type: str = "anthropic",
         api_key_env_name: str | None = None,
         auth_token_env_name: str | None = None,

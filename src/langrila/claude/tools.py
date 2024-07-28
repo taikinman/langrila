@@ -1,8 +1,10 @@
 from anthropic.types import ToolParam
 from pydantic import BaseModel
 
+from ..tools import ToolConfig, ToolParameter, ToolProperty
 
-class ToolProperty(BaseModel):
+
+class ClaudeToolProperty(ToolProperty):
     name: str
     type: str
     description: str
@@ -16,9 +18,9 @@ class ToolProperty(BaseModel):
         }
 
 
-class ToolParameter(BaseModel):
+class ClaudeToolParameter(ToolParameter):
     type: str = "object"
-    properties: list[ToolProperty]
+    properties: list[ClaudeToolProperty]
     required: list[str | int | float] | None = None
 
     def format(self):
@@ -34,12 +36,16 @@ class ToolParameter(BaseModel):
         return dumped
 
 
-class ToolConfig(BaseModel):
+class ClaudeToolConfig(ToolConfig):
     name: str
     description: str
-    parameters: ToolParameter
+    parameters: ClaudeToolParameter
 
     def format(self):
         dumped = self.model_dump(exclude=["parameters"])
         dumped["input_schema"] = self.parameters.format()
         return ToolParam(**dumped)
+
+    @classmethod
+    def from_universal_configs(cls, configs: list[ToolConfig]) -> list["ClaudeToolConfig"]:
+        return [cls(**config.model_dump()) for config in configs]
