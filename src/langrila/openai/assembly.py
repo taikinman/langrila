@@ -139,6 +139,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
             n_results=n_results,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
@@ -185,6 +186,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
             n_results=n_results,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
@@ -220,6 +222,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         response_chat: CompletionResults = self.chat.stream(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
@@ -255,6 +258,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         response_chat: CompletionResults = self.chat.astream(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
