@@ -113,6 +113,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
+        gather_prompts = True
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt=prompt,
@@ -134,10 +135,11 @@ class OpenAIFunctionalChat(BaseAssembly):
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )
+                gather_prompts = False
 
         response_chat: CompletionResults = self.chat.run(
             prompt=prompt,
-            gather_prompts=False if tool_choice is not None else True,
+            gather_prompts=gather_prompts,
             n_results=n_results,
             init_conversation=init_conversation,
         )
@@ -160,6 +162,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
+        gather_prompts = True
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
@@ -181,10 +184,11 @@ class OpenAIFunctionalChat(BaseAssembly):
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )
+                gather_prompts = False
 
         response_chat: CompletionResults = await self.chat.arun(
             prompt=prompt,
-            gather_prompts=False if tool_choice is not None else True,
+            gather_prompts=gather_prompts,
             n_results=n_results,
             init_conversation=init_conversation,
         )
@@ -202,6 +206,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
 
+        gather_prompts = True
+
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt=prompt,
@@ -218,10 +224,11 @@ class OpenAIFunctionalChat(BaseAssembly):
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )
+                gather_prompts = False
 
         response_chat: CompletionResults = self.chat.stream(
             prompt=prompt,
-            gather_prompts=False if tool_choice is not None else True,
+            gather_prompts=gather_prompts,
             init_conversation=init_conversation,
         )
 
@@ -238,6 +245,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
 
+        gather_prompts = True
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
@@ -254,10 +262,11 @@ class OpenAIFunctionalChat(BaseAssembly):
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )
+                gather_prompts = False
 
         response_chat: CompletionResults = self.chat.astream(
             prompt=prompt,
-            gather_prompts=False if tool_choice is not None else True,
+            gather_prompts=gather_prompts,
             init_conversation=init_conversation,
         )
 
