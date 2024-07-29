@@ -171,9 +171,9 @@ class ClaudeFunctionalChat(BaseAssembly):
                         None  # if tool is used, init_conversation is stored in the memory
                     )
 
-                response_function_calling: FunctionCallingResults = self.function_calling.run(
-                    prompt, init_conversation=init_conversation
-                )
+                    response_function_calling: FunctionCallingResults = self.function_calling.run(
+                        prompt, init_conversation=init_conversation
+                    )
 
                 self._clear_memory()
 
@@ -236,9 +236,11 @@ class ClaudeFunctionalChat(BaseAssembly):
                         None  # if tool is used, init_conversation is stored in the memory
                     )
 
-                response_function_calling: FunctionCallingResults = (
-                    await self.function_calling.arun(prompt, init_conversation=init_conversation)
-                )
+                    response_function_calling: FunctionCallingResults = (
+                        await self.function_calling.arun(
+                            prompt, init_conversation=init_conversation
+                        )
+                    )
 
                 self._clear_memory()
 
