@@ -131,6 +131,9 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.run(
             prompt=prompt,
@@ -174,6 +177,9 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = await self.chat.arun(
             prompt=prompt,
@@ -207,6 +213,9 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.stream(
             prompt=prompt,
@@ -239,6 +248,9 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.astream(
             prompt=prompt,
