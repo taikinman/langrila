@@ -146,6 +146,9 @@ class GeminiFunctionalChat(BaseAssembly):
             _prompt = [c for r in response_function_calling.results for c in r.content]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.run(
             prompt, init_conversation=init_conversation, n_results=n_results
@@ -184,6 +187,9 @@ class GeminiFunctionalChat(BaseAssembly):
             _prompt = [c for r in response_function_calling.results for c in r.content]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = await self.chat.arun(
             prompt, init_conversation=init_conversation, n_results=n_results
@@ -212,6 +218,9 @@ class GeminiFunctionalChat(BaseAssembly):
             _prompt = [c for r in response_function_calling.results for c in r.content]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.stream(
             prompt, init_conversation=init_conversation
@@ -240,6 +249,9 @@ class GeminiFunctionalChat(BaseAssembly):
             _prompt = [c for r in response_function_calling.results for c in r.content]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.astream(
             prompt, init_conversation=init_conversation

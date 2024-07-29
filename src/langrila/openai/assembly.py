@@ -131,11 +131,15 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.run(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
             n_results=n_results,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
@@ -174,11 +178,15 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = await self.chat.arun(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
             n_results=n_results,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
@@ -207,10 +215,14 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.stream(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
@@ -239,10 +251,14 @@ class OpenAIFunctionalChat(BaseAssembly):
             ]
             if _prompt:
                 prompt = _prompt
+                init_conversation = (
+                    None  # if tool is used, init_conversation is stored in the memory
+                )
 
         response_chat: CompletionResults = self.chat.astream(
             prompt=prompt,
             gather_prompts=False if tool_choice is not None else True,
+            init_conversation=init_conversation,
         )
 
         self._clear_memory()
