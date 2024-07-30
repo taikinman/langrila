@@ -119,3 +119,24 @@ class OpenAIMessage(BaseMessage):
             content=common_contents,
             name=message.get("name"),
         )
+
+    @staticmethod
+    def _preprocess_message(messages: list[Message]) -> list[Message]:
+        new_messages = []
+        for message in messages:
+            role = message.role
+            name = message.name
+            content = message.content
+
+            if role == "function":
+                for content in message.content:
+                    new_messages.append(
+                        Message(
+                            role=role,
+                            content=[content],
+                            name=name,
+                        )
+                    )
+            else:
+                new_messages.append(message)
+        return new_messages
