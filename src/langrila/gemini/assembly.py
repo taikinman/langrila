@@ -7,7 +7,7 @@ from ..base import (
     BaseFilter,
 )
 from ..base_assembly import BaseAssembly
-from ..message_content import ConversationType, InputType
+from ..message_content import ConversationType, InputType, Message, ToolContent
 from ..result import CompletionResults, FunctionCallingResults
 from ..tools import ToolConfig
 from ..usage import TokenCounter
@@ -143,9 +143,15 @@ class GeminiFunctionalChat(BaseAssembly):
 
                 return response_function_calling
 
-            _prompt = [c for r in response_function_calling.results for c in r.content]
-            if _prompt:
-                prompt = _prompt
+            if response_function_calling.results:
+                prompt = Message(
+                    role="function",
+                    content=[
+                        ToolContent(**content.model_dump())
+                        for result in response_function_calling.results
+                        for content in result.content
+                    ],
+                )
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )
@@ -184,9 +190,15 @@ class GeminiFunctionalChat(BaseAssembly):
 
                 return response_function_calling
 
-            _prompt = [c for r in response_function_calling.results for c in r.content]
-            if _prompt:
-                prompt = _prompt
+            if response_function_calling.results:
+                prompt = Message(
+                    role="function",
+                    content=[
+                        ToolContent(**content.model_dump())
+                        for result in response_function_calling.results
+                        for content in result.content
+                    ],
+                )
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )
@@ -215,9 +227,15 @@ class GeminiFunctionalChat(BaseAssembly):
                 tool_choice=tool_choice,
             )
 
-            _prompt = [c for r in response_function_calling.results for c in r.content]
-            if _prompt:
-                prompt = _prompt
+            if response_function_calling.results:
+                prompt = Message(
+                    role="function",
+                    content=[
+                        ToolContent(**content.model_dump())
+                        for result in response_function_calling.results
+                        for content in result.content
+                    ],
+                )
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )
@@ -246,9 +264,15 @@ class GeminiFunctionalChat(BaseAssembly):
                 tool_choice=tool_choice,
             )
 
-            _prompt = [c for r in response_function_calling.results for c in r.content]
-            if _prompt:
-                prompt = _prompt
+            if response_function_calling.results:
+                prompt = Message(
+                    role="function",
+                    content=[
+                        ToolContent(**content.model_dump())
+                        for result in response_function_calling.results
+                        for content in result.content
+                    ],
+                )
                 init_conversation = (
                     None  # if tool is used, init_conversation is stored in the memory
                 )

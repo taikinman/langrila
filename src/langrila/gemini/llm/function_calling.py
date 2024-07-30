@@ -16,6 +16,7 @@ from ...llm_wrapper import FunctionCallingWrapperModule
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...tools import ToolConfig
 from ...usage import TokenCounter, Usage
+from ...utils import generate_dummy_call_id
 from ..gemini_utils import (
     get_call_config,
     get_client_tool_type,
@@ -149,8 +150,9 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                 funcname = fn.name
                 args = dict(fn.args)
                 func_out = self.tools[funcname](**args)
+                dummy_call_id = generate_dummy_call_id(24)
                 output = ToolOutput(
-                    call_id=None,
+                    call_id=dummy_call_id,
                     funcname=funcname,
                     args=json.dumps(args),
                     output=func_out,
@@ -159,6 +161,7 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                 call = ToolCallResponse(
                     name=funcname,
                     args=args,
+                    call_id=dummy_call_id,
                 )
                 results.append(output)
                 calls.append(call)
@@ -223,8 +226,9 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                 funcname = fn.name
                 args = dict(fn.args)
                 func_out = self.tools[funcname](**args)
+                dummy_call_id = generate_dummy_call_id(24)
                 output = ToolOutput(
-                    call_id=None,
+                    call_id=dummy_call_id,
                     funcname=funcname,
                     args=json.dumps(args),
                     output=func_out,
@@ -233,6 +237,7 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
                 call = ToolCallResponse(
                     name=funcname,
                     args=args,
+                    call_id=dummy_call_id,
                 )
                 results.append(output)
                 calls.append(call)

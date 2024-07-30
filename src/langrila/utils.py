@@ -1,5 +1,7 @@
 import base64
 import io
+import random
+import string
 from typing import Any, Generator, Iterable
 
 import numpy as np
@@ -68,3 +70,7 @@ def decode_image(image_encoded: str, as_utf8: bool = False) -> Image.Image:
     image_bytes = base64.b64decode(image_encoded_utf)
     byteio = io.BytesIO(image_bytes)
     return Image.open(byteio)
+
+
+def generate_dummy_call_id(n: int) -> str:
+    return "".join(random.choices(string.ascii_letters + string.digits, k=n))

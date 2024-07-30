@@ -57,7 +57,7 @@ class OpenAIMessage(BaseMessage):
     def as_function_call(self) -> dict[str, Any]:
         return ChatCompletionMessage(
             role="assistant",
-            tool_calls=self.contents,
+            tool_calls=[content for content in self.contents if content["type"] == "function"],
         ).model_dump()
 
     @staticmethod
@@ -81,7 +81,7 @@ class OpenAIMessage(BaseMessage):
     @staticmethod
     def _format_tool_content(content: ToolContent) -> dict[str, str]:
         return {
-            "tool_call_id": content.call_id,
+            "tool_call_id": "call_" + content.call_id.split("_")[-1],
             "name": content.funcname,
             "content": content.output,
         }
@@ -89,9 +89,9 @@ class OpenAIMessage(BaseMessage):
     @staticmethod
     def _format_tool_call_content(content: ToolCall) -> ChatCompletionMessageToolCall:
         return ChatCompletionMessageToolCall(
-            id=content.call_id,
+            id="call_" + content.call_id.split("_")[-1],
             type="function",
-            function=Function(arguments=content.args, name=content.name),
+            function=Function(arguments=str(content.args), name=content.name),
         ).model_dump()
 
     @classmethod

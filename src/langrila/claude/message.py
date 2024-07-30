@@ -1,3 +1,4 @@
+import json
 from typing import Any, overload
 
 from anthropic.types import (
@@ -9,7 +10,7 @@ from anthropic.types import (
 )
 from anthropic.types.image_block_param import Source
 
-from ..base import BaseMessage
+from ..base import BaseMessage, FunctionCallingResults, ToolCallResponse
 from ..message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
 from ..utils import decode_image
 
@@ -47,32 +48,30 @@ class ClaudeMessage(BaseMessage):
     @staticmethod
     def _format_tool_content(content: ToolContent) -> ToolResultBlockParam:
         return ToolResultBlockParam(
-            tool_use_id=content.call_id,
+            tool_use_id="toolu_" + content.call_id.split("_")[-1],
             type="tool_result",
             content=content.output,
         )
 
     @overload
     @staticmethod
-    def _format_tool_call_content(content: TextContent) -> TextBlockParam:
-        ...
+    def _format_tool_call_content(content: TextContent) -> TextBlockParam: ...
 
     @overload
     @staticmethod
-    def _format_tool_call_content(content: ToolCall) -> ToolUseBlockParam:
-        ...
+    def _format_tool_call_content(content: ToolCall) -> ToolUseBlockParam: ...
 
     @staticmethod
     def _format_tool_call_content(
-        content: TextContent | ToolCall
+        content: TextContent | ToolCall,
     ) -> TextBlockParam | ToolUseBlockParam:
         if isinstance(content, TextContent):
             return TextBlockParam(text=content.text, type="text")
         elif isinstance(content, ToolCall):
             return ToolUseBlockParam(
-                id=content.call_id,
+                id="toolu_" + content.call_id.split("_")[-1],
                 type="tool_use",
-                input=content.args,
+                input=content.args if isinstance(content.args, dict) else json.loads(content.args),
                 name=content.name,
             )
         else:
@@ -94,3 +93,25 @@ class ClaudeMessage(BaseMessage):
             "role": message["role"],
             "content": [c.to_dict() if hasattr(c, "to_dict") else c for c in message["content"]],
         }
+
+    @classmethod
+    def to_universal_message_from_function_call(cls, response: FunctionCallingResults) -> Message:
+        is_only_text = all([isinstance(call, TextContent) for call in response.calls])
+        if is_only_text:
+            role = "assistant"
+        else:
+            role = "function_call"
+
+        return Message(
+            role=role,  # global role
+            content=[
+                ToolCall(
+                    args=result.args,
+                    name=result.name,
+                    call_id=result.call_id,
+                )
+                if isinstance(result, ToolCallResponse)
+                else result
+                for result in response.calls
+            ],
+        )
