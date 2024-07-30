@@ -72,7 +72,7 @@ class ClaudeMessage(BaseMessage):
             return ToolUseBlockParam(
                 id="toolu_" + content.call_id.split("_")[-1],
                 type="tool_use",
-                input=content.args,
+                input=content.args if isinstance(content.args, dict) else json.loads(content.args),
                 name=content.name,
             )
         else:
