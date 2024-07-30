@@ -25,7 +25,7 @@ class OpenAIMessage(BaseMessage):
         return ChatCompletionUserMessageParam(
             role="user",
             content=self.contents,
-            name=self.name,
+            name=self.name if self.name else "User",
         )
 
     @property
@@ -33,7 +33,7 @@ class OpenAIMessage(BaseMessage):
         return ChatCompletionAssistantMessageParam(
             role="assistant",
             content=self.contents,
-            name=self.name,
+            name=self.name if self.name else "Assistant",
         )
 
     @property
@@ -41,7 +41,7 @@ class OpenAIMessage(BaseMessage):
         return ChatCompletionSystemMessageParam(
             role="system",
             content=self.contents,
-            name=self.name,
+            name=self.name if self.name else "System",
         )
 
     @property
