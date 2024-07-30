@@ -57,7 +57,7 @@ class OpenAIMessage(BaseMessage):
     def as_function_call(self) -> dict[str, Any]:
         return ChatCompletionMessage(
             role="assistant",
-            tool_calls=self.contents,
+            tool_calls=[content for content in self.contents if content["type"] == "function"],
         ).model_dump()
 
     @staticmethod
