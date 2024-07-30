@@ -344,6 +344,10 @@ class BaseMessage(ABC):
             ],
         )
 
+    @staticmethod
+    def _preprocess_message(messages: list[Message]) -> list[Message]:
+        return messages
+
 
 class BaseMetadataStore(ABC):
     @abstractmethod
