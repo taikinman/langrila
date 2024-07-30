@@ -94,3 +94,25 @@ class ClaudeMessage(BaseMessage):
             "role": message["role"],
             "content": [c.to_dict() if hasattr(c, "to_dict") else c for c in message["content"]],
         }
+
+    @classmethod
+    def to_universal_message_from_function_call(cls, response: FunctionCallingResults) -> Message:
+        is_only_text = all([isinstance(call, TextContent) for call in response.calls])
+        if is_only_text:
+            role = "assistant"
+        else:
+            role = "function_call"
+
+        return Message(
+            role=role,  # global role
+            content=[
+                ToolCall(
+                    args=result.args,
+                    name=result.name,
+                    call_id=result.call_id,
+                )
+                if isinstance(result, ToolCallResponse)
+                else result
+                for result in response.calls
+            ],
+        )
