@@ -1,3 +1,4 @@
+import json
 from typing import Any, overload
 
 from anthropic.types import (
@@ -9,7 +10,7 @@ from anthropic.types import (
 )
 from anthropic.types.image_block_param import Source
 
-from ..base import BaseMessage
+from ..base import BaseMessage, FunctionCallingResults, ToolCallResponse
 from ..message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
 from ..utils import decode_image
 
@@ -54,17 +55,15 @@ class ClaudeMessage(BaseMessage):
 
     @overload
     @staticmethod
-    def _format_tool_call_content(content: TextContent) -> TextBlockParam:
-        ...
+    def _format_tool_call_content(content: TextContent) -> TextBlockParam: ...
 
     @overload
     @staticmethod
-    def _format_tool_call_content(content: ToolCall) -> ToolUseBlockParam:
-        ...
+    def _format_tool_call_content(content: ToolCall) -> ToolUseBlockParam: ...
 
     @staticmethod
     def _format_tool_call_content(
-        content: TextContent | ToolCall
+        content: TextContent | ToolCall,
     ) -> TextBlockParam | ToolUseBlockParam:
         if isinstance(content, TextContent):
             return TextBlockParam(text=content.text, type="text")
