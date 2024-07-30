@@ -47,7 +47,7 @@ class ClaudeMessage(BaseMessage):
     @staticmethod
     def _format_tool_content(content: ToolContent) -> ToolResultBlockParam:
         return ToolResultBlockParam(
-            tool_use_id=content.call_id,
+            tool_use_id="toolu_" + content.call_id.split("_")[-1],
             type="tool_result",
             content=content.output,
         )
@@ -70,7 +70,7 @@ class ClaudeMessage(BaseMessage):
             return TextBlockParam(text=content.text, type="text")
         elif isinstance(content, ToolCall):
             return ToolUseBlockParam(
-                id=content.call_id,
+                id="toolu_" + content.call_id.split("_")[-1],
                 type="tool_use",
                 input=content.args,
                 name=content.name,
