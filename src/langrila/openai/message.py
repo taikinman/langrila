@@ -91,7 +91,7 @@ class OpenAIMessage(BaseMessage):
         return ChatCompletionMessageToolCall(
             id="call_" + content.call_id.split("_")[-1],
             type="function",
-            function=Function(arguments=content.args, name=content.name),
+            function=Function(arguments=str(content.args), name=content.name),
         ).model_dump()
 
     @classmethod
