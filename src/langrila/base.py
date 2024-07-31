@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
+from inspect import isfunction, ismethod
 from pathlib import Path
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Callable, Generator
 
 from PIL import Image
+from pydantic import BaseModel
 
 from .message_content import (
     ApplicationFileContent,
@@ -22,7 +24,7 @@ from .result import (
     ToolOutput,
 )
 from .types import RoleType
-from .utils import decode_image
+from .utils import decode_image, model2func
 
 
 class BaseChatModule(ABC):
@@ -49,6 +51,9 @@ class BaseFunctionCallingModule(ABC):
 
     async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
         raise NotImplementedError
+
+    def _set_runnable_tools_dict(self, tools: list[Callable | BaseModel]) -> dict[str, callable]:
+        return {f.__name__: f if (isfunction(f) or ismethod(f)) else model2func(f) for f in tools}
 
 
 class BaseEmbeddingModule(ABC):
