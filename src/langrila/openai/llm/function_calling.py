@@ -3,6 +3,7 @@ import json
 from typing import Callable, Optional
 
 from openai._types import NOT_GIVEN, NotGiven
+from pydantic import BaseModel
 
 from ...base import (
     BaseConversationLengthAdjuster,
@@ -14,6 +15,7 @@ from ...base import (
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
+from ...utils import model2func
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
 from ..model_config import (
@@ -70,7 +72,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         self.temperature = temperature
         self.user = user
 
-        self.tools = {f.__name__: f for f in tools}
+        self.tools = self._set_runnable_tools_dict(tools)
 
         _tool_names_from_config = {f.name for f in tool_configs}
         assert (

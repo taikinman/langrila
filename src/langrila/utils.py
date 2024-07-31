@@ -2,10 +2,12 @@ import base64
 import io
 import random
 import string
+from functools import partial
 from typing import Any, Generator, Iterable
 
 import numpy as np
 from PIL import Image
+from pydantic import BaseModel
 
 
 def make_batch(
@@ -74,3 +76,10 @@ def decode_image(image_encoded: str, as_utf8: bool = False) -> Image.Image:
 
 def generate_dummy_call_id(n: int) -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=n))
+
+
+def model2func(model: BaseModel):
+    def run_model(model: BaseModel, **kwargs):
+        return model(**kwargs).run()
+
+    return partial(run_model, model=model)

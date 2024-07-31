@@ -25,6 +25,7 @@ from ...base import (
     BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
+    BaseFunctionCallingModule,
     BaseMessage,
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
@@ -37,7 +38,7 @@ from ..message import ClaudeMessage
 from ..tools import ClaudeToolConfig
 
 
-class AnthropicFunctionCallingCoreModule(BaseChatModule):
+class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
     def __init__(
         self,
         model_name: str,
@@ -103,7 +104,7 @@ class AnthropicFunctionCallingCoreModule(BaseChatModule):
         ClientToolConfig = self._get_client_tool_type()
         client_tool_configs = ClientToolConfig.from_universal_configs(tool_configs)
 
-        self.tools = {f.__name__: f for f in tools}
+        self.tools = self._set_runnable_tools_dict(tools)
         self.tool_configs = [f.format() for f in client_tool_configs]
 
     def _get_client_tool_type(self) -> ClaudeToolConfig:

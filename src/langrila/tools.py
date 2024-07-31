@@ -20,3 +20,35 @@ class ToolConfig(BaseModel):
     name: str
     description: str
     parameters: ToolParameter
+
+    @classmethod
+    def from_pydantic(cls, model: BaseModel) -> "ToolConfig":
+        configs = {}
+        params = {}
+
+        configs["name"] = model.__name__
+        schema = model.model_json_schema()
+        defs = schema.pop("$defs", {})
+        params["required"] = schema.pop("required", None)
+        params["type"] = schema.pop("type", "object")
+        configs["description"] = schema.pop("description", "No description.")
+
+        properties = schema.get("properties", {})
+        props = []
+        for k, v in properties.items():
+            if ref := v.get("$ref"):
+                ref = ref.split("/")[-1]
+                v = defs[ref]
+
+            props.append(
+                {
+                    "name": k,
+                    "type": v.get("type"),
+                    "description": v.get("description"),
+                    "enum": v.get("enum"),
+                }
+            )
+        params["properties"] = props
+        configs["parameters"] = params
+
+        return cls(**configs)
