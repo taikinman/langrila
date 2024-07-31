@@ -10,6 +10,7 @@ from ...base import (
     BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
+    BaseFunctionCallingModule,
     BaseMessage,
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
@@ -26,7 +27,7 @@ from ..gemini_utils import (
 )
 
 
-class GeminiFunctionCallingCoreModule(BaseChatModule):
+class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
     def __init__(
         self,
         model_name: str,
@@ -91,7 +92,7 @@ class GeminiFunctionCallingCoreModule(BaseChatModule):
 
         ClientToolConfig = self._get_client_tool_config_type(api_type)
         client_tool_configs = ClientToolConfig.from_universal_configs(tool_configs)
-        self.tools = {func.__name__: func for func in tools}
+        self.tools = self._set_runnable_tools_dict(tools)
 
         tool_cls = get_tool_cls(api_type=api_type)
         function_declarations = [config.format() for config in client_tool_configs]
