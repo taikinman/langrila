@@ -1,7 +1,7 @@
 from typing import Any
 
 from ...base import BaseConversationLengthAdjuster
-from ..model_config import _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
+from ..model_config import MODEL_CONFIG, MODEL_POINT
 from ..openai_utils import get_encoding, get_n_tokens
 
 

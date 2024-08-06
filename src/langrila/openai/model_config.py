@@ -45,29 +45,6 @@ _OLDER_MODEL_CONFIG = {
 }
 
 _NEWER_MODEL_CONFIG = {
-    "gpt-4-0125-preview": {
-        "max_tokens": 128000,
-        "prompt_cost_per_token": 0.00001,
-        "completion_cost_per_token": 0.00003,
-    },
-    "gpt-4-1106-preview": {
-        "max_tokens": 128000,
-        "prompt_cost_per_token": 0.00001,
-        "completion_cost_per_token": 0.00003,
-    },
-    "gpt-3.5-turbo-0125": {
-        "max_tokens": 16384,
-        "prompt_cost_per_token": 0.0000005,
-        "completion_cost_per_token": 0.0000015,
-    },
-    "gpt-3.5-turbo-1106": {
-        "max_tokens": 16384,
-        "prompt_cost_per_token": 0.000001,
-        "completion_cost_per_token": 0.000002,
-    },
-}
-
-_VISION_MODEL = {
     "gpt-4o-mini-2024-07-18": {
         "max_tokens": 128000,
         "prompt_cost_per_token": 0.000000150,
@@ -83,10 +60,30 @@ _VISION_MODEL = {
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
     },
+    "gpt-4-0125-preview": {
+        "max_tokens": 128000,
+        "prompt_cost_per_token": 0.00001,
+        "completion_cost_per_token": 0.00003,
+    },
+    "gpt-4-1106-preview": {
+        "max_tokens": 128000,
+        "prompt_cost_per_token": 0.00001,
+        "completion_cost_per_token": 0.00003,
+    },
     "gpt-4-vision-preview": {
         "max_tokens": 128000,
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
+    },
+    "gpt-3.5-turbo-0125": {
+        "max_tokens": 16384,
+        "prompt_cost_per_token": 0.0000005,
+        "completion_cost_per_token": 0.0000015,
+    },
+    "gpt-3.5-turbo-1106": {
+        "max_tokens": 16384,
+        "prompt_cost_per_token": 0.000001,
+        "completion_cost_per_token": 0.000002,
     },
 }
 
@@ -131,7 +128,6 @@ EMBEDDING_CONFIG.update(_NEWER_EMBEDDING_CONFIG)
 MODEL_CONFIG = {}
 MODEL_CONFIG.update(_OLDER_MODEL_CONFIG)
 MODEL_CONFIG.update(_NEWER_MODEL_CONFIG)
-MODEL_CONFIG.update(_VISION_MODEL)
 
 _MODEL_POINT_CONFIG = {
     "gpt-4o": MODEL_CONFIG[MODEL_POINT["gpt-4o"]],

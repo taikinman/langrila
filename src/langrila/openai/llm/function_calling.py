@@ -1,21 +1,18 @@
 import copy
 import json
-from typing import Callable, Optional
+from typing import Callable
 
 from openai._types import NOT_GIVEN, NotGiven
-from pydantic import BaseModel
 
 from ...base import (
     BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
     BaseFunctionCallingModule,
-    BaseMessage,
 )
 from ...llm_wrapper import FunctionCallingWrapperModule
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
-from ...utils import model2func
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
 from ..model_config import (
@@ -35,15 +32,15 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         tools: list[Callable],
         tool_configs: list[ToolConfig],
         api_type: str = "openai",
-        api_version: Optional[str] = None,
-        endpoint_env_name: Optional[str] = None,
-        deployment_id_env_name: Optional[str] = None,
-        organization_id_env_name: Optional[str] = None,
+        api_version: str | None = None,
+        endpoint_env_name: str | None = None,
+        deployment_id_env_name: str | None = None,
+        organization_id_env_name: str | None = None,
         timeout: int = 30,
         max_retries: int = 2,
         max_tokens: int = 2048,
-        seed: Optional[int] = None,
-        top_p: Optional[float] | NotGiven = NOT_GIVEN,
+        seed: int | NotGiven = NOT_GIVEN,
+        top_p: float | NotGiven = NOT_GIVEN,
         frequency_penalty: float | NotGiven = NOT_GIVEN,
         presence_penalty: float | NotGiven = NOT_GIVEN,
         temperature: float | NotGiven = NOT_GIVEN,
@@ -152,7 +149,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
-            stop=None,
+            stop=NOT_GIVEN,
             stream=False,
             user=self.user,
             **self.additional_inputs,
@@ -252,7 +249,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
-            stop=None,
+            stop=NOT_GIVEN,
             stream=False,
             user=self.user,
             **self.additional_inputs,
@@ -329,22 +326,22 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         model_name: str,
         tools: list[Callable],
         tool_configs: list[ToolConfig],
-        organization_id_env_name: Optional[str] = None,
+        organization_id_env_name: str | None = None,
         api_type: str = "openai",
-        api_version: Optional[str] = None,
-        endpoint_env_name: Optional[str] = None,
-        deployment_id_env_name: Optional[str] = None,
+        api_version: str | None = None,
+        endpoint_env_name: str | None = None,
+        deployment_id_env_name: str | None = None,
         max_tokens: int = 2048,
         timeout: int = 60,
         max_retries: int = 2,
-        seed: Optional[int] = None,
-        context_length: Optional[int] = None,
-        conversation_memory: Optional[BaseConversationMemory] = None,
-        content_filter: Optional[BaseFilter] = None,
-        system_instruction: Optional[str] = None,
-        conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
-        token_counter: Optional[TokenCounter] = None,
-        top_p: Optional[float] | NotGiven = NOT_GIVEN,
+        seed: int | NotGiven = NOT_GIVEN,
+        context_length: int | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        system_instruction: str | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
+        token_counter: TokenCounter | None = None,
+        top_p: float | NotGiven = NOT_GIVEN,
         frequency_penalty: float | NotGiven = NOT_GIVEN,
         presence_penalty: float | NotGiven = NOT_GIVEN,
         temperature: float | NotGiven = NOT_GIVEN,

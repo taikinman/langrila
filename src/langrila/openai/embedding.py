@@ -1,5 +1,3 @@
-from typing import Optional
-
 from openai.resources.embeddings import Embeddings
 
 from ..base import BaseEmbeddingModule
@@ -14,14 +12,14 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
     def __init__(
         self,
         api_key_env_name: str,
-        organization_id_env_name: Optional[str] = None,
+        organization_id_env_name: str | None = None,
         model_name: str = "text-embedding-ada-002",
         dimensions: int | None = None,
         user: str | None = None,
-        api_type: Optional[str] = "openai",
-        api_version: Optional[str] = None,
-        endpoint_env_name: Optional[str] = None,
-        deployment_id_env_name: Optional[str] = None,
+        api_type: str | None = "openai",
+        api_version: str | None = None,
+        endpoint_env_name: str | None = None,
+        deployment_id_env_name: str | None = None,
         max_retries: int = 5,
         timeout: int = 60,
         batch_size: int = 10,

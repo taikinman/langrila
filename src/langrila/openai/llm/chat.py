@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, AsyncGenerator, Generator, Optional
+from typing import Any, AsyncGenerator, Generator
 
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from openai._types import NOT_GIVEN, NotGiven
@@ -10,14 +10,13 @@ from ...base import (
     BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
-    BaseMessage,
 )
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
-from ..model_config import _OLDER_MODEL_CONFIG, _VISION_MODEL, MODEL_CONFIG, MODEL_POINT
+from ..model_config import _OLDER_MODEL_CONFIG, MODEL_CONFIG, MODEL_POINT
 from ..openai_utils import get_async_client, get_client, get_n_tokens, get_token_limit
 
 
@@ -27,8 +26,8 @@ def completion(
     messages: Any,
     max_tokens: int,
     stream: bool,
-    top_p: Optional[float] | NotGiven = NOT_GIVEN,
-    stop: str | None = None,
+    top_p: float | NotGiven = NOT_GIVEN,
+    stop: str | NotGiven = NOT_GIVEN,
     frequency_penalty: float | NotGiven = NOT_GIVEN,
     n_results: int | NotGiven = NOT_GIVEN,
     presence_penalty: float | NotGiven = NOT_GIVEN,
@@ -50,9 +49,6 @@ def completion(
         user=user,
         **kwargs,
     )
-
-    if model_name in _VISION_MODEL:
-        params.pop("stop")
 
     return client.chat.completions.create(**params)
 
@@ -64,7 +60,7 @@ async def acompletion(
     max_tokens: int,
     stream: bool,
     top_p: float | NotGiven = NOT_GIVEN,
-    stop: str | None = None,
+    stop: str | NotGiven = NOT_GIVEN,
     frequency_penalty: float | NotGiven = NOT_GIVEN,
     n_results: int | NotGiven = NOT_GIVEN,
     presence_penalty: float | NotGiven = NOT_GIVEN,
@@ -87,9 +83,6 @@ async def acompletion(
         **kwargs,
     )
 
-    if model_name in _VISION_MODEL:
-        params.pop("stop")
-
     return await client.chat.completions.create(**params)
 
 
@@ -98,15 +91,15 @@ class OpenAIChatCoreModule(BaseChatModule):
         self,
         api_key_env_name: str,
         model_name: str,
-        organization_id_env_name: Optional[str] = None,
+        organization_id_env_name: str | None = None,
         api_type: str = "openai",
-        api_version: Optional[str] = None,
-        endpoint_env_name: Optional[str] = None,
-        deployment_id_env_name: Optional[str] = None,
+        api_version: str | None = None,
+        endpoint_env_name: str | None = None,
+        deployment_id_env_name: str | None = None,
         max_tokens: int = 2048,
         timeout: int = 60,
         max_retries: int = 2,
-        seed: Optional[int] = None,
+        seed: int | NotGiven = NOT_GIVEN,
         json_mode: bool = False,
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
@@ -141,11 +134,9 @@ class OpenAIChatCoreModule(BaseChatModule):
         self.additional_inputs = {}
         if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
-            self.response_format = {"type": "json_object"} if json_mode else None
+            self.response_format = {"type": "json_object"} if json_mode else NOT_GIVEN
             self.additional_inputs["seed"] = seed
-
-            if model_name not in _VISION_MODEL:
-                self.additional_inputs["response_format"] = self.response_format
+            self.additional_inputs["response_format"] = self.response_format
         else:
             # TODO : add logging message
             if seed:
@@ -200,7 +191,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
-            stop=None,
+            stop=NOT_GIVEN,
             stream=False,
             n_results=n_results,
             user=self.user,
@@ -254,7 +245,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
-            stop=None,
+            stop=NOT_GIVEN,
             stream=False,
             n_results=n_results,
             user=self.user,
@@ -313,7 +304,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
-            stop=None,
+            stop=NOT_GIVEN,
             stream=True,
             n_results=1,
             user=self.user,
@@ -414,7 +405,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
-            stop=None,
+            stop=NOT_GIVEN,
             stream=True,
             n_results=1,
             user=self.user,
@@ -482,19 +473,19 @@ class OpenAIChatModule(ChatWrapperModule):
         api_key_env_name: str,
         model_name: str,
         api_type: str = "openai",
-        api_version: Optional[str] = None,
-        endpoint_env_name: Optional[str] = None,
-        deployment_id_env_name: Optional[str] = None,
-        organization_id_env_name: Optional[str] = None,
-        max_tokens: Optional[int] = 2048,
+        api_version: str | None = None,
+        endpoint_env_name: str | None = None,
+        deployment_id_env_name: str | None = None,
+        organization_id_env_name: str | None = None,
+        max_tokens: int | None = 2048,
         timeout: int = 60,
         max_retries: int = 2,
-        seed: Optional[int] = None,
+        seed: int | NotGiven = NOT_GIVEN,
         json_mode: bool = False,
-        context_length: Optional[int] = None,
-        conversation_memory: Optional[BaseConversationMemory] = None,
-        content_filter: Optional[BaseFilter] = None,
-        conversation_length_adjuster: Optional[BaseConversationLengthAdjuster] = None,
+        context_length: int | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         system_instruction: str | None = None,
         token_counter: TokenCounter | None = None,
         top_p: float | None | NotGiven = NOT_GIVEN,

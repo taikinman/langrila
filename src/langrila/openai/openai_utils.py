@@ -1,7 +1,7 @@
 import math
 import os
 import re
-from typing import Any, Optional
+from typing import Any
 
 import openai
 import tiktoken
@@ -11,7 +11,6 @@ from ..utils import decode_image
 from .model_config import (
     _TILE_SIZE,
     _TOKENS_PER_TILE,
-    _VISION_MODEL,
     EMBEDDING_CONFIG,
     MODEL_CONFIG,
 )
@@ -31,11 +30,11 @@ def get_encoding(model_name: str) -> tiktoken.Encoding:
 
 def get_client(
     api_key_env_name: str,
-    api_version: Optional[str] = None,
-    endpoint_env_name: Optional[str] = None,
-    organization_id_env_name: Optional[str] = None,
-    deployment_id_env_name: Optional[str] = None,
-    api_type: Optional[str] = "openai",
+    api_version: str | None = None,
+    endpoint_env_name: str | None = None,
+    organization_id_env_name: str | None = None,
+    deployment_id_env_name: str | None = None,
+    api_type: str | None = "openai",
     timeout: int = 60,
     max_retries: int = 5,
 ) -> OpenAI | AzureOpenAI:
@@ -69,11 +68,11 @@ def get_client(
 
 def get_async_client(
     api_key_env_name: str,
-    api_version: Optional[str] = None,
-    endpoint_env_name: Optional[str] = None,
-    organization_id_env_name: Optional[str] = None,
-    deployment_id_env_name: Optional[str] = None,
-    api_type: Optional[str] = "openai",
+    api_version: str | None = None,
+    endpoint_env_name: str | None = None,
+    organization_id_env_name: str | None = None,
+    deployment_id_env_name: str | None = None,
+    api_type: str | None = "openai",
     timeout: int = 60,
     max_retries: int = 5,
 ) -> AsyncOpenAI | AsyncAzureOpenAI:
@@ -104,10 +103,10 @@ def get_async_client(
 
 def get_openai_client_settings(
     api_key_env_name: str,
-    api_version: Optional[str] = None,
-    endpoint_env_name: Optional[str] = None,
-    organization_id_env_name: Optional[str] = None,
-    deployment_id_env_name: Optional[str] = None,
+    api_version: str | None = None,
+    endpoint_env_name: str | None = None,
+    organization_id_env_name: str | None = None,
+    deployment_id_env_name: str | None = None,
     timeout: int = 60,
     max_retries: int = 5,
 ) -> dict[str, Any]:
@@ -134,10 +133,10 @@ def get_openai_client_settings(
 
 def set_openai_envs(
     api_key_env_name: str,
-    api_version: Optional[str] = None,
-    api_type: Optional[str] = None,
-    endpoint_env_name: Optional[str] = None,
-    organization_id_env_name: Optional[str] = None,
+    api_version: str | None = None,
+    api_type: str | None = None,
+    endpoint_env_name: str | None = None,
+    organization_id_env_name: str | None = None,
 ) -> None:
     openai.api_key = os.getenv(api_key_env_name)
 
@@ -179,7 +178,7 @@ def get_n_tokens(message: dict[str, dict[str, str]], model_name: str) -> dict[st
     for key, value in message.items():
         if value is not None:
             if key == "content" and not isinstance(value, str):
-                if model_name in _VISION_MODEL or isinstance(value, list):
+                if isinstance(value, list):
                     for item in value:
                         if item["type"] == "text":
                             n_content_tokens += len(encoding.encode(item["text"]))
