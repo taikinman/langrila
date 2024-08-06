@@ -27,7 +27,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         max_tokens: int = 2048,
         timeout: int = 60,
         max_retries: int = 2,
-        seed: int | None = None,
+        seed: int | NotGiven = NOT_GIVEN,
         context_length: int | None = None,
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,

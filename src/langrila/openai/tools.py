@@ -1,6 +1,4 @@
-from typing import Optional
-
-from pydantic import BaseModel, field_validator
+from pydantic import field_validator
 
 from ..tools import ToolConfig, ToolParameter, ToolProperty
 
@@ -20,7 +18,7 @@ class OpenAIToolProperty(ToolProperty):
 class OpenAIToolParameter(ToolParameter):
     type: str = "object"
     properties: list[OpenAIToolProperty]
-    required: Optional[list[str]] = None
+    required: list[str] | None = None
 
     def format(self):
         dumped = self.model_dump(exclude=["properties", "required"])
