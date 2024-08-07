@@ -55,11 +55,18 @@ class OpenAIToolConfig(ToolConfig):
     type: str = "function"
     description: str
     parameters: OpenAIToolParameter
+    strict: bool | None = None
 
     def format(self):
-        dumped = self.model_dump(exclude=["parameters", "type"])
+        dumped = self.model_dump(exclude=["parameters", "type", "strict"])
         dumped["parameters"] = self.parameters.format()
-        return {"type": self.type, self.type: dumped}
+
+        output = {"type": self.type, self.type: dumped}
+
+        if self.strict is not None:
+            output["strict"] = self.strict
+
+        return output
 
     @field_validator("type")
     def check_type_value(cls, v):
