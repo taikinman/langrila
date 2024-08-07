@@ -47,6 +47,12 @@ _OLDER_MODEL_CONFIG = {
 }
 
 _NEWER_MODEL_CONFIG = {
+    "gpt-4o-2024-08-06": {
+        "max_tokens": 128000,
+        "max_output_tokens": 16384,
+        "prompt_cost_per_token": 0.0000025,
+        "completion_cost_per_token": 0.00001,
+    },
     "gpt-4o-mini-2024-07-18": {
         "max_tokens": 128000,
         "max_output_tokens": 16384,
