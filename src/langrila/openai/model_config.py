@@ -126,7 +126,6 @@ _MODEL_POINT_CONFIG = {
     "gpt-4-turbo": MODEL_CONFIG[MODEL_POINT["gpt-4-turbo"]],
     "gpt-4": MODEL_CONFIG[MODEL_POINT["gpt-4"]],
     "gpt-4-32k": MODEL_CONFIG[MODEL_POINT["gpt-4-32k"]],
-    "gpt-4-128k": MODEL_CONFIG[MODEL_POINT["gpt-4-128k"]],
     "gpt-4-vision": MODEL_CONFIG[MODEL_POINT["gpt-4-vision"]],
     "gpt-3.5-turbo": MODEL_CONFIG[MODEL_POINT["gpt-3.5-turbo"]],
     "gpt-3.5-turbo-16k": MODEL_CONFIG[MODEL_POINT["gpt-3.5-turbo-16k"]],
