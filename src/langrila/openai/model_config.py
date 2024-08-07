@@ -2,11 +2,6 @@ _TOKENS_PER_TILE = 170
 _TILE_SIZE = 512
 
 _OLDER_MODEL_CONFIG = {
-    "gpt-4-0314": {
-        "max_tokens": 8192,
-        "prompt_cost_per_token": 0.00003,
-        "completion_cost_per_token": 0.00006,
-    },
     "gpt-4-0613": {
         "max_tokens": 8192,
         "prompt_cost_per_token": 0.00003,
