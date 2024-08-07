@@ -4,36 +4,43 @@ _TILE_SIZE = 512
 _OLDER_MODEL_CONFIG = {
     "gpt-4-0613": {
         "max_tokens": 8192,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.00003,
         "completion_cost_per_token": 0.00006,
     },
     "gpt-4-32k-0314": {
         "max_tokens": 32768,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.00006,
         "completion_cost_per_token": 0.00012,
     },
     "gpt-4-32k-0613": {
         "max_tokens": 32768,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.00006,
         "completion_cost_per_token": 0.00012,
     },
     "gpt-3.5-turbo-0301": {
         "max_tokens": 4096,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.0000015,
         "completion_cost_per_token": 0.000002,
     },
     "gpt-3.5-turbo-0613": {
         "max_tokens": 4096,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.0000015,
         "completion_cost_per_token": 0.000002,
     },
     "gpt-3.5-turbo-16k-0613": {
         "max_tokens": 16384,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.000003,
         "completion_cost_per_token": 0.000004,
     },
     "gpt-3.5-turbo-instruct": {
         "max_tokens": 4096,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.0000015,
         "completion_cost_per_token": 0.000002,
     },
@@ -42,41 +49,49 @@ _OLDER_MODEL_CONFIG = {
 _NEWER_MODEL_CONFIG = {
     "gpt-4o-mini-2024-07-18": {
         "max_tokens": 128000,
+        "max_output_tokens": 16384,
         "prompt_cost_per_token": 0.000000150,
         "completion_cost_per_token": 0.00000060,
     },
     "gpt-4o-2024-05-13": {
         "max_tokens": 128000,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.000005,
         "completion_cost_per_token": 0.000015,
     },
     "gpt-4-turbo-2024-04-09": {
         "max_tokens": 128000,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
     },
     "gpt-4-0125-preview": {
         "max_tokens": 128000,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
     },
     "gpt-4-1106-preview": {
         "max_tokens": 128000,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
     },
     "gpt-4-vision-preview": {
         "max_tokens": 128000,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.00001,
         "completion_cost_per_token": 0.00003,
     },
     "gpt-3.5-turbo-0125": {
         "max_tokens": 16384,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.0000005,
         "completion_cost_per_token": 0.0000015,
     },
     "gpt-3.5-turbo-1106": {
         "max_tokens": 16384,
+        "max_output_tokens": 4096,
         "prompt_cost_per_token": 0.000001,
         "completion_cost_per_token": 0.000002,
     },
