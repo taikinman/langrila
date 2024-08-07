@@ -121,6 +121,7 @@ MODEL_POINT = {
 }
 
 _MODEL_POINT_CONFIG = {
+    "gpt-4o-mini": MODEL_CONFIG[MODEL_POINT["gpt-4o-mini"]],
     "gpt-4o": MODEL_CONFIG[MODEL_POINT["gpt-4o"]],
     "gpt-4-turbo": MODEL_CONFIG[MODEL_POINT["gpt-4-turbo"]],
     "gpt-4": MODEL_CONFIG[MODEL_POINT["gpt-4"]],
