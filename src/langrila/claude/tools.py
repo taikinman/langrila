@@ -42,7 +42,7 @@ class ClaudeToolConfig(ToolConfig):
     parameters: ClaudeToolParameter
 
     def format(self):
-        dumped = self.model_dump(exclude=["parameters"])
+        dumped = self.model_dump(exclude=["parameters", "strict"])
         dumped["input_schema"] = self.parameters.format()
         return ToolParam(**dumped)
 

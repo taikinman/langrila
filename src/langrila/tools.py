@@ -20,9 +20,10 @@ class ToolConfig(BaseModel):
     name: str
     description: str
     parameters: ToolParameter
+    strict: bool | None = None
 
     @classmethod
-    def from_pydantic(cls, model: BaseModel) -> "ToolConfig":
+    def from_pydantic(cls, model: BaseModel, **kwargs) -> "ToolConfig":
         configs = {}
         params = {}
 
@@ -51,4 +52,4 @@ class ToolConfig(BaseModel):
         params["properties"] = props
         configs["parameters"] = params
 
-        return cls(**configs)
+        return cls(**configs, **kwargs)

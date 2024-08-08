@@ -4,6 +4,8 @@ from typing import Any, AsyncGenerator, Generator
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from openai._types import NOT_GIVEN, NotGiven
 from openai.types.chat import ChatCompletionAssistantMessageParam
+from pydantic import BaseModel
+from pydantic._internal._model_construction import ModelMetaclass
 
 from ...base import (
     BaseChatModule,
@@ -86,6 +88,68 @@ async def acompletion(
     return await client.chat.completions.create(**params)
 
 
+def parse(
+    client: OpenAI | AzureOpenAI,
+    model_name: str,
+    messages: Any,
+    max_tokens: int,
+    top_p: float | NotGiven = NOT_GIVEN,
+    stop: str | NotGiven = NOT_GIVEN,
+    frequency_penalty: float | NotGiven = NOT_GIVEN,
+    n_results: int | NotGiven = NOT_GIVEN,
+    presence_penalty: float | NotGiven = NOT_GIVEN,
+    temperature: float | NotGiven = NOT_GIVEN,
+    user: str | NotGiven = NOT_GIVEN,
+    **kwargs,
+):
+    params = dict(
+        model=model_name,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        top_p=top_p,
+        frequency_penalty=frequency_penalty,
+        presence_penalty=presence_penalty,
+        stop=stop,
+        n=n_results,
+        user=user,
+        **kwargs,
+    )
+
+    return client.beta.chat.completions.parse(**params)
+
+
+async def aparse(
+    client: AsyncOpenAI | AsyncAzureOpenAI,
+    model_name: str,
+    messages: Any,
+    max_tokens: int,
+    top_p: float | NotGiven = NOT_GIVEN,
+    stop: str | NotGiven = NOT_GIVEN,
+    frequency_penalty: float | NotGiven = NOT_GIVEN,
+    n_results: int | NotGiven = NOT_GIVEN,
+    presence_penalty: float | NotGiven = NOT_GIVEN,
+    temperature: float | NotGiven = NOT_GIVEN,
+    user: str | NotGiven = NOT_GIVEN,
+    **kwargs,
+):
+    params = dict(
+        model=model_name,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        top_p=top_p,
+        frequency_penalty=frequency_penalty,
+        presence_penalty=presence_penalty,
+        stop=stop,
+        n=n_results,
+        user=user,
+        **kwargs,
+    )
+
+    return await client.beta.chat.completions.parse(**params)
+
+
 class OpenAIChatCoreModule(BaseChatModule):
     def __init__(
         self,
@@ -108,6 +172,7 @@ class OpenAIChatCoreModule(BaseChatModule):
         presence_penalty: float | NotGiven = NOT_GIVEN,
         temperature: float | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
+        response_schema: BaseModel | None = None,
     ) -> None:
         assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
         if api_type == "azure":
@@ -134,9 +199,18 @@ class OpenAIChatCoreModule(BaseChatModule):
         self.additional_inputs = {}
         if model_name not in _OLDER_MODEL_CONFIG.keys():
             self.seed = seed
-            self.response_format = {"type": "json_object"} if json_mode else NOT_GIVEN
             self.additional_inputs["seed"] = seed
-            self.additional_inputs["response_format"] = self.response_format
+            if json_mode:
+                if response_schema:
+                    self.response_format = response_schema
+                    self.additional_inputs["response_format"] = self.response_format
+                else:
+                    self.response_format = {"type": "json_object"} if json_mode else NOT_GIVEN
+                    self.additional_inputs["response_format"] = self.response_format
+            else:
+                self.response_format = NOT_GIVEN
+                self.additional_inputs["response_format"] = self.response_format
+
         else:
             # TODO : add logging message
             if seed:
@@ -182,21 +256,37 @@ class OpenAIChatCoreModule(BaseChatModule):
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        response = completion(
-            client=client,
-            model_name=self.model_name,
-            messages=_messages,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            top_p=self.top_p,
-            frequency_penalty=self.frequency_penalty,
-            presence_penalty=self.presence_penalty,
-            stop=NOT_GIVEN,
-            stream=False,
-            n_results=n_results,
-            user=self.user,
-            **self.additional_inputs,
-        )
+        if isinstance(self.response_format, ModelMetaclass):
+            response = parse(
+                client=client,
+                model_name=self.model_name,
+                messages=_messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=NOT_GIVEN,
+                n_results=n_results,
+                user=self.user,
+                **self.additional_inputs,
+            )
+        else:
+            response = completion(
+                client=client,
+                model_name=self.model_name,
+                messages=_messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=NOT_GIVEN,
+                stream=False,
+                n_results=n_results,
+                user=self.user,
+                **self.additional_inputs,
+            )
 
         usage = Usage(model_name=self.model_name)
         usage += response.usage
@@ -236,21 +326,37 @@ class OpenAIChatCoreModule(BaseChatModule):
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        response = await acompletion(
-            client=client,
-            model_name=self.model_name,
-            messages=_messages,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            top_p=self.top_p,
-            frequency_penalty=self.frequency_penalty,
-            presence_penalty=self.presence_penalty,
-            stop=NOT_GIVEN,
-            stream=False,
-            n_results=n_results,
-            user=self.user,
-            **self.additional_inputs,
-        )
+        if isinstance(self.response_format, ModelMetaclass):
+            response = await aparse(
+                client=client,
+                model_name=self.model_name,
+                messages=_messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=NOT_GIVEN,
+                n_results=n_results,
+                user=self.user,
+                **self.additional_inputs,
+            )
+        else:
+            response = await acompletion(
+                client=client,
+                model_name=self.model_name,
+                messages=_messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=NOT_GIVEN,
+                stream=False,
+                n_results=n_results,
+                user=self.user,
+                **self.additional_inputs,
+            )
 
         usage = Usage(model_name=self.model_name)
         usage += response.usage
@@ -493,6 +599,7 @@ class OpenAIChatModule(ChatWrapperModule):
         presence_penalty: float | None | NotGiven = NOT_GIVEN,
         temperature: float | None | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
+        response_schema: BaseModel | None = None,
     ):
         if model_name in MODEL_POINT.keys():
             print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
@@ -537,6 +644,7 @@ class OpenAIChatModule(ChatWrapperModule):
             presence_penalty=presence_penalty,
             temperature=temperature,
             user=user,
+            response_schema=response_schema,
         )
 
         super().__init__(

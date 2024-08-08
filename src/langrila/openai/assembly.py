@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Callable, Generator, Literal
 
 from openai._types import NOT_GIVEN, NotGiven
+from pydantic import BaseModel
 
 from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter
 from ..base_assembly import BaseAssembly
@@ -40,6 +41,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         presence_penalty: float | None | NotGiven = NOT_GIVEN,
         temperature: float | None | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
+        response_schema: BaseModel | None = None,
     ) -> None:
         super().__init__(conversation_memory=conversation_memory)
 
@@ -67,6 +69,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             presence_penalty=presence_penalty,
             temperature=temperature,
             user=user,
+            response_schema=response_schema,
         )
 
         if tools:
