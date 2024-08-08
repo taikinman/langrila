@@ -15,8 +15,7 @@ class GeminiToolProperty(ToolProperty):
         return {
             self.name: Schema(
                 type=getattr(Type, self.type.upper()),
-                description=self.description,
-                enum=self.enum,
+                **self.model_dump(exclude=["name", "type"], exclude_none=True),
             ),
         }
 
@@ -54,4 +53,4 @@ class GeminiToolConfig(ToolConfig):
 
     @classmethod
     def from_universal_configs(cls, configs: list[ToolConfig]) -> list["GeminiToolConfig"]:
-        return [cls(**config.model_dump()) for config in configs]
+        return [cls(**config.model_dump(exclude_none=True)) for config in configs]

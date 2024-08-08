@@ -13,7 +13,7 @@ class VertexAIToolProperty(ToolProperty):
     enum: list[str] | None = None
 
     def format(self):
-        return {self.name: {"type": self.type, "description": self.description, "enum": self.enum}}
+        return {self.name: self.model_dump(exclude=["name"], exclude_none=True)}
 
 
 class VertexAIToolParameter(ToolParameter):
@@ -49,4 +49,4 @@ class VertexAIToolConfig(ToolConfig):
 
     @classmethod
     def from_universal_configs(cls, configs: list[ToolConfig]) -> list["VertexAIToolConfig"]:
-        return [cls(**config.model_dump()) for config in configs]
+        return [cls(**config.model_dump(exclude_none=True)) for config in configs]
