@@ -2,7 +2,7 @@ import base64
 import json
 from typing import Any
 
-from google.generativeai import protos
+from google.ai.generativelanguage import Blob, Content, FunctionCall, FunctionResponse, Part
 
 from ...base import BaseMessage
 from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
@@ -11,55 +11,55 @@ from ...utils import decode_image
 
 class GeminiMessage(BaseMessage):
     @property
-    def as_user(self) -> protos.Content:
-        return protos.Content(role="user", parts=self.contents)
+    def as_user(self) -> Content:
+        return Content(role="user", parts=self.contents)
 
     @property
-    def as_assistant(self) -> protos.Content:
-        return protos.Content(role="model", parts=self.contents)
+    def as_assistant(self) -> Content:
+        return Content(role="model", parts=self.contents)
 
     @property
-    def as_function(self) -> protos.Content:
-        return protos.Content(
+    def as_function(self) -> Content:
+        return Content(
             role="function",
             parts=self.contents,
         )
 
     @property
-    def as_function_call(self) -> protos.Content:
-        return protos.Content(role="model", parts=self.contents)
+    def as_function_call(self) -> Content:
+        return Content(role="model", parts=self.contents)
 
     @staticmethod
-    def _format_text_content(content: TextContent) -> protos.Part:
-        return protos.Part(text=content.text)
+    def _format_text_content(content: TextContent) -> Part:
+        return Part(text=content.text)
 
     @staticmethod
-    def _format_image_content(content: ImageContent) -> protos.Part:
+    def _format_image_content(content: ImageContent) -> Part:
         file_format = decode_image(content.image, as_utf8=True).format.lower()
         _image_bytes = base64.b64decode(content.image.encode("utf-8"))
 
-        image_bytes = protos.Blob(mime_type=f"image/{file_format}", data=_image_bytes)
-        return protos.Part(inline_data=image_bytes)
+        image_bytes = Blob(mime_type=f"image/{file_format}", data=_image_bytes)
+        return Part(inline_data=image_bytes)
 
     @staticmethod
-    def _format_tool_content(content: ToolContent) -> protos.Part:
-        return protos.Part(
-            function_response=protos.FunctionResponse(
+    def _format_tool_content(content: ToolContent) -> Part:
+        return Part(
+            function_response=FunctionResponse(
                 name=content.funcname, response={"content": content.output}
             )
         )
 
     @staticmethod
-    def _format_tool_call_content(content: ToolCall) -> protos.Part:
-        return protos.Part(
-            function_call=protos.FunctionCall(
+    def _format_tool_call_content(content: ToolCall) -> Part:
+        return Part(
+            function_call=FunctionCall(
                 name=content.name,
                 args=content.args if isinstance(content.args, dict) else json.loads(content.args),
             )
         )
 
     @classmethod
-    def from_client_message(cls, message: protos.Content) -> Message:
+    def from_client_message(cls, message: Content) -> Message:
         serializable = cls._to_dict(message)
 
         common_contents = []
@@ -88,9 +88,9 @@ class GeminiMessage(BaseMessage):
         )
 
     @staticmethod
-    def _to_dict(content: protos.Content) -> dict[str, Any]:
+    def _to_dict(content: Content) -> dict[str, Any]:
         return json.loads(
-            protos.Content.to_json(
+            Content.to_json(
                 content,
                 including_default_value_fields=False,
                 use_integers_for_enums=False,

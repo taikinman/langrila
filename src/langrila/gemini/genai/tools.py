@@ -1,7 +1,6 @@
 from typing import Optional
 
-import google.generativeai as genai
-from pydantic import BaseModel
+from google.ai.generativelanguage import FunctionDeclaration, Schema, Type
 
 from ...tools import ToolConfig, ToolParameter, ToolProperty
 
@@ -14,8 +13,8 @@ class GeminiToolProperty(ToolProperty):
 
     def format(self):
         return {
-            self.name: genai.protos.Schema(
-                type=getattr(genai.protos.Type, self.type.upper()),
+            self.name: Schema(
+                type=getattr(Type, self.type.upper()),
                 description=self.description,
                 enum=self.enum,
             ),
@@ -34,8 +33,8 @@ class GeminiToolParameter(ToolParameter):
             for key, value in prop_dict.items():
                 properties.update({key: value})
 
-        return genai.protos.Schema(
-            type=getattr(genai.protos.Type, self.type.upper()),
+        return Schema(
+            type=getattr(Type, self.type.upper()),
             properties=properties,
             required=self.required,
         )
@@ -47,7 +46,7 @@ class GeminiToolConfig(ToolConfig):
     parameters: GeminiToolParameter
 
     def format(self):
-        return genai.protos.FunctionDeclaration(
+        return FunctionDeclaration(
             name=self.name,
             description=self.description,
             parameters=self.parameters.format(),

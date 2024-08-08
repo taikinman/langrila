@@ -92,7 +92,7 @@ def get_message_cls(api_type: str):
 
 def get_tool_cls(api_type: str):
     if api_type == "genai":
-        from google.generativeai.protos import Tool
+        from google.ai.generativelanguage import Tool
 
         return Tool
 
@@ -119,7 +119,7 @@ def get_client_tool_type(api_type: str):
 
 def get_call_config(api_type: str, tool_choice: str | None = "auto"):
     if api_type == "genai":
-        from google.generativeai.protos import FunctionCallingConfig, ToolConfig
+        from google.ai.generativelanguage import FunctionCallingConfig, ToolConfig
 
         if tool_choice is None:
             return ToolConfig(
