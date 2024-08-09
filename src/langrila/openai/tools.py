@@ -8,13 +8,14 @@ class OpenAIToolProperty(ToolProperty):
     type: str
     description: str
     enum: list[str | int | float] | None = None
+    items: dict[str, str] | None = None
 
     def format(self):
         return {self.name: self.model_dump(exclude=["name"], exclude_none=True)}
 
     @field_validator("type")
     def check_type_value(cls, v):
-        if v not in {"string", "number", "boolean"}:
+        if v not in {"string", "number", "boolean", "array"}:
             raise ValueError("type must be one of string or number.")
 
         return v
