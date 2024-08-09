@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -8,6 +8,7 @@ class ToolProperty(BaseModel):
     type: str
     description: str
     enum: list[str | int | float] | None = None
+    items: dict[str, Any] | None = None
 
 
 class ToolParameter(BaseModel):
