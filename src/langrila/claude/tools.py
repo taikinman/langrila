@@ -20,15 +20,13 @@ class ClaudeToolParameter(ToolParameter):
     required: list[str | int | float] | None = None
 
     def format(self):
-        dumped = self.model_dump(exclude=["properties", "required"])
+        dumped = self.model_dump(exclude=["properties"], exclude_none=True)
 
         _properties = {}
         for p in self.properties:
             _properties.update(p.format())
         dumped["properties"] = _properties
 
-        if self.required is not None:
-            dumped["required"] = self.required
         return dumped
 
 
