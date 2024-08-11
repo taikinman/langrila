@@ -10,7 +10,7 @@ Langrila is an open-source third-party python package that is useful to use API-
 - Topic branch are checkout from main branch.
 - Topic branch should be small.
 
-# Pre-requirement
+# Prerequisites
 If necessary, set environment variables to use OpenAI API, Azure OpenAI Service, Gemini API, and Claude API; if using VertexAI or Amazon Bedrock, check each platform's user guide and authenticate in advance VertexAI and Amazon Bedrock.
 
 # Supported models for OpenAI
@@ -23,6 +23,7 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 - gpt-4-turbo-2024-04-09
 - gpt-4o-2024-05-13
 - gpt-4o-mini-2024-07-18
+- gpt-4o-2024-08-06
 
 ## Embedding models
 - text-embedding-ada-002
@@ -32,7 +33,7 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 ## Aliases
 ```
 {'gpt-4o-mini': 'gpt-4o-mini-2024-07-18',
- 'gpt-4o': 'gpt-4o-2024-05-13',
+ 'gpt-4o': 'gpt-4o-2024-08-06',
  'gpt-4-turbo': 'gpt-4-turbo-2024-04-09',
  'gpt-3.5-turbo': 'gpt-3.5-turbo-0125'}
 ```
@@ -43,6 +44,7 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 
 # Supported models for Gemini
 ## Chat models
+- gemini-1.5-pro-exp-0801
 - gemini-1.5-pro
 - gemini-1.5-flash
 
@@ -106,17 +108,15 @@ Third point is the name of results class : `RetrievalResult` to `RetrievalResult
 Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) includes following contents:
 
 - Basic usage with simple text prompt
-    - ChatGPT of OpenAI
-    - ChatGPT on Azure OpenAI
+    - Chat Completion of OpenAI
+    - Chat Completion on Azure OpenAI
     - Gemini of Google AI
     - Gemini on VertexAI
     - Claude of Anthropic
     - Claude on Amazon Bedrock
-- Image input
 - Message system in langrila
 - Multi-turn conversation with multiple client
 - How to specify system instruction
-- JSON mode completion
 - Token management
 - Usage gathering across multiple models
 - Prompt template
@@ -127,6 +127,17 @@ Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) inclu
 - Multi-turn conversation using tools
 - Multi-turn conversation using tools with multiple client
 
+[03.structured_output.ipynb](./notebooks/03.structured_output.ipynb), you can see:
+
+- JSON mode output for OpenAI and Gemini
+- Pydantic schema output for OpenAI
+
+[04.media_and_file_input.ipynb](./notebooks/04.media_and_file_input.ipynb) show you the following contents:
+
+- Image input
+- PDF file input
+- Video input
+- Data uploading and analyzing by specifying uri for Gemini
 
 # Dependencies
 ## must
