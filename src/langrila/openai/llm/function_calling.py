@@ -356,7 +356,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         ), f"model_name must be one of {', '.join(sorted(MODEL_CONFIG.keys()))}."
 
         token_lim = get_token_limit(model_name)
-        max_tokens = max_tokens if max_tokens else int(token_lim / 2)
+        max_tokens = max_tokens if max_tokens else MODEL_CONFIG[model_name]["max_output_tokens"]
         context_length = token_lim - max_tokens if context_length is None else context_length
         assert (
             token_lim >= max_tokens + context_length

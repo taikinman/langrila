@@ -1,7 +1,6 @@
 from typing import Optional
 
-import google.generativeai as genai
-from pydantic import BaseModel
+from google.ai.generativelanguage import FunctionDeclaration, Schema, Type
 
 from ...tools import ToolConfig, ToolParameter, ToolProperty
 
@@ -14,10 +13,9 @@ class GeminiToolProperty(ToolProperty):
 
     def format(self):
         return {
-            self.name: genai.protos.Schema(
-                type=getattr(genai.protos.Type, self.type.upper()),
-                description=self.description,
-                enum=self.enum,
+            self.name: Schema(
+                type=getattr(Type, self.type.upper()),
+                **self.model_dump(exclude=["name", "type"], exclude_none=True),
             ),
         }
 
@@ -34,8 +32,8 @@ class GeminiToolParameter(ToolParameter):
             for key, value in prop_dict.items():
                 properties.update({key: value})
 
-        return genai.protos.Schema(
-            type=getattr(genai.protos.Type, self.type.upper()),
+        return Schema(
+            type=getattr(Type, self.type.upper()),
             properties=properties,
             required=self.required,
         )
@@ -47,7 +45,7 @@ class GeminiToolConfig(ToolConfig):
     parameters: GeminiToolParameter
 
     def format(self):
-        return genai.protos.FunctionDeclaration(
+        return FunctionDeclaration(
             name=self.name,
             description=self.description,
             parameters=self.parameters.format(),
@@ -55,4 +53,4 @@ class GeminiToolConfig(ToolConfig):
 
     @classmethod
     def from_universal_configs(cls, configs: list[ToolConfig]) -> list["GeminiToolConfig"]:
-        return [cls(**config.model_dump()) for config in configs]
+        return [cls(**config.model_dump(exclude_none=True)) for config in configs]

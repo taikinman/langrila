@@ -4,6 +4,7 @@ import random
 import string
 from functools import partial
 from typing import Any, Generator, Iterable
+from urllib.parse import urlparse
 
 import numpy as np
 from PIL import Image
@@ -32,7 +33,8 @@ def make_batch(
 
 def pil2bytes(image: Image.Image) -> bytes:
     num_byteio = io.BytesIO()
-    image.save(num_byteio, format=image.format.lower())
+    image.save(num_byteio, format=image.format.lower() if image.format else "jpeg")
+    num_byteio.seek(0)
     image_bytes = num_byteio.getvalue()
     return image_bytes
 
@@ -83,3 +85,19 @@ def model2func(model: BaseModel):
         return model(**kwargs).run()
 
     return partial(run_model, model=model)
+
+
+def is_valid_uri(text: str) -> bool:
+    """Function to determine if a given string is a URI
+
+    Args:
+        text (str): The string to check
+
+    Returns:
+        bool: True if the string is a URI, False otherwise
+    """
+    try:
+        result = urlparse(text)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False

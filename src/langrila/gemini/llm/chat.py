@@ -123,7 +123,7 @@ class GeminiChatCoreModule(BaseChatModule):
             parts.extend(content.parts)
 
         if self.api_type == "genai":
-            from google.generativeai.protos import Content
+            from google.ai.generativelanguage import Content
 
         else:
             from vertexai.generative_models import Content
@@ -184,7 +184,7 @@ class GeminiChatCoreModule(BaseChatModule):
             parts.extend(content.parts)
 
         if self.api_type == "genai":
-            from google.generativeai.protos import Content
+            from google.ai.generativelanguage import Content
 
         else:
             from vertexai.generative_models import Content

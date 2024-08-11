@@ -7,14 +7,16 @@ from PIL import Image
 from pydantic import BaseModel
 
 from .message_content import (
-    ApplicationFileContent,
     ContentType,
     ImageContent,
     InputType,
     Message,
+    PDFContent,
     TextContent,
     ToolCall,
     ToolContent,
+    URIContent,
+    VideoContent,
 )
 from .result import (
     CompletionResults,
@@ -24,7 +26,11 @@ from .result import (
     ToolOutput,
 )
 from .types import RoleType
-from .utils import decode_image, model2func
+from .utils import decode_image, is_valid_uri, model2func
+
+ROLES = ["system", "user", "assistant", "function", "function_call", "tool"]
+IMAGE_EXTETIONS = ["jpg", "jpeg", "png", "heic", "heif"]
+VIDEO_EXTENSIONS = ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]
 
 
 class BaseChatModule(ABC):
@@ -135,7 +141,7 @@ class BaseMessage(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def _format_application_file_content(content: ApplicationFileContent) -> Any:
+    def _format_uri_content(content: str | Path) -> Any:
         raise NotImplementedError
 
     @classmethod
@@ -148,18 +154,7 @@ class BaseMessage(ABC):
         return cls.from_client_message(response.message)
 
     @classmethod
-    def _format_string_content(cls, content: str) -> Any:
-        if Path(content).is_file() and Path(content).suffix in [".png", ".jpg", ".jpeg"]:
-            return cls._format_image_content(content=ImageContent(image=content))
-        elif Path(content).is_file() and Path(content).suffix in [".pdf"]:
-            return cls._format_application_file_content(
-                content=ApplicationFileContent(file=content)
-            )
-        else:
-            return cls._format_text_content(content=TextContent(text=content))
-
-    @classmethod
-    def _format_contents(
+    def _to_client_contents(
         cls,
         contents: ContentType | list[ContentType],
     ) -> list[dict[str, Any]]:
@@ -169,9 +164,7 @@ class BaseMessage(ABC):
         _contents = []
 
         for content in contents:
-            if isinstance(content, str):
-                _contents.append(cls._format_string_content(content=content))
-            elif isinstance(content, TextContent):
+            if isinstance(content, TextContent):
                 _contents.append(cls._format_text_content(content=content))
             elif isinstance(content, ImageContent):
                 try:
@@ -188,9 +181,19 @@ class BaseMessage(ABC):
                     _contents.append(cls._format_tool_call_content(content=content))
                 except NotImplementedError:
                     pass
-            elif isinstance(content, ApplicationFileContent):
+            elif isinstance(content, (PDFContent, VideoContent)):
                 try:
-                    _contents.append(cls._format_application_file_content(content=content))
+                    _contents.extend(
+                        [
+                            cls._format_image_content(content=image_content)
+                            for image_content in content.as_image_content()
+                        ]
+                    )
+                except NotImplementedError:
+                    pass
+            elif isinstance(content, URIContent):
+                try:
+                    _contents.append(cls._format_uri_content(content=content))
                 except NotImplementedError:
                     pass
             else:
@@ -199,25 +202,16 @@ class BaseMessage(ABC):
         return _contents
 
     @classmethod
-    def _format_message(
-        cls,
-        role: RoleType,
-        contents: ContentType | list[ContentType],
-        name: str | None = None,
-    ) -> Any:
-        if role not in ["user", "assistant", "system", "function", "function_call", "tool"]:
-            raise ValueError(f"Invalid role: {role}")
-
-        _contents = cls._format_contents(contents=contents)
-
-        return getattr(cls(contents=_contents, name=name), "as_" + role)
-
-    @classmethod
     def to_client_message(
         cls,
         message: Message,
     ) -> Any:
-        return cls._format_message(role=message.role, contents=message.content, name=message.name)
+        if message.role not in ROLES:
+            raise ValueError(f"Invalid role: {message.role}")
+
+        _contents = cls._to_client_contents(contents=message.content)
+
+        return getattr(cls(contents=_contents, name=message.name), "as_" + message.role)
 
     @classmethod
     @abstractmethod
@@ -225,12 +219,22 @@ class BaseMessage(ABC):
         raise NotImplementedError
 
     @classmethod
-    def _string2content(cls, content: str) -> ContentType:
+    def _string_to_universal_content(cls, content: str) -> ContentType:
         try:
-            if Path(content).is_file() and Path(content).suffix in [".png", ".jpg", ".jpeg"]:
-                return ImageContent(image=content)
-            elif Path(content).is_file() and Path(content).suffix in [".pdf"]:
-                return ApplicationFileContent(file=content)
+            is_file = Path(content).is_file()
+            is_uri = is_valid_uri(content)
+            file_format = Path(content).suffix.lstrip(".").lower()
+            if is_file:
+                if file_format in IMAGE_EXTETIONS:
+                    return ImageContent(image=content)
+                elif file_format in ["pdf"]:
+                    return PDFContent(file=content)
+                elif file_format in VIDEO_EXTENSIONS:
+                    return VideoContent(file=content)
+                else:
+                    raise ValueError(f"Unsupported file format: {file_format}")
+            elif is_uri:
+                return URIContent(uri=content)
             else:
                 return TextContent(text=content)
         except OSError:
@@ -241,7 +245,7 @@ class BaseMessage(ABC):
                 return TextContent(text=content)
 
     @classmethod
-    def to_contents(
+    def to_universal_contents(
         cls,
         contents: ContentType | list[ContentType],
     ) -> list[ContentType]:
@@ -252,9 +256,22 @@ class BaseMessage(ABC):
 
         for content in contents:
             if isinstance(content, str):
-                _contents.append(cls._string2content(content=content))
+                _string_content = cls._string_to_universal_content(content=content)
+                if isinstance(_string_content, list):
+                    _contents.extend(_string_content)
+                else:
+                    _contents.append(_string_content)
             elif isinstance(
-                content, (TextContent, ImageContent, ToolContent, ApplicationFileContent, ToolCall)
+                content,
+                (
+                    TextContent,
+                    ImageContent,
+                    ToolContent,
+                    PDFContent,
+                    ToolCall,
+                    URIContent,
+                    VideoContent,
+                ),
             ):
                 _contents.append(content)
             else:
@@ -270,23 +287,24 @@ class BaseMessage(ABC):
         name: str | None = None,
     ) -> Message:
         if isinstance(message, Message):
-            message.content = cls.to_contents(contents=message.content)
+            message.content = cls.to_universal_contents(contents=message.content)
             return message
         elif isinstance(message, ContentType):
             if role is None:
                 raise ValueError("Role must be provided to create a message")
 
             message = Message(role=role, content=message, name=name)
-            message.content = cls.to_contents(contents=message.content)
+            message.content = cls.to_universal_contents(contents=message.content)
             return message
         elif isinstance(message, list):
             if role is None:
                 raise ValueError("Role must be provided to create a message")
 
-            contents = [
-                cls.to_universal_message(role=role, message=m, name=name).content[0]
-                for m in message
-            ]
+            contents = []
+            for m in message:
+                _content = cls.to_universal_message(role=role, message=m, name=name).content
+                contents.extend(_content)
+
             message = Message(role=role, content=contents, name=name)
             return message
         elif isinstance(message, Image.Image):
@@ -297,7 +315,7 @@ class BaseMessage(ABC):
             )
         elif isinstance(message, dict):
             message = Message(**message)
-            message.content = cls.to_contents(contents=message.content)
+            message.content = cls.to_universal_contents(contents=message.content)
             return message
         else:
             raise ValueError(f"Invalid message type {type(message)}")

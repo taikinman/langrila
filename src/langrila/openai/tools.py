@@ -4,12 +4,18 @@ from ..tools import ToolConfig, ToolParameter, ToolProperty
 
 
 class OpenAIToolProperty(ToolProperty):
+    name: str
+    type: str
+    description: str
+    enum: list[str | int | float] | None = None
+    items: dict[str, str] | None = None
+
     def format(self):
-        return {self.name: self.model_dump(exclude=["name"] if self.enum else ["name", "enum"])}
+        return {self.name: self.model_dump(exclude=["name"], exclude_none=True)}
 
     @field_validator("type")
     def check_type_value(cls, v):
-        if v not in {"string", "number", "boolean"}:
+        if v not in {"string", "number", "boolean", "array"}:
             raise ValueError("type must be one of string or number.")
 
         return v
@@ -21,15 +27,13 @@ class OpenAIToolParameter(ToolParameter):
     required: list[str] | None = None
 
     def format(self):
-        dumped = self.model_dump(exclude=["properties", "required"])
+        dumped = self.model_dump(exclude=["properties"], exclude_none=True)
 
         _properties = {}
         for p in self.properties:
             _properties.update(p.format())
         dumped["properties"] = _properties
 
-        if self.required is not None:
-            dumped["required"] = self.required
         return dumped
 
     @field_validator("type")
@@ -55,11 +59,18 @@ class OpenAIToolConfig(ToolConfig):
     type: str = "function"
     description: str
     parameters: OpenAIToolParameter
+    strict: bool | None = None
 
     def format(self):
-        dumped = self.model_dump(exclude=["parameters", "type"])
+        dumped = self.model_dump(exclude=["parameters", "type", "strict"], exclude_none=True)
         dumped["parameters"] = self.parameters.format()
-        return {"type": self.type, self.type: dumped}
+
+        output = {"type": self.type, self.type: dumped}
+
+        if self.strict is not None:
+            output["strict"] = self.strict
+
+        return output
 
     @field_validator("type")
     def check_type_value(cls, v):
@@ -70,4 +81,4 @@ class OpenAIToolConfig(ToolConfig):
 
     @classmethod
     def from_universal_configs(cls, configs: list[ToolConfig]) -> list["OpenAIToolConfig"]:
-        return [cls(**config.model_dump()) for config in configs]
+        return [cls(**config.model_dump(exclude_none=True)) for config in configs]

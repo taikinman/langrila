@@ -9,7 +9,14 @@ from google.cloud.aiplatform_v1beta1.types import tool as gapic_tool_types
 from vertexai.generative_models import Content, Part
 
 from ...base import BaseMessage
-from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
+from ...message_content import (
+    ImageContent,
+    Message,
+    TextContent,
+    ToolCall,
+    ToolContent,
+    URIContent,
+)
 from ...utils import decode_image
 
 
@@ -53,6 +60,10 @@ class VertexAIMessage(BaseMessage):
         _image_bytes = base64.b64decode(content.image.encode("utf-8"))
 
         return Part.from_data(mime_type=f"image/{file_format}", data=_image_bytes)
+
+    @staticmethod
+    def _format_uri_content(content: URIContent) -> Part:
+        return Part.from_uri(uri=content.uri, mime_type=content.mime_type)
 
     @staticmethod
     def _format_tool_content(content: ToolContent) -> Part:

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -8,6 +8,7 @@ class ToolProperty(BaseModel):
     type: str
     description: str
     enum: list[str | int | float] | None = None
+    items: dict[str, Any] | None = None
 
 
 class ToolParameter(BaseModel):
@@ -20,9 +21,10 @@ class ToolConfig(BaseModel):
     name: str
     description: str
     parameters: ToolParameter
+    strict: bool | None = None
 
     @classmethod
-    def from_pydantic(cls, model: BaseModel) -> "ToolConfig":
+    def from_pydantic(cls, model: BaseModel, **kwargs) -> "ToolConfig":
         configs = {}
         params = {}
 
@@ -51,4 +53,4 @@ class ToolConfig(BaseModel):
         params["properties"] = props
         configs["parameters"] = params
 
-        return cls(**configs)
+        return cls(**configs, **kwargs)
