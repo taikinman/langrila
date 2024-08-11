@@ -6,5 +6,4 @@ from PIL import Image
 
 PathType = Path | PathLike | str
 ImageType = Image.Image | PathType
-FileType = str | bytes | PathType
 RoleType = Literal["system", "user", "assistant", "function", "function_call", "tool"]
