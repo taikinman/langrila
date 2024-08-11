@@ -2,10 +2,17 @@ import base64
 import json
 from typing import Any
 
-from google.ai.generativelanguage import Blob, Content, FunctionCall, FunctionResponse, Part
+from google.ai.generativelanguage import (
+    Blob,
+    Content,
+    FileData,
+    FunctionCall,
+    FunctionResponse,
+    Part,
+)
 
 from ...base import BaseMessage
-from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent
+from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent, URIContent
 from ...utils import decode_image
 
 
@@ -40,6 +47,11 @@ class GeminiMessage(BaseMessage):
 
         image_bytes = Blob(mime_type=f"image/{file_format}", data=_image_bytes)
         return Part(inline_data=image_bytes)
+
+    @staticmethod
+    def _format_uri_content(content: URIContent) -> Part:
+        file_data = FileData(file_uri=content.uri, mime_type=content.mime_type)
+        return Part(file_data=file_data)
 
     @staticmethod
     def _format_tool_content(content: ToolContent) -> Part:
