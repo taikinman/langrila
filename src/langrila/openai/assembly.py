@@ -8,7 +8,7 @@ from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType, Message, ToolContent
 from ..result import CompletionResults, FunctionCallingResults
 from ..tools import ToolConfig
-from ..usage import TokenCounter
+from ..usage import TokenCounter, Usage
 from .llm.chat import OpenAIChatModule
 from .llm.function_calling import OpenAIFunctionCallingModule
 
@@ -116,6 +116,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
+
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt=prompt,
@@ -142,11 +144,16 @@ class OpenAIFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
+            total_usage += response_function_calling.usage
+
         response_chat: CompletionResults = self.chat.run(
             prompt=prompt,
             n_results=n_results,
             init_conversation=init_conversation,
         )
+
+        total_usage += response_chat.usage
+        response_chat.usage = total_usage
 
         self._clear_memory()
 
@@ -166,6 +173,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
+
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
@@ -192,11 +201,16 @@ class OpenAIFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
+            total_usage += response_function_calling.usage
+
         response_chat: CompletionResults = await self.chat.arun(
             prompt=prompt,
             n_results=n_results,
             init_conversation=init_conversation,
         )
+
+        total_usage += response_chat.usage
+        response_chat.usage = total_usage
 
         self._clear_memory()
 
@@ -210,6 +224,8 @@ class OpenAIFunctionalChat(BaseAssembly):
     ) -> Generator[CompletionResults, None, None]:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
+
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
 
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
@@ -232,14 +248,20 @@ class OpenAIFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
-        response_chat: CompletionResults = self.chat.stream(
+            total_usage += response_function_calling.usage
+
+        response_chat = self.chat.stream(
             prompt=prompt,
             init_conversation=init_conversation,
         )
 
-        self._clear_memory()
+        for result in response_chat:
+            if result.usage.total_tokens > 0:
+                total_usage += result.usage
+                result.usage = total_usage
+            yield result
 
-        return response_chat
+        self._clear_memory()
 
     async def astream(
         self,
@@ -249,6 +271,8 @@ class OpenAIFunctionalChat(BaseAssembly):
     ) -> AsyncGenerator[CompletionResults, None]:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
+
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
 
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
@@ -271,11 +295,17 @@ class OpenAIFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
-        response_chat: CompletionResults = self.chat.astream(
+            total_usage += response_function_calling.usage
+
+        response_chat = self.chat.astream(
             prompt=prompt,
             init_conversation=init_conversation,
         )
 
-        self._clear_memory()
+        async for result in response_chat:
+            if result.usage.total_tokens > 0:
+                total_usage += result.usage
+                result.usage = total_usage
+            yield result
 
-        return response_chat
+        self._clear_memory()

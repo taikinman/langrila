@@ -20,7 +20,7 @@ from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType, Message, TextContent, ToolContent
 from ..result import CompletionResults, FunctionCallingResults
 from ..tools import ToolConfig
-from ..usage import TokenCounter
+from ..usage import TokenCounter, Usage
 from .llm.chat import AnthropicChatModule
 from .llm.function_calling import AnthropicFunctionCallingModule
 
@@ -153,6 +153,8 @@ class ClaudeFunctionalChat(BaseAssembly):
 
         if self.function_calling:
             if tool_choice is not None:
+                total_usage = Usage(model_name=self.chat.chat_model.model_name)
+
                 response_function_calling: FunctionCallingResults = self.function_calling.run(
                     prompt,
                     init_conversation=init_conversation,
@@ -163,6 +165,8 @@ class ClaudeFunctionalChat(BaseAssembly):
                     self._clear_memory()
 
                     return response_function_calling
+
+                total_usage += response_function_calling.usage
 
                 if response_function_calling.results:
                     prompt = Message(
@@ -181,10 +185,12 @@ class ClaudeFunctionalChat(BaseAssembly):
                         prompt, init_conversation=init_conversation
                     )
 
+                    total_usage += response_function_calling.usage
+
                 self._clear_memory()
 
                 return CompletionResults(
-                    usage=response_function_calling.usage,
+                    usage=total_usage,
                     prompt=response_function_calling.prompt,
                     message=Message(
                         role="assistant",
@@ -222,6 +228,8 @@ class ClaudeFunctionalChat(BaseAssembly):
 
         if self.function_calling:
             if tool_choice is not None:
+                total_usage = Usage(model_name=self.chat.chat_model.model_name)
+
                 response_function_calling: FunctionCallingResults = (
                     await self.function_calling.arun(
                         prompt,
@@ -234,6 +242,8 @@ class ClaudeFunctionalChat(BaseAssembly):
                     self._clear_memory()
 
                     return response_function_calling
+
+                total_usage += response_function_calling.usage
 
                 if response_function_calling.results:
                     prompt = Message(
@@ -254,10 +264,12 @@ class ClaudeFunctionalChat(BaseAssembly):
                         )
                     )
 
+                    total_usage += response_function_calling.usage
+
                 self._clear_memory()
 
                 return CompletionResults(
-                    usage=response_function_calling.usage,
+                    usage=total_usage,
                     prompt=response_function_calling.prompt,
                     message=Message(
                         role="assistant",
