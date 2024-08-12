@@ -10,7 +10,7 @@ from ..base_assembly import BaseAssembly
 from ..message_content import ConversationType, InputType, Message, ToolContent
 from ..result import CompletionResults, FunctionCallingResults
 from ..tools import ToolConfig
-from ..usage import TokenCounter
+from ..usage import TokenCounter, Usage
 from .llm.chat import GeminiChatModule
 from .llm.function_calling import GeminiFunctionCallingModule
 
@@ -131,6 +131,8 @@ class GeminiFunctionalChat(BaseAssembly):
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
+
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt,
@@ -156,9 +158,14 @@ class GeminiFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
+            total_usage += response_function_calling.usage
+
         response_chat: CompletionResults = self.chat.run(
             prompt, init_conversation=init_conversation, n_results=n_results
         )
+
+        total_usage += response_chat.usage
+        response_chat.usage = total_usage
 
         self._clear_memory()
 
@@ -178,6 +185,8 @@ class GeminiFunctionalChat(BaseAssembly):
         if tool_only:
             assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
 
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
+
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt,
@@ -203,9 +212,14 @@ class GeminiFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
+            total_usage += response_function_calling.usage
+
         response_chat: CompletionResults = await self.chat.arun(
             prompt, init_conversation=init_conversation, n_results=n_results
         )
+
+        total_usage += response_chat.usage
+        response_chat.usage = total_usage
 
         self._clear_memory()
 
@@ -219,6 +233,8 @@ class GeminiFunctionalChat(BaseAssembly):
     ) -> Generator[CompletionResults, None, None]:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
+
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
 
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = self.function_calling.run(
@@ -240,13 +256,17 @@ class GeminiFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
-        response_chat: CompletionResults = self.chat.stream(
-            prompt, init_conversation=init_conversation
-        )
+            total_usage += response_function_calling.usage
+
+        response_chat = self.chat.stream(prompt, init_conversation=init_conversation)
+
+        for result in response_chat:
+            if result.usage.total_tokens > 0:
+                total_usage += result.usage
+                result.usage = total_usage
+            yield result
 
         self._clear_memory()
-
-        return response_chat
 
     async def astream(
         self,
@@ -256,6 +276,8 @@ class GeminiFunctionalChat(BaseAssembly):
     ) -> AsyncGenerator[CompletionResults, None]:
         if self.function_calling and tool_choice is None:
             tool_choice = "auto"
+
+        total_usage = Usage(model_name=self.chat.chat_model.model_name)
 
         if self.function_calling and tool_choice:
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
@@ -277,10 +299,14 @@ class GeminiFunctionalChat(BaseAssembly):
                     None  # if tool is used, init_conversation is stored in the memory
                 )
 
-        response_chat: CompletionResults = self.chat.astream(
-            prompt, init_conversation=init_conversation
-        )
+            total_usage += response_function_calling.usage
+
+        response_chat = self.chat.astream(prompt, init_conversation=init_conversation)
+
+        async for result in response_chat:
+            if result.usage.total_tokens > 0:
+                total_usage += result.usage
+                result.usage = total_usage
+            yield result
 
         self._clear_memory()
-
-        return response_chat
