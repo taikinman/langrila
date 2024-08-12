@@ -153,10 +153,14 @@ def set_openai_envs(
         openai.organization = os.getenv(organization_id_env_name)
 
 
-def get_n_tokens(message: dict[str, dict[str, str]], model_name: str) -> dict[str, int]:
+def get_n_tokens(
+    message: dict[str, dict[str, str]], model_name: str, depth: int = 0
+) -> dict[str, int]:
     """
     Return the number of tokens used by a list of messages.
     Forked and edited from : https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
+
+    FIXME: This function is not perfect. It might not be accurate while it works enough in many cases.
     """
     encoding = get_encoding(model_name)
 
@@ -173,39 +177,51 @@ def get_n_tokens(message: dict[str, dict[str, str]], model_name: str) -> dict[st
         )
 
     n_content_tokens = 0
-    n_other_tokens = tokens_per_message
+    n_other_tokens = 0
     # num_tokens += tokens_per_message
     for key, value in message.items():
+        if key == "tool_calls":
+            continue
         if value is not None:
-            if key == "content" and not isinstance(value, str):
-                if isinstance(value, list):
-                    for item in value:
-                        if item["type"] == "text":
-                            n_content_tokens += len(encoding.encode(item["text"]))
-                        elif item["type"] == "image_url":
-                            n_content_tokens += 85  # Base tokens
-                            if item["image_url"]["detail"] in ["high", "auto"]:
-                                if item["image_url"]["url"].startswith("data:image/"):
-                                    img_encoded = re.sub(
-                                        "^(data:image/.+;base64,)", "", item["image_url"]["url"]
-                                    )
-                                    n_content_tokens += calculate_high_resolution_image_tokens(
-                                        decode_image(img_encoded).size
-                                    )
-                                elif item["image_url"]["url"].startswith("https://"):
-                                    raise NotImplementedError(
-                                        "Image URL is not acceptable. Please use base64 encoded image."
-                                    )
-                        else:
-                            raise ValueError(f"Unknown type {item['type']} in message['content'].")
-                else:
-                    n_content_tokens += len(encoding.encode(value))
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        tokens = get_n_tokens(item, model_name, depth + 1)
+                        n_content_tokens += tokens["content"]
+                        n_other_tokens += tokens["other"]
+                        # n_other_tokens += len(encoding.encode(key))
             elif key == "name":
                 n_other_tokens += tokens_per_name
+            elif isinstance(value, str):
+                n_content_tokens += len(encoding.encode(value))
+            elif key == "text":
+                n_content_tokens += len(encoding.encode(item["text"]))
+            elif key == "image_url":
+                n_content_tokens += 85  # Base tokens
+                if value["detail"] in ["high", "auto"]:
+                    if value["url"].startswith("data:image/"):
+                        img_encoded = re.sub("^(data:image/.+;base64,)", "", value["url"])
+                        n_content_tokens += calculate_high_resolution_image_tokens(
+                            decode_image(img_encoded).size
+                        )
+                    elif value["url"].startswith("https://"):
+                        raise NotImplementedError(
+                            "Image URL is not acceptable. Please use base64 encoded image."
+                        )
+            elif isinstance(value, dict):
+                tokens = get_n_tokens(value, model_name, depth + 1)
+                n_content_tokens += tokens["content"]
+                n_other_tokens += tokens["other"]
+                # n_other_tokens += len(encoding.encode(key))
             else:
-                n_other_tokens += len(encoding.encode(value))
+                n_content_tokens += len(encoding.encode(value))
+        else:
+            n_other_tokens += len(encoding.encode(key))
 
-    n_other_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+    if depth == 0:
+        n_other_tokens += tokens_per_message
+        n_other_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+
     total_tokens = n_content_tokens + n_other_tokens
     return {"total": total_tokens, "content": n_content_tokens, "other": n_other_tokens}
 
