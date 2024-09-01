@@ -10,6 +10,7 @@ from .base import (
 from .memory.in_memory import InMemoryConversationMemory
 from .memory.json import JSONConversationMemory
 from .message_content import (
+    AudioContent,
     ContentType,
     ImageContent,
     Message,

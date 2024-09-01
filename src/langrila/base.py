@@ -7,6 +7,7 @@ from PIL import Image
 from pydantic import BaseModel
 
 from .message_content import (
+    AudioContent,
     ContentType,
     ImageContent,
     InputType,
@@ -31,6 +32,7 @@ from .utils import decode_image, is_valid_uri, model2func
 ROLES = ["system", "user", "assistant", "function", "function_call", "tool"]
 IMAGE_EXTETIONS = ["jpg", "jpeg", "png", "heic", "heif"]
 VIDEO_EXTENSIONS = ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]
+AUDIO_EXTENSIONS = ["wav", "mp3", "aiff", "ogg", "flac"]
 
 
 class BaseChatModule(ABC):
@@ -144,6 +146,10 @@ class BaseMessage(ABC):
     def _format_uri_content(content: str | Path) -> Any:
         raise NotImplementedError
 
+    @staticmethod
+    def _format_audio_content(content: str | Path) -> Any:
+        raise NotImplementedError
+
     @classmethod
     @abstractmethod
     def _from_completion_results(cls, results: CompletionResults) -> list[dict[str, str]]:
@@ -196,6 +202,11 @@ class BaseMessage(ABC):
                     _contents.append(cls._format_uri_content(content=content))
                 except NotImplementedError:
                     pass
+            elif isinstance(content, AudioContent):
+                try:
+                    _contents.append(cls._format_audio_content(content=content))
+                except NotImplementedError:
+                    pass
             else:
                 raise NotImplementedError(f"Message type {type(content)} not implemented")
 
@@ -231,6 +242,8 @@ class BaseMessage(ABC):
                     return PDFContent(file=content)
                 elif file_format in VIDEO_EXTENSIONS:
                     return VideoContent(file=content)
+                elif file_format in AUDIO_EXTENSIONS:
+                    return AudioContent(data=content)
                 else:
                     raise ValueError(f"Unsupported file format: {file_format}")
             elif is_uri:
@@ -271,6 +284,7 @@ class BaseMessage(ABC):
                     ToolCall,
                     URIContent,
                     VideoContent,
+                    AudioContent,
                 ),
             ):
                 _contents.append(content)
