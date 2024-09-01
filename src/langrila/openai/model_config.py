@@ -47,6 +47,12 @@ _OLDER_MODEL_CONFIG = {
 }
 
 _NEWER_MODEL_CONFIG = {
+    "chatgpt-4o-latest": {
+        "max_tokens": 128000,
+        "max_output_tokens": 16384,
+        "prompt_cost_per_token": 0.000005,
+        "completion_cost_per_token": 0.000015,
+    },
     "gpt-4o-2024-08-06": {
         "max_tokens": 128000,
         "max_output_tokens": 16384,
