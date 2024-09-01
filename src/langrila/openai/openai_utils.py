@@ -22,7 +22,6 @@ def get_encoding(model_name: str) -> tiktoken.Encoding:
     try:
         encoding = tiktoken.encoding_for_model(model_name)
     except KeyError:
-        print("Warning: model not found. Using o200k_base encoding.")
         encoding = tiktoken.get_encoding("o200k_base")
 
     return encoding
