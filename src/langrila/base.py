@@ -30,7 +30,7 @@ from .types import RoleType
 from .utils import decode_image, is_valid_uri, model2func
 
 ROLES = ["system", "user", "assistant", "function", "function_call", "tool"]
-IMAGE_EXTETIONS = ["jpg", "jpeg", "png", "heic", "heif"]
+IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "heic", "heif"]
 VIDEO_EXTENSIONS = ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]
 AUDIO_EXTENSIONS = ["wav", "mp3", "aiff", "ogg", "flac"]
 
@@ -236,7 +236,7 @@ class BaseMessage(ABC):
             is_uri = is_valid_uri(content)
             file_format = Path(content).suffix.lstrip(".").lower()
             if is_file:
-                if file_format in IMAGE_EXTETIONS:
+                if file_format in IMAGE_EXTENSIONS:
                     return ImageContent(image=content)
                 elif file_format in ["pdf"]:
                     return PDFContent(file=content)
