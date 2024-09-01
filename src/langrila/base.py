@@ -32,7 +32,7 @@ from .utils import decode_image, is_valid_uri, model2func
 ROLES = ["system", "user", "assistant", "function", "function_call", "tool"]
 IMAGE_EXTETIONS = ["jpg", "jpeg", "png", "heic", "heif"]
 VIDEO_EXTENSIONS = ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]
-AUDIO_EXTENSIONS = ["wav", "mp3", "aiff", "aac", "ogg", "flac"]
+AUDIO_EXTENSIONS = ["wav", "mp3", "aiff", "ogg", "flac"]
 
 
 class BaseChatModule(ABC):

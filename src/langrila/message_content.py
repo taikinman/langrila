@@ -100,7 +100,7 @@ class AudioContent(BaseModel):
             try:
                 assert Path(data["data"]).is_file()
                 file_format = Path(data["data"]).suffix.lstrip(".").lower()
-                if file_format in ["wav", "mp3", "aiff", "aac", "ogg", "flac"]:
+                if file_format in ["wav", "mp3", "aiff", "ogg", "flac"]:
                     data["mime_type"] = f"audio/{file_format}"
                 elif file_format in ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]:
                     data["data"], data["sr"] = cls._from_video(data["data"])
