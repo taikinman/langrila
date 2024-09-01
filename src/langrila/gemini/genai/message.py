@@ -12,7 +12,15 @@ from google.ai.generativelanguage import (
 )
 
 from ...base import BaseMessage
-from ...message_content import ImageContent, Message, TextContent, ToolCall, ToolContent, URIContent
+from ...message_content import (
+    AudioContent,
+    ImageContent,
+    Message,
+    TextContent,
+    ToolCall,
+    ToolContent,
+    URIContent,
+)
 from ...utils import decode_image
 
 
@@ -52,6 +60,12 @@ class GeminiMessage(BaseMessage):
     def _format_uri_content(content: URIContent) -> Part:
         file_data = FileData(file_uri=content.uri, mime_type=content.mime_type)
         return Part(file_data=file_data)
+
+    @staticmethod
+    def _format_audio_content(content: AudioContent) -> Part:
+        _audio_bytes = content.as_bytes()
+        audio_blob = Blob(data=_audio_bytes, mime_type=content.mime_type)
+        return Part(inline_data=audio_blob)
 
     @staticmethod
     def _format_tool_content(content: ToolContent) -> Part:
