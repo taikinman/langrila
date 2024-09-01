@@ -165,7 +165,7 @@ class VideoContent(BaseModel):
         ]
 
         if self.include_audio:
-            frames.append(AudioContent(file=self.file))
+            frames.append(AudioContent(data=self.file))
 
         return frames
 
