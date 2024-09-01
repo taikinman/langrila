@@ -77,7 +77,7 @@ class PDFContent(BaseModel):
 
 class AudioContent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    file: PathType | bytes | np.ndarray
+    data: PathType | bytes | np.ndarray
     sr: int | None = None
     mime_type: str | None = None
 
@@ -86,7 +86,7 @@ class AudioContent(BaseModel):
 
         buffer = io.BytesIO()
         sf.write(
-            buffer, self.file, samplerate=self.sr, format=self.mime_type.split("/")[-1].upper()
+            buffer, self.data, samplerate=self.sr, format=self.mime_type.split("/")[-1].upper()
         )
 
         buffer.seek(0)
@@ -96,41 +96,41 @@ class AudioContent(BaseModel):
     def setup(cls, data):
         import soundfile as sf
 
-        if isinstance(data, dict) and "file" in data:
+        if isinstance(data, dict) and "data" in data:
             try:
-                assert Path(data["file"]).is_file()
-                file_format = Path(data["file"]).suffix.lstrip(".").lower()
+                assert Path(data["data"]).is_file()
+                file_format = Path(data["data"]).suffix.lstrip(".").lower()
                 if file_format in ["wav", "mp3", "aiff", "aac", "ogg", "flac"]:
                     data["mime_type"] = f"audio/{file_format}"
                 elif file_format in ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]:
-                    data["file"], data["sr"] = cls._from_video(data["file"])
+                    data["data"], data["sr"] = cls._from_video(data["data"])
                     data["mime_type"] = "audio/wav"
                 else:
                     raise ValueError(f"Invalid audio file format: {file_format}")
             except Exception:
                 pass
 
-            if isinstance(data["file"], bytes):
-                data["file"], data["sr"] = sf.read(io.BytesIO(data["file"]))
-            elif isinstance(data["file"], io.BytesIO):
-                data["file"], data["sr"] = sf.read(data["file"])
-            elif isinstance(data["file"], (str | Path)):
-                assert Path(data["file"]).is_file()
-                data["file"], data["sr"] = sf.read(data["file"])
-            elif isinstance(data["file"], np.ndarray):
+            if isinstance(data["data"], bytes):
+                data["data"], data["sr"] = sf.read(io.BytesIO(data["data"]))
+            elif isinstance(data["data"], io.BytesIO):
+                data["data"], data["sr"] = sf.read(data["data"])
+            elif isinstance(data["data"], (str | Path)):
+                assert Path(data["data"]).is_file()
+                data["data"], data["sr"] = sf.read(data["data"])
+            elif isinstance(data["data"], np.ndarray):
                 pass
-            elif isinstance(data["file"], list):
-                data["file"] = np.array(data["file"])
+            elif isinstance(data["data"], list):
+                data["data"] = np.array(data["data"])
             else:
                 raise ValueError("Invalid audio data type")
 
-            data["file"] = cls._convert_stereo_to_mono(data["file"])
+            data["data"] = cls._convert_stereo_to_mono(data["data"])
 
         return data
 
-    @field_serializer("file")
-    def serialize_file(self, file: np.ndarray) -> list:
-        return file.tolist()
+    @field_serializer("data")
+    def serialize_data(self, data: np.ndarray) -> list:
+        return data.tolist()
 
     @staticmethod
     def _convert_stereo_to_mono(data: np.ndarray) -> np.ndarray:

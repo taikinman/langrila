@@ -243,7 +243,7 @@ class BaseMessage(ABC):
                 elif file_format in VIDEO_EXTENSIONS:
                     return VideoContent(file=content)
                 elif file_format in AUDIO_EXTENSIONS:
-                    return AudioContent(file=content)
+                    return AudioContent(data=content)
                 else:
                     raise ValueError(f"Unsupported file format: {file_format}")
             elif is_uri:
