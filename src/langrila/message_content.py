@@ -1,8 +1,10 @@
+import io
 from pathlib import Path
 from typing import Any, Literal
 
+import numpy as np
 from PIL import Image
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
 from .types import PathType
 from .utils import encode_image
@@ -73,19 +75,99 @@ class PDFContent(BaseModel):
         ]
 
 
+class AudioContent(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    data: PathType | bytes | np.ndarray
+    sr: int | None = None
+    mime_type: str | None = None
+
+    def as_bytes(self) -> bytes:
+        import soundfile as sf
+
+        buffer = io.BytesIO()
+        sf.write(
+            buffer, self.data, samplerate=self.sr, format=self.mime_type.split("/")[-1].upper()
+        )
+
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    @model_validator(mode="before")
+    def setup(cls, data):
+        import soundfile as sf
+
+        if isinstance(data, dict) and "data" in data:
+            try:
+                assert Path(data["data"]).is_file()
+                file_format = Path(data["data"]).suffix.lstrip(".").lower()
+                if file_format in ["wav", "mp3", "aiff", "ogg", "flac"]:
+                    data["mime_type"] = f"audio/{file_format}"
+                elif file_format in ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]:
+                    data["data"], data["sr"] = cls._from_video(data["data"])
+                    data["mime_type"] = "audio/wav"
+                else:
+                    raise ValueError(f"Invalid audio file format: {file_format}")
+            except Exception:
+                pass
+
+            if isinstance(data["data"], bytes):
+                data["data"], data["sr"] = sf.read(io.BytesIO(data["data"]))
+            elif isinstance(data["data"], io.BytesIO):
+                data["data"], data["sr"] = sf.read(data["data"])
+            elif isinstance(data["data"], (str | Path)):
+                assert Path(data["data"]).is_file()
+                data["data"], data["sr"] = sf.read(data["data"])
+            elif isinstance(data["data"], np.ndarray):
+                pass
+            elif isinstance(data["data"], list):
+                data["data"] = np.array(data["data"])
+            else:
+                raise ValueError("Invalid audio data type")
+
+            data["data"] = cls._convert_stereo_to_mono(data["data"])
+
+        return data
+
+    @field_serializer("data")
+    def serialize_data(self, data: np.ndarray) -> list:
+        return data.tolist()
+
+    @staticmethod
+    def _convert_stereo_to_mono(data: np.ndarray) -> np.ndarray:
+        if data.ndim == 2:
+            return np.mean(data, axis=1)
+        return data
+
+    @staticmethod
+    def _from_video(video_file: PathType) -> tuple[np.ndarray, int]:
+        from moviepy.editor import VideoFileClip
+
+        clip = VideoFileClip(Path(video_file).as_posix())
+        audio = clip.audio
+        fps = audio.fps
+        audio_array = np.array(list(audio.iter_frames()))
+        return audio_array, fps
+
+
 class VideoContent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     file: PathType
     fps: float = 1.0
     image_resolution: Literal["auto", "low", "high"] = "low"
+    include_audio: bool = False
 
     def as_image_content(self) -> list[ImageContent]:
         from .file_utils.video import sample_frames
 
-        return [
+        frames = [
             ImageContent(image=image, resolution=self.image_resolution)
             for image in sample_frames(self.file, fps=self.fps)
         ]
+
+        if self.include_audio:
+            frames.append(AudioContent(data=self.file))
+
+        return frames
 
 
 class URIContent(BaseModel):
@@ -120,6 +202,7 @@ ContentType = (
     | ToolCall
     | URIContent
     | VideoContent
+    | AudioContent
 )
 
 

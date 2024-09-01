@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "langrila"
-version = "0.2.1"
+version = "0.3.0"
 description = "useful tool to use API-based LLM"
 authors = ["taikinman <okipedia6161@gmail.com>"]
 readme = "README.md"
@@ -26,6 +26,8 @@ anthropic = {version = "^0.31.0", optional = true}
 pypdfium2 = {version = "^4.30.0", optional = true}
 imageio = {version = "^2.34.2", optional = true}
 imageio-ffmpeg = {version = "^0.5.1", optional = true}
+soundfile = {version = "^0.12.1", optional = true}
+moviepy = {version = "^1.0.3", optional = true}
 
 [tool.poetry.extras]
 openai = ["openai", "tiktoken"]
@@ -40,7 +42,8 @@ claude = ["anthropic"]
 bedrock = ["boto3"]
 pdf = ["pypdfium2"]
 video = ["imageio", "imageio-ffmpeg"]
-all = ["openai", "tiktoken", "google-generativeai", "google-cloud-aiplatform", "qdrant-client", "chromadb", "usearch", "azure-cosmos", "boto3", "anthropic", "pypdfium2", "imageio", "imageio-ffmpeg"]
+audio = ["soundfile", "moviepy"]
+all = ["openai", "tiktoken", "google-generativeai", "google-cloud-aiplatform", "qdrant-client", "chromadb", "usearch", "azure-cosmos", "boto3", "anthropic", "pypdfium2", "imageio", "imageio-ffmpeg", "soundfile", "moviepy"]
 
 [build-system]
 requires = ["poetry-core"]

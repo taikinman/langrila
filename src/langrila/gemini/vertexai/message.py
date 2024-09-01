@@ -10,6 +10,7 @@ from vertexai.generative_models import Content, Part
 
 from ...base import BaseMessage
 from ...message_content import (
+    AudioContent,
     ImageContent,
     Message,
     TextContent,
@@ -64,6 +65,11 @@ class VertexAIMessage(BaseMessage):
     @staticmethod
     def _format_uri_content(content: URIContent) -> Part:
         return Part.from_uri(uri=content.uri, mime_type=content.mime_type)
+
+    @staticmethod
+    def _format_audio_content(content: AudioContent) -> Part:
+        _audio_bytes = content.as_bytes()
+        return Part.from_data(mime_type=content.mime_type, data=_audio_bytes)
 
     @staticmethod
     def _format_tool_content(content: ToolContent) -> Part:
