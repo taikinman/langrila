@@ -24,6 +24,7 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 - gpt-4o-2024-05-13
 - gpt-4o-mini-2024-07-18
 - gpt-4o-2024-08-06
+- chatgpt-4o-latest
 
 ## Embedding models
 - text-embedding-ada-002
@@ -44,9 +45,7 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 
 # Supported models for Gemini
 ## Chat models
-- gemini-1.5-pro-exp-0801
-- gemini-1.5-pro
-- gemini-1.5-flash
+Basically all the models of gemini-1.5 family including experimental models.
 
 ## Platform
 - Google AI
@@ -123,7 +122,7 @@ Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) inclu
 
 [02.function_calling.ipynb](./notebooks/02.function_calling.ipynb) instruct function calling in langrila.
 
-- Basic usage for ChatGPT, Gemini and Claude
+- Basic usage for OpenAI Chat Completion, Gemini and Claude
 - Multi-turn conversation using tools
 - Multi-turn conversation using tools with multiple client
 
