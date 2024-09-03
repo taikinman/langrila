@@ -94,7 +94,10 @@ class AudioContent(BaseModel):
 
     @model_validator(mode="before")
     def setup(cls, data):
-        import soundfile as sf
+        try:
+            import soundfile as sf
+        except ModuleNotFoundError:
+            return data
 
         if isinstance(data, dict) and "data" in data:
             try:
