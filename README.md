@@ -80,7 +80,7 @@ response.message.content[0].text # for single completion
 ```
 
 
-For more details, please see [introduction notebook](./notebooks/01.introduction.ipynb).
+For more details, please see [introduction notebook](https://github.com/taikinman/langrila/blob/main/notebooks/01.introduction.ipynb).
 
 </details>
 
@@ -104,7 +104,7 @@ Third point is the name of results class : `RetrievalResult` to `RetrievalResult
 </details>
 
 # Basic usage
-Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) includes following contents:
+Sample notebook [01.introduction.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/01.introduction.ipynb) includes following contents:
 
 - Basic usage with simple text prompt
     - Chat Completion of OpenAI
@@ -120,18 +120,18 @@ Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) inclu
 - Usage gathering across multiple models
 - Prompt template
 
-[02.function_calling.ipynb](./notebooks/02.function_calling.ipynb) instruct function calling in langrila.
+[02.function_calling.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/02.function_calling.ipynb) instruct function calling in langrila.
 
 - Basic usage for OpenAI Chat Completion, Gemini and Claude
 - Multi-turn conversation using tools
 - Multi-turn conversation using tools with multiple client
 
-[03.structured_output.ipynb](./notebooks/03.structured_output.ipynb), you can see:
+[03.structured_output.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/03.structured_output.ipynb), you can see:
 
 - JSON mode output for OpenAI and Gemini
 - Pydantic schema output for OpenAI
 
-[04.media_and_file_input.ipynb](./notebooks/04.media_and_file_input.ipynb) show you the following contents:
+[04.media_and_file_input.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/04.media_and_file_input.ipynb) show you the following contents:
 
 - Image input
 - PDF file input
@@ -143,72 +143,77 @@ Sample notebook [01.introduction.ipynb](./notebooks/01.introduction.ipynb) inclu
 - Python >=3.10,<3.13
 
 ## as needed
-Langrila has various extra installation options. See the following installation section and [pyproject.toml](./pyproject.toml).
+Langrila has various extra installation options. See the following installation section and [pyproject.toml](https://github.com/taikinman/langrila/blob/main/pyproject.toml).
 
 # Installation
-## clone
+See extra dependencies section in [pyproject.toml](https://github.com/taikinman/langrila/blob/main/pyproject.toml) for more detail installation options.
+
+## For user
+### pip
+```
+# For OpenAI
+pip install langrila[openai]
+
+# For Gemini
+pip install langrila[gemini]
+
+# For Claude
+pip install langrila[claude]
+
+# For multiple clients
+pip install langrila[openai,gemini,claude]
+
+# With dependencies to handle specific data. Here is an example using gemini
+pip install langrila[gemini,audio,video,pdf]
+
+# With dependencies for specific platform. Here is an example using gemini on VertexAI
+pip install langrila[gemini,vertexai]
+
+# With dependencies for specific vectorDB. Here is an example using Qdrant
+pip install langrila[openai,qdrant]
+```
+
+### poetry
+```
+# For OpenAI
+poetry install langrila --extras openai
+
+# For Gemini
+poetry install langrila --extras gemini
+
+# For Claude
+poetry install langrila --extras claude
+
+# For multiple clients
+poetry install langrila --extras "openai gemini claude"
+
+# With dependencies to handle specific data. Here is an example using gemini
+poetry install langrila --extras "gemini audio video pdf"
+
+# With dependencies for specific platform. Here is an example using gemini on VertexAI
+poetry install langrila --extras "gemini vertexai"
+
+# With dependencies for specific vectorDB. Here is an example using Qdrant
+poetry install langrila --extras "openai qdrant"
+```
+
+## For developer
+### clone
 ```
 git clone git@github.com:taikinman/langrila.git
 ```
 
-## pip
-See [pyproject.toml](./pyproject.toml) for more detailed installation options.
-
+### pip
 ```
 cd langrila
 
-# For OpenAI
-pip install -e .[openai]
-
-# For Gemini
-pip install -e .[gemini]
-
-# For Claude
-pip install -e .[claude]
-
-# For both
-pip install -e .[openai,gemini]
-
-# For OpenAI and Qdrant
-pip install -e .[openai,qdrant]
-
-# For OpenAI and Chroma
-pip install -e .[openai,chroma]
-
-# For OpenAI and Usearch
-pip install -e .[openai,usearch]
-
-# For All
-pip install -e .[all]
+pip install -e .{extra packages}
 ```
 
-## poetry
-See [pyproject.toml](./pyproject.toml) for more detailed installation options.
-
+### poetry
 ```
 # For OpenAI
-poetry add --editable /path/to/langrila/ --extras openai
-
-# For Gemini
-poetry add --editable /path/to/langrila/ --extras gemini
-
-# For Claude
-poetry add --editable /path/to/langrila/ --extras claude
-
-# For both OpenAI and Gemini (can choose Claude as well)
-poetry add --editable /path/to/langrila/ --extras "openai gemini"
-
-# For OpenAI and Qdrant
-poetry add --editable /path/to/langrila/ --extras "openai qdrant"
-
-# For OpenAI and Chroma
-poetry add --editable /path/to/langrila/ --extras "openai chroma"
-
-# For OpenAI and Usearch
-poetry add --editable /path/to/langrila/ --extras "openai usearch"
-
-# For all extra dependencies
-poetry add --editable /path/to/langrila/ --extras all
+poetry add --editable /path/to/langrila/ --extras "{extra packages}"
 ```
 
 # Optional
@@ -310,7 +315,7 @@ collection = QdrantRemoteCollectionModule(
 
 ```
 
-For more details, see [qdrant.py](src/langrila/database/qdrant.py).
+For more details, see [qdrant.py](https://github.com/taikinman/langrila/blob/main/src/langrila/database/qdrant.py).
 
 ### For Chroma
 ```python
@@ -394,7 +399,7 @@ collection = ChromaRemoteCollectionModule(
 )
 ```
 
-For more details, see [chroma.py](src/langrila/database/chroma.py).
+For more details, see [chroma.py](https://github.com/taikinman/langrila/blob/main/src/langrila/database/chroma.py).
 
 ### For Usearch
 Usearch originally doesn't support metadata storing and filtering, so in langrila, those functions are realized by SQLite3 and postprocessing.
@@ -471,7 +476,7 @@ retrieval_result.model_dump()
  'usage': {'prompt_tokens': 6, 'completion_tokens': 0}}
 ```
 
-When you need to filter retrieval results by metadata in search time, you can implement your custom metadata filter. Base class of metadata filter is in [base.py](src/langrila/base.py). For more details, see : [usearch.py](src/langrila/database/usearch.py).
+When you need to filter retrieval results by metadata in search time, you can implement your custom metadata filter. Base class of metadata filter is in [base.py](https://github.com/taikinman/langrila/blob/main/src/langrila/base.py). For more details, see : [usearch.py](https://github.com/taikinman/langrila/blob/main/src/langrila/database/usearch.py).
 
 ### Specific use case
 The library supports a variety of use cases by combining modules such as these and defining new modules. For example, the following is an example of a module that combines basic Retrieval and prompt templates. 
