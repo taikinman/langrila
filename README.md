@@ -176,25 +176,25 @@ pip install langrila[openai,qdrant]
 ### poetry
 ```
 # For OpenAI
-poetry install langrila --extras openai
+poetry add langrila --extras openai
 
 # For Gemini
-poetry install langrila --extras gemini
+poetry add langrila --extras gemini
 
 # For Claude
-poetry install langrila --extras claude
+poetry add langrila --extras claude
 
 # For multiple clients
-poetry install langrila --extras "openai gemini claude"
+poetry add langrila --extras "openai gemini claude"
 
 # With dependencies to handle specific data. Here is an example using gemini
-poetry install langrila --extras "gemini audio video pdf"
+poetry add langrila --extras "gemini audio video pdf"
 
 # With dependencies for specific platform. Here is an example using gemini on VertexAI
-poetry install langrila --extras "gemini vertexai"
+poetry add langrila --extras "gemini vertexai"
 
 # With dependencies for specific vectorDB. Here is an example using Qdrant
-poetry install langrila --extras "openai qdrant"
+poetry add langrila --extras "openai qdrant"
 ```
 
 ## For developer
