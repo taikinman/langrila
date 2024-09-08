@@ -90,7 +90,7 @@ class VertexAIMessage(BaseMessage):
 
         common_contents = []
 
-        for part in serializable.get("parts"):
+        for part in serializable.get("parts", []):
             if part.get("text"):
                 common_contents.append(TextContent(text=part.get("text")))
             elif part.get("inline_data"):
