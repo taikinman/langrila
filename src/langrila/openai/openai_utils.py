@@ -163,17 +163,8 @@ def get_n_tokens(
     """
     encoding = get_encoding(model_name)
 
-    if model_name in MODEL_ZOO:
-        if model_name == "gpt-3.5-turbo-0301":
-            tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
-            tokens_per_name = -1  # if there's a name, the role is omitted
-        else:
-            tokens_per_message = 3
-            tokens_per_name = 1
-    else:
-        raise NotImplementedError(
-            f"get_n_tokens() is not implemented for model {model_name}. Please choose from following model : {', '.join(sorted(list(MODEL_ZOO)))}."
-        )
+    tokens_per_message = 3
+    tokens_per_name = 1
 
     n_content_tokens = 0
     n_other_tokens = 0

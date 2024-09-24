@@ -18,7 +18,6 @@ from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
-from ..model_config import _OLDER_MODEL_CONFIG, MODEL_CONFIG, MODEL_POINT
 from ..openai_utils import get_async_client, get_client, get_n_tokens, get_token_limit
 
 
@@ -41,7 +40,7 @@ def completion(
         model=model_name,
         messages=messages,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_completion_tokens=max_tokens,
         top_p=top_p,
         frequency_penalty=frequency_penalty,
         presence_penalty=presence_penalty,
@@ -74,7 +73,7 @@ async def acompletion(
         model=model_name,
         messages=messages,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_completion_tokens=max_tokens,
         top_p=top_p,
         frequency_penalty=frequency_penalty,
         presence_penalty=presence_penalty,
@@ -106,7 +105,7 @@ def parse(
         model=model_name,
         messages=messages,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_completion_tokens=max_tokens,
         top_p=top_p,
         frequency_penalty=frequency_penalty,
         presence_penalty=presence_penalty,
@@ -137,7 +136,7 @@ async def aparse(
         model=model_name,
         messages=messages,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_completion_tokens=max_tokens,
         top_p=top_p,
         frequency_penalty=frequency_penalty,
         presence_penalty=presence_penalty,
@@ -197,30 +196,18 @@ class OpenAIChatCoreModule(BaseChatModule):
         self.top_p = top_p
 
         self.additional_inputs = {}
-        if model_name not in _OLDER_MODEL_CONFIG.keys():
-            self.seed = seed
-            self.additional_inputs["seed"] = seed
-            if json_mode:
-                if response_schema:
-                    self.response_format = response_schema
-                    self.additional_inputs["response_format"] = self.response_format
-                else:
-                    self.response_format = {"type": "json_object"} if json_mode else NOT_GIVEN
-                    self.additional_inputs["response_format"] = self.response_format
-            else:
-                self.response_format = NOT_GIVEN
+        self.seed = seed
+        self.additional_inputs["seed"] = seed
+        if json_mode:
+            if response_schema:
+                self.response_format = response_schema
                 self.additional_inputs["response_format"] = self.response_format
-
+            else:
+                self.response_format = {"type": "json_object"} if json_mode else NOT_GIVEN
+                self.additional_inputs["response_format"] = self.response_format
         else:
-            # TODO : add logging message
-            if seed:
-                print(
-                    f"seed is ignored because it's not supported for {model_name} (api_type:{api_type})"
-                )
-            if json_mode:
-                print(
-                    f"response_format is ignored because it's not supported for {model_name} (api_type:{api_type})"
-                )
+            self.response_format = NOT_GIVEN
+            self.additional_inputs["response_format"] = self.response_format
 
         if system_instruction:
             system_instruction = OpenAIMessage.to_universal_message(
@@ -588,7 +575,6 @@ class OpenAIChatModule(ChatWrapperModule):
         max_retries: int = 2,
         seed: int | NotGiven = NOT_GIVEN,
         json_mode: bool = False,
-        context_length: int | None = None,
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
@@ -601,28 +587,6 @@ class OpenAIChatModule(ChatWrapperModule):
         user: str | NotGiven = NOT_GIVEN,
         response_schema: BaseModel | None = None,
     ):
-        if model_name in MODEL_POINT.keys():
-            print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
-            model_name = MODEL_POINT[model_name]
-
-        assert (
-            model_name in MODEL_CONFIG.keys()
-        ), f"model_name must be one of {', '.join(sorted(MODEL_CONFIG.keys()))}."
-
-        token_lim = get_token_limit(model_name)
-        max_tokens = max_tokens if max_tokens else MODEL_CONFIG[model_name]["max_output_tokens"]
-        context_length = token_lim - max_tokens if context_length is None else context_length
-        assert (
-            token_lim >= max_tokens + context_length
-        ), f"max_tokens({max_tokens}) + context_length({context_length}) must be less than or equal to the token limit of the model ({token_lim})."
-        assert context_length > 0, "context_length must be positive."
-
-        conversation_length_adjuster = (
-            OldConversationTruncationModule(model_name=model_name, context_length=context_length)
-            if conversation_length_adjuster is None
-            else conversation_length_adjuster
-        )
-
         # The module to call client API
         chat_model = OpenAIChatCoreModule(
             api_key_env_name=api_key_env_name,
