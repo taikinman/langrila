@@ -4,6 +4,7 @@ from typing import Mapping, Union
 import httpx
 from anthropic import Anthropic, AsyncAnthropic
 from anthropic._base_client import DEFAULT_MAX_RETRIES
+from anthropic._streaming import AsyncStream, Stream
 from anthropic._types import (
     NOT_GIVEN,
     NotGiven,
@@ -11,6 +12,11 @@ from anthropic._types import (
     Timeout,
     Transport,
 )
+from anthropic.types import Message, RawMessageStreamEvent
+from typing_extensions import override
+
+from ...base import BaseClient
+from ...utils import create_parameters
 
 
 def get_anthropic_client(
@@ -71,3 +77,21 @@ def get_async_anthropic_client(
         connection_pool_limits=connection_pool_limits,
         _strict_response_validation=_strict_response_validation,
     )
+
+
+class ClaudeAnthropicChat(BaseClient):
+    def __init__(self, **kwargs):
+        self._client = Anthropic(**create_parameters(Anthropic, **kwargs))
+        self._async_client = AsyncAnthropic(**create_parameters(AsyncAnthropic, **kwargs))
+
+    @override
+    def generate_content(self, **kwargs) -> Message | Stream[RawMessageStreamEvent]:
+        completion_params = create_parameters(self._client.messages.create, **kwargs)
+        return self._client.messages.create(**completion_params)
+
+    @override
+    async def generate_content_async(
+        self, **kwargs
+    ) -> Message | AsyncStream[RawMessageStreamEvent]:
+        completion_params = create_parameters(self._async_client.messages.create, **kwargs)
+        return await self._async_client.messages.create(**completion_params)

@@ -6,6 +6,10 @@ from anthropic import AnthropicVertex, AsyncAnthropicVertex
 from anthropic._base_client import DEFAULT_MAX_RETRIES
 from anthropic._types import NOT_GIVEN, NotGiven, ProxiesTypes, Transport
 from google.auth.credentials import Credentials as GoogleCredentials
+from typing_extensions import override
+
+from ...base import BaseClient
+from ...utils import create_parameters
 
 
 def get_vertexai_client(
@@ -74,3 +78,21 @@ def get_async_vertexai_client(
         connection_pool_limits=connection_pool_limits,
         _strict_response_validation=_strict_response_validation,
     )
+
+
+class ClaudeVertexAIChat(BaseClient):
+    def __init__(self, **kwargs):
+        self._client = AnthropicVertex(**create_parameters(AnthropicVertex, **kwargs))
+        self._async_client = AsyncAnthropicVertex(
+            **create_parameters(AsyncAnthropicVertex, **kwargs)
+        )
+
+    @override
+    def generate_content(self, **kwargs) -> os.Any:
+        completion_params = create_parameters(self._client.messages.create, **kwargs)
+        return self._client.messages.create(**completion_params)
+
+    @override
+    async def generate_content_async(self, **kwargs) -> os.Any:
+        completion_params = create_parameters(self._async_client.messages.create, **kwargs)
+        return await self._async_client.messages.create(**completion_params)

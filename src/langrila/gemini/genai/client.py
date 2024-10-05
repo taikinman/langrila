@@ -2,8 +2,13 @@ import os
 from typing import Any, Optional
 
 import google.generativeai as genai
+from google.generativeai.types import generation_types
 from google.generativeai.types.content_types import ContentType
 from google.generativeai.types.generation_types import GenerationConfig
+from typing_extensions import override
+
+from ...base import BaseClient
+from ...utils import create_parameters
 
 
 def get_genai_model(
@@ -38,3 +43,33 @@ def get_genai_model(
         system_instruction=system_instruction,
         generation_config=generation_config,
     )
+
+
+class GeminiAIStudioChat(BaseClient):
+    __doc__ = genai.configure.__doc__
+
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        self.configure_params = create_parameters(genai.configure, **kwargs)
+
+    @override
+    def generate_content(self, **kwargs) -> generation_types.GenerateContentResponse:
+        genai.configure(**self.configure_params)
+
+        generation_params = create_parameters(genai.GenerativeModel.generate_content, **kwargs)
+
+        model = genai.GenerativeModel(model_name=kwargs.get("model_name"))
+        return model.generate_content(**generation_params)
+
+    @override
+    async def generate_content_async(
+        self, **kwargs
+    ) -> generation_types.AsyncGenerateContentResponse:
+        genai.configure(**self.configure_params)
+
+        generation_params = create_parameters(genai.GenerativeModel.generate_content, **kwargs)
+
+        model = genai.GenerativeModel(model_name=kwargs.get("model_name"))
+        return await model.generate_content_async(**generation_params)

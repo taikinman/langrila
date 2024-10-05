@@ -5,6 +5,10 @@ import httpx
 from anthropic import AnthropicBedrock, AsyncAnthropicBedrock
 from anthropic._base_client import DEFAULT_MAX_RETRIES
 from anthropic._types import NOT_GIVEN, NotGiven
+from typing_extensions import override
+
+from ...base import BaseClient
+from ...utils import create_parameters
 
 
 def get_bedrock_client(
@@ -65,3 +69,21 @@ def get_async_bedrock_client(
         http_client=http_client,
         _strict_response_validation=_strict_response_validation,
     )
+
+
+class BedrockClient(BaseClient):
+    def __init__(self, **kwargs):
+        self._client = AnthropicBedrock(**create_parameters(AnthropicBedrock, **kwargs))
+        self._async_client = AsyncAnthropicBedrock(
+            **create_parameters(AsyncAnthropicBedrock, **kwargs)
+        )
+
+    @override
+    def generate_content(self, **kwargs) -> os.Any:
+        completion_params = create_parameters(self._client.messages.create, **kwargs)
+        return self._client.messages.create(**completion_params)
+
+    @override
+    async def generate_content_async(self, **kwargs) -> os.Any:
+        completion_params = create_parameters(self._async_client.messages.create, **kwargs)
+        return await self._async_client.messages.create(**completion_params)

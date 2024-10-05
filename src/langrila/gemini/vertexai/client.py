@@ -1,10 +1,14 @@
 import os
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, AsyncIterable, Iterable, Sequence
 
 import vertexai
 from google.auth import credentials as auth_credentials
 from google.cloud.aiplatform.tensorboard import tensorboard_resource
-from vertexai.generative_models import GenerationConfig, GenerativeModel
+from typing_extensions import override
+from vertexai.generative_models import GenerationConfig, GenerationResponse, GenerativeModel
+
+from ...base import BaseClient
+from ...utils import create_parameters
 
 
 def get_vertexai_model(
@@ -65,3 +69,28 @@ def get_vertexai_model(
         system_instruction=system_instruction,
         generation_config=generation_config,
     )
+
+
+class GeminiVertexAIChat(BaseClient):
+    def __init__(self, **kwargs):
+        self.configure_params = create_parameters(vertexai.init, **kwargs)
+
+    @override
+    def generate_content(self, **kwargs) -> GenerationResponse | Iterable[GenerationResponse]:
+        vertexai.init(**self.configure_params)
+
+        generation_params = create_parameters(GenerativeModel.generate_content, **kwargs)
+
+        model = GenerativeModel(model_name=kwargs.get("model_name"))
+        return model.generate_content(**generation_params)
+
+    @override
+    async def generate_content_async(
+        self, **kwargs
+    ) -> GenerationResponse | AsyncIterable[GenerationResponse]:
+        vertexai.init(**self.configure_params)
+
+        generation_params = create_parameters(GenerativeModel.generate_content, **kwargs)
+
+        model = GenerativeModel(model_name=kwargs.get("model_name"))
+        return model.generate_content_async(**generation_params)
