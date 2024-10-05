@@ -1,19 +1,21 @@
 import math
 import os
 import re
-from typing import Any
+from typing import Literal, Mapping, overload
 
-import openai
+import httpx
 import tiktoken
-from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
+from openai.lib.azure import AzureADTokenProvider
 
 from ..utils import decode_image
+from .azure.client import AzureOpenAIChat
 from .model_config import (
     _TILE_SIZE,
     _TOKENS_PER_TILE,
     EMBEDDING_CONFIG,
     MODEL_CONFIG,
 )
+from .origin.client import OpenAIChat
 
 MODEL_ZOO = set(MODEL_CONFIG.keys()) | set(EMBEDDING_CONFIG.keys())
 
@@ -27,129 +29,184 @@ def get_encoding(model_name: str) -> tiktoken.Encoding:
     return encoding
 
 
+@overload
+def get_client(
+    api_type: Literal["openai"],
+    api_key_env_name: str,
+    organization_id_env_name: str | None = None,
+    timeout: int = 60,
+    max_retries: int = 5,
+    project: str | None = None,
+    base_url: str | httpx.URL | None = None,
+    default_headers: Mapping[str, str] | None = None,
+    default_query: Mapping[str, object] | None = None,
+    http_client: httpx.Client | None = None,
+    _strict_response_validation: bool = False,
+) -> OpenAIChat: ...
+
+
+@overload
+def get_client(
+    api_type: Literal["azure"],
+    api_key_env_name: str,
+    api_version: str | None = None,
+    endpoint_env_name: str | None = None,
+    organization_id_env_name: str | None = None,
+    deployment_id_env_name: str | None = None,
+    timeout: int = 60,
+    max_retries: int = 5,
+    project: str | None = None,
+    base_url: str | httpx.URL | None = None,
+    azure_ad_token: str | None = None,
+    azure_ad_token_provider: AzureADTokenProvider | None = None,
+    default_headers: Mapping[str, str] | None = None,
+    default_query: Mapping[str, object] | None = None,
+    http_client: httpx.Client | None = None,
+    _strict_response_validation: bool = False,
+) -> AzureOpenAIChat: ...
+
+
 def get_client(
     api_key_env_name: str,
     api_version: str | None = None,
     endpoint_env_name: str | None = None,
     organization_id_env_name: str | None = None,
     deployment_id_env_name: str | None = None,
-    api_type: str | None = "openai",
+    api_type: Literal["openai", "azure"] | None = "openai",
     timeout: int = 60,
     max_retries: int = 5,
-) -> OpenAI | AzureOpenAI:
+    project: str | None = None,
+    base_url: str | httpx.URL | None = None,
+    azure_ad_token: str | None = None,
+    azure_ad_token_provider: AzureADTokenProvider | None = None,
+    default_headers: Mapping[str, str] | None = None,
+    default_query: Mapping[str, object] | None = None,
+    http_client: httpx.Client | None = None,
+    _strict_response_validation: bool = False,
+) -> OpenAIChat | AzureOpenAIChat:
     if api_type == "azure":
         assert (
             api_version and endpoint_env_name and deployment_id_env_name
         ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified when api_type is 'azure'."
-        return AzureOpenAI(
-            **get_openai_client_settings(
-                api_key_env_name=api_key_env_name,
-                organization_id_env_name=organization_id_env_name,
-                api_version=api_version,
-                endpoint_env_name=endpoint_env_name,
-                deployment_id_env_name=deployment_id_env_name,
-                max_retries=max_retries,
-                timeout=timeout,
-            )
+        return AzureOpenAIChat(
+            api_key=os.getenv(api_key_env_name),
+            organization=os.getenv(organization_id_env_name),
+            api_version=api_version,
+            azure_endpoint=os.getenv(endpoint_env_name),
+            azure_deployment=os.getenv(deployment_id_env_name),
+            max_retries=max_retries,
+            timeout=timeout,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
         )
     elif api_type == "openai":
-        return OpenAI(
-            **get_openai_client_settings(
-                api_key_env_name=api_key_env_name,
-                organization_id_env_name=organization_id_env_name,
-                max_retries=max_retries,
-                timeout=timeout,
-            )
+        return OpenAIChat(
+            api_key=os.getenv(api_key_env_name),
+            organization=os.getenv(organization_id_env_name),
+            max_retries=max_retries,
+            timeout=timeout,
+            project=project,
+            base_url=base_url,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
         )
     else:
         raise ValueError(f"api_type must be 'azure' or 'openai'. Got {api_type}.")
 
 
-def get_async_client(
-    api_key_env_name: str,
-    api_version: str | None = None,
-    endpoint_env_name: str | None = None,
-    organization_id_env_name: str | None = None,
-    deployment_id_env_name: str | None = None,
-    api_type: str | None = "openai",
-    timeout: int = 60,
-    max_retries: int = 5,
-) -> AsyncOpenAI | AsyncAzureOpenAI:
-    if api_type == "azure":
-        return AsyncAzureOpenAI(
-            **get_openai_client_settings(
-                api_key_env_name=api_key_env_name,
-                organization_id_env_name=organization_id_env_name,
-                api_version=api_version,
-                endpoint_env_name=endpoint_env_name,
-                deployment_id_env_name=deployment_id_env_name,
-                max_retries=max_retries,
-                timeout=timeout,
-            )
-        )
-    elif api_type == "openai":
-        return AsyncOpenAI(
-            **get_openai_client_settings(
-                api_key_env_name=api_key_env_name,
-                organization_id_env_name=organization_id_env_name,
-                max_retries=max_retries,
-                timeout=timeout,
-            )
-        )
-    else:
-        raise ValueError(f"api_type must be 'azure' or 'openai'. Got {api_type}.")
+# def get_async_client(
+#     api_key_env_name: str,
+#     api_version: str | None = None,
+#     endpoint_env_name: str | None = None,
+#     organization_id_env_name: str | None = None,
+#     deployment_id_env_name: str | None = None,
+#     api_type: str | None = "openai",
+#     timeout: int = 60,
+#     max_retries: int = 5,
+# ) -> AsyncOpenAI | AsyncAzureOpenAI:
+#     if api_type == "azure":
+#         return AsyncAzureOpenAI(
+#             **get_openai_client_settings(
+#                 api_key_env_name=api_key_env_name,
+#                 organization_id_env_name=organization_id_env_name,
+#                 api_version=api_version,
+#                 endpoint_env_name=endpoint_env_name,
+#                 deployment_id_env_name=deployment_id_env_name,
+#                 max_retries=max_retries,
+#                 timeout=timeout,
+#             )
+#         )
+#     elif api_type == "openai":
+#         return AsyncOpenAI(
+#             **get_openai_client_settings(
+#                 api_key_env_name=api_key_env_name,
+#                 organization_id_env_name=organization_id_env_name,
+#                 max_retries=max_retries,
+#                 timeout=timeout,
+#             )
+#         )
+#     else:
+#         raise ValueError(f"api_type must be 'azure' or 'openai'. Got {api_type}.")
 
 
-def get_openai_client_settings(
-    api_key_env_name: str,
-    api_version: str | None = None,
-    endpoint_env_name: str | None = None,
-    organization_id_env_name: str | None = None,
-    deployment_id_env_name: str | None = None,
-    timeout: int = 60,
-    max_retries: int = 5,
-) -> dict[str, Any]:
-    outputs = {}
-    outputs["api_key"] = os.getenv(api_key_env_name)
+# def get_openai_client_settings(
+#     api_key_env_name: str,
+#     api_version: str | None = None,
+#     endpoint_env_name: str | None = None,
+#     organization_id_env_name: str | None = None,
+#     deployment_id_env_name: str | None = None,
+#     timeout: int = 60,
+#     max_retries: int = 5,
+# ) -> dict[str, Any]:
+#     outputs = {}
+#     outputs["api_key"] = os.getenv(api_key_env_name)
 
-    if isinstance(api_version, str):
-        outputs["api_version"] = api_version
+#     if isinstance(api_version, str):
+#         outputs["api_version"] = api_version
 
-    if isinstance(endpoint_env_name, str):
-        outputs["azure_endpoint"] = os.getenv(endpoint_env_name)
+#     if isinstance(endpoint_env_name, str):
+#         outputs["azure_endpoint"] = os.getenv(endpoint_env_name)
 
-    if isinstance(organization_id_env_name, str):
-        outputs["organization"] = os.getenv(organization_id_env_name)
+#     if isinstance(organization_id_env_name, str):
+#         outputs["organization"] = os.getenv(organization_id_env_name)
 
-    if isinstance(deployment_id_env_name, str):
-        outputs["azure_deployment"] = os.getenv(deployment_id_env_name)
+#     if isinstance(deployment_id_env_name, str):
+#         outputs["azure_deployment"] = os.getenv(deployment_id_env_name)
 
-    outputs["timeout"] = timeout
-    outputs["max_retries"] = max_retries
+#     outputs["timeout"] = timeout
+#     outputs["max_retries"] = max_retries
 
-    return outputs
+#     return outputs
 
 
-def set_openai_envs(
-    api_key_env_name: str,
-    api_version: str | None = None,
-    api_type: str | None = None,
-    endpoint_env_name: str | None = None,
-    organization_id_env_name: str | None = None,
-) -> None:
-    openai.api_key = os.getenv(api_key_env_name)
+# def set_openai_envs(
+#     api_key_env_name: str,
+#     api_version: str | None = None,
+#     api_type: str | None = None,
+#     endpoint_env_name: str | None = None,
+#     organization_id_env_name: str | None = None,
+# ) -> None:
+#     openai.api_key = os.getenv(api_key_env_name)
 
-    if isinstance(api_version, str):
-        openai.api_version = api_version
+#     if isinstance(api_version, str):
+#         openai.api_version = api_version
 
-    if isinstance(api_type, str):
-        openai.api_type = api_type
+#     if isinstance(api_type, str):
+#         openai.api_type = api_type
 
-    if isinstance(endpoint_env_name, str):
-        openai.api_base = os.getenv(endpoint_env_name)
+#     if isinstance(endpoint_env_name, str):
+#         openai.api_base = os.getenv(endpoint_env_name)
 
-    if isinstance(organization_id_env_name, str):
-        openai.organization = os.getenv(organization_id_env_name)
+#     if isinstance(organization_id_env_name, str):
+#         openai.organization = os.getenv(organization_id_env_name)
 
 
 def get_n_tokens(
