@@ -30,7 +30,7 @@ from ...base import (
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
-from ..claude_utils import acompletion, completion, get_async_client, get_client
+from ..claude_utils import completion, get_client
 from ..message import ClaudeMessage
 
 
@@ -95,8 +95,7 @@ class AnthropicChatCoreModule(BaseChatModule):
         self.top_k = top_k
         self.top_p = top_p
 
-    def run(self, messages: list[dict[str, Any]]) -> CompletionResults:
-        client = get_client(
+        self._client = get_client(
             api_type=self.api_type,
             api_key_env_name=self.api_key_env_name,
             auth_token_env_name=self.auth_token_env_name,
@@ -120,16 +119,21 @@ class AnthropicChatCoreModule(BaseChatModule):
             _strict_response_validation=self._strict_response_validation,
         )
 
-        response = completion(
-            client=client,
-            model_name=self.model_name,
+    def run(self, messages: list[dict[str, Any]]) -> CompletionResults:
+        response = self._client.generate_message(
+            model=self.model_name,
             messages=messages,
-            system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
-            timeout=self.timeout,
+            metadata=NOT_GIVEN,
+            stop_sequences=NOT_GIVEN,
+            system=self.system_instruction,
             temperature=self.temperature,
-            top_k=self.top_k,
             top_p=self.top_p,
+            top_k=self.top_k,
+            extra_headers=None,
+            extra_query=None,
+            extra_body=None,
+            timeout=self.timeout,
         )
 
         return CompletionResults(
@@ -143,40 +147,20 @@ class AnthropicChatCoreModule(BaseChatModule):
         )
 
     async def arun(self, messages: list[dict[str, Any]]) -> CompletionResults:
-        client = get_async_client(
-            api_type=self.api_type,
-            api_key_env_name=self.api_key_env_name,
-            auth_token_env_name=self.auth_token_env_name,
-            endpoint_env_name=self.endpoint_env_name,
-            aws_secret_key_env_name=self.aws_secret_key_env_name,
-            aws_access_key_env_name=self.aws_access_key_env_name,
-            aws_region_env_name=self.aws_region_env_name,
-            aws_session_token_env_name=self.aws_session_token_env_name,
-            gc_region_env_name=self.gc_region_env_name,
-            gc_project_id_env_name=self.gc_project_id_env_name,
-            gc_access_token_env_name=self.gc_access_token_env_name,
-            credentials=self.credentials,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            default_headers=self.default_headers,
-            default_query=self.default_query,
-            http_client=self.http_client,
-            transport=self.transport,
-            proxies=self.proxies,
-            connection_pool_limits=self.connection_pool_limits,
-            _strict_response_validation=self._strict_response_validation,
-        )
-
-        response = await acompletion(
-            client=client,
-            model_name=self.model_name,
+        response = await self._client.generate_message_async(
+            model=self.model_name,
             messages=messages,
-            system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
-            timeout=self.timeout,
+            metadata=NOT_GIVEN,
+            stop_sequences=NOT_GIVEN,
+            system=self.system_instruction,
             temperature=self.temperature,
-            top_k=self.top_k,
             top_p=self.top_p,
+            top_k=self.top_k,
+            extra_headers=None,
+            extra_query=None,
+            extra_body=None,
+            timeout=self.timeout,
         )
 
         return CompletionResults(
@@ -190,41 +174,21 @@ class AnthropicChatCoreModule(BaseChatModule):
         )
 
     def stream(self, messages: list[dict[str, Any]]) -> Generator[CompletionResults, None, None]:
-        client = get_client(
-            api_type=self.api_type,
-            api_key_env_name=self.api_key_env_name,
-            auth_token_env_name=self.auth_token_env_name,
-            endpoint_env_name=self.endpoint_env_name,
-            aws_secret_key_env_name=self.aws_secret_key_env_name,
-            aws_access_key_env_name=self.aws_access_key_env_name,
-            aws_region_env_name=self.aws_region_env_name,
-            aws_session_token_env_name=self.aws_session_token_env_name,
-            gc_region_env_name=self.gc_region_env_name,
-            gc_project_id_env_name=self.gc_project_id_env_name,
-            gc_access_token_env_name=self.gc_access_token_env_name,
-            credentials=self.credentials,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            default_headers=self.default_headers,
-            default_query=self.default_query,
-            http_client=self.http_client,
-            transport=self.transport,
-            proxies=self.proxies,
-            connection_pool_limits=self.connection_pool_limits,
-            _strict_response_validation=self._strict_response_validation,
-        )
-
-        response = completion(
-            client=client,
-            model_name=self.model_name,
+        response = self._client.generate_message(
+            model=self.model_name,
             messages=messages,
-            system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
+            metadata=NOT_GIVEN,
+            stop_sequences=NOT_GIVEN,
+            system=self.system_instruction,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
+            extra_headers=None,
+            extra_query=None,
+            extra_body=None,
             timeout=self.timeout,
             stream=True,
-            temperature=self.temperature,
-            top_k=self.top_k,
-            top_p=self.top_p,
         )
 
         all_chunks = ""
@@ -264,41 +228,20 @@ class AnthropicChatCoreModule(BaseChatModule):
     async def astream(
         self, messages: list[dict[str, Any]]
     ) -> AsyncGenerator[CompletionResults, None]:
-        client = get_async_client(
-            api_type=self.api_type,
-            api_key_env_name=self.api_key_env_name,
-            auth_token_env_name=self.auth_token_env_name,
-            endpoint_env_name=self.endpoint_env_name,
-            aws_secret_key_env_name=self.aws_secret_key_env_name,
-            aws_access_key_env_name=self.aws_access_key_env_name,
-            aws_region_env_name=self.aws_region_env_name,
-            aws_session_token_env_name=self.aws_session_token_env_name,
-            gc_region_env_name=self.gc_region_env_name,
-            gc_project_id_env_name=self.gc_project_id_env_name,
-            gc_access_token_env_name=self.gc_access_token_env_name,
-            credentials=self.credentials,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            default_headers=self.default_headers,
-            default_query=self.default_query,
-            http_client=self.http_client,
-            transport=self.transport,
-            proxies=self.proxies,
-            connection_pool_limits=self.connection_pool_limits,
-            _strict_response_validation=self._strict_response_validation,
-        )
-
-        response = await acompletion(
-            client=client,
-            model_name=self.model_name,
+        response = await self._client.generate_message_async(
+            model=self.model_name,
             messages=messages,
-            system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
-            timeout=self.timeout,
-            stream=True,
+            metadata=NOT_GIVEN,
+            stop_sequences=NOT_GIVEN,
+            system=self.system_instruction,
             temperature=self.temperature,
-            top_k=self.top_k,
             top_p=self.top_p,
+            top_k=self.top_k,
+            extra_headers=None,
+            extra_query=None,
+            extra_body=None,
+            timeout=self.timeout,
         )
 
         all_chunks = ""

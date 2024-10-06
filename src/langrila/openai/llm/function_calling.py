@@ -1,8 +1,10 @@
 import copy
 import json
-from typing import Callable
+from typing import Callable, Literal, Mapping
 
+import httpx
 from openai._types import NOT_GIVEN, NotGiven
+from openai.lib.azure import AzureADTokenProvider
 
 from ...base import (
     BaseConversationLengthAdjuster,
@@ -15,7 +17,7 @@ from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
-from ..openai_utils import get_async_client, get_client, get_token_limit
+from ..openai_utils import get_client, get_token_limit
 from ..tools import OpenAIToolConfig, ToolConfig
 
 
@@ -26,7 +28,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         model_name: str,
         tools: list[Callable],
         tool_configs: list[ToolConfig],
-        api_type: str = "openai",
+        api_type: Literal["openai", "azure"] = "openai",
         api_version: str | None = None,
         endpoint_env_name: str | None = None,
         deployment_id_env_name: str | None = None,
@@ -42,13 +44,15 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         user: str | NotGiven = NOT_GIVEN,
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
+        project: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        azure_ad_token: str | None = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        http_client: httpx.Client | None = None,
+        _strict_response_validation: bool = False,
     ) -> None:
-        assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
-        if api_type == "azure":
-            assert (
-                api_version and endpoint_env_name and deployment_id_env_name
-            ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified for Azure API."
-
         self.api_key_env_name = api_key_env_name
         self.organization_id_env_name = organization_id_env_name
         self.api_type = api_type
@@ -92,6 +96,25 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
 
         self.conversation_length_adjuster = conversation_length_adjuster
 
+        self._client = get_client(
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
+            api_version=self.api_version,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
+            api_type=self.api_type,
+            max_retries=self.max_retries,
+            timeout=self.timeout,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
+        )
+
     def _get_client_tool_config_type(self) -> ToolConfig:
         return OpenAIToolConfig
 
@@ -110,22 +133,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
-        client = get_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
-        )
-
         _messages = [self.system_instruction] + messages if self.system_instruction else messages
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        response = client.chat.completions.create(
+        response = self._client.generate_message(
             model=self.model_name,
             messages=_messages,
             temperature=self.temperature,
@@ -183,22 +195,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
-        client = get_async_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
-        )
-
         _messages = [self.system_instruction] + messages if self.system_instruction else messages
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        response = await client.chat.completions.create(
+        response = await self._client.generate_message_async(
             model=self.model_name,
             messages=_messages,
             temperature=self.temperature,

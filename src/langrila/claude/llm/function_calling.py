@@ -33,7 +33,7 @@ from ...message_content import TextContent
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...tools import ToolConfig
 from ...usage import TokenCounter, Usage
-from ..claude_utils import acompletion, completion, get_async_client, get_client
+from ..claude_utils import completion, get_client
 from ..message import ClaudeMessage
 from ..tools import ClaudeToolConfig
 
@@ -107,23 +107,7 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
         self.tools = self._set_runnable_tools_dict(tools)
         self.tool_configs = [f.format() for f in client_tool_configs]
 
-    def _get_client_tool_type(self) -> ClaudeToolConfig:
-        return ClaudeToolConfig
-
-    def _get_tool_choice(self, tool_choice: str | None) -> ToolChoice:
-        if tool_choice is None:
-            return NOT_GIVEN
-        elif tool_choice == "auto":
-            return ToolChoiceToolChoiceAuto(type="auto")
-        elif tool_choice == "any":
-            return ToolChoiceToolChoiceAny(type="any")
-        else:
-            return ToolChoiceToolChoiceTool(type="tool", name=tool_choice)
-
-    def run(
-        self, messages: list[dict[str, Any]], tool_choice: str | None = None
-    ) -> FunctionCallingResults:
-        client = get_client(
+        self._client = get_client(
             api_type=self.api_type,
             api_key_env_name=self.api_key_env_name,
             auth_token_env_name=self.auth_token_env_name,
@@ -147,18 +131,38 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
             _strict_response_validation=self._strict_response_validation,
         )
 
-        response = completion(
-            client=client,
-            model_name=self.model_name,
+    def _get_client_tool_type(self) -> ClaudeToolConfig:
+        return ClaudeToolConfig
+
+    def _get_tool_choice(self, tool_choice: str | None) -> ToolChoice:
+        if tool_choice is None:
+            return NOT_GIVEN
+        elif tool_choice == "auto":
+            return ToolChoiceToolChoiceAuto(type="auto")
+        elif tool_choice == "any":
+            return ToolChoiceToolChoiceAny(type="any")
+        else:
+            return ToolChoiceToolChoiceTool(type="tool", name=tool_choice)
+
+    def run(
+        self, messages: list[dict[str, Any]], tool_choice: str | None = None
+    ) -> FunctionCallingResults:
+        response = self._client.generate_message(
+            model=self.model_name,
             messages=messages,
-            system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
+            metadata=NOT_GIVEN,
+            stop_sequences=NOT_GIVEN,
+            system=self.system_instruction,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
+            extra_headers=None,
+            extra_query=None,
+            extra_body=None,
             timeout=self.timeout,
             tools=self.tool_configs,
             tool_choice=self._get_tool_choice(tool_choice),
-            temperature=self.temperature,
-            top_k=self.top_k,
-            top_p=self.top_p,
         )
 
         contents = []
@@ -207,42 +211,22 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
     async def arun(
         self, messages: list[dict[str, Any]], tool_choice: str | None = None
     ) -> FunctionCallingResults:
-        client = get_async_client(
-            api_type=self.api_type,
-            api_key_env_name=self.api_key_env_name,
-            auth_token_env_name=self.auth_token_env_name,
-            endpoint_env_name=self.endpoint_env_name,
-            aws_secret_key_env_name=self.aws_secret_key_env_name,
-            aws_access_key_env_name=self.aws_access_key_env_name,
-            aws_region_env_name=self.aws_region_env_name,
-            aws_session_token_env_name=self.aws_session_token_env_name,
-            gc_region_env_name=self.gc_region_env_name,
-            gc_project_id_env_name=self.gc_project_id_env_name,
-            gc_access_token_env_name=self.gc_access_token_env_name,
-            credentials=self.credentials,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            default_headers=self.default_headers,
-            default_query=self.default_query,
-            http_client=self.http_client,
-            transport=self.transport,
-            proxies=self.proxies,
-            connection_pool_limits=self.connection_pool_limits,
-            _strict_response_validation=self._strict_response_validation,
-        )
-
-        response = await acompletion(
-            client=client,
-            model_name=self.model_name,
+        response = await self._client.generate_message_async(
+            model=self.model_name,
             messages=messages,
-            system_instruction=self.system_instruction,
             max_tokens=self.max_tokens,
+            metadata=NOT_GIVEN,
+            stop_sequences=NOT_GIVEN,
+            system=self.system_instruction,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            top_k=self.top_k,
+            extra_headers=None,
+            extra_query=None,
+            extra_body=None,
             timeout=self.timeout,
             tools=self.tool_configs,
             tool_choice=self._get_tool_choice(tool_choice),
-            temperature=self.temperature,
-            top_k=self.top_k,
-            top_p=self.top_p,
         )
 
         contents = []

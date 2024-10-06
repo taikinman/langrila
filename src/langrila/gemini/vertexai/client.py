@@ -11,86 +11,66 @@ from ...base import BaseClient
 from ...utils import create_parameters
 
 
-def get_vertexai_model(
-    model_name: str,
-    project_id_env_name: str,
-    location_env_name: str,
-    n_results: int = 1,
-    system_instruction: str | None = None,
-    max_output_tokens: int = 2048,
-    json_mode: bool = False,
-    experiment: str | None = None,
-    experiment_description: str | None = None,
-    experiment_tensorboard: str | tensorboard_resource.Tensorboard | bool | None = None,
-    staging_bucket: str | None = None,
-    credentials: auth_credentials.Credentials | None = None,
-    encryption_spec_key_name: str | None = None,
-    network: str | None = None,
-    service_account: str | None = None,
-    endpoint_env_name: str | None = None,
-    request_metadata: Sequence[tuple[str, str]] | None = None,
-    response_schema: dict[str, Any] | None = None,
-    presence_penalty: float | None = None,
-    frequency_penalty: float | None = None,
-    temperature: float | None = None,
-    top_p: float | None = None,
-    top_k: int | None = None,
-):
-    vertexai.init(
-        project=os.getenv(project_id_env_name),
-        location=os.getenv(location_env_name),
-        experiment=experiment,
-        experiment_description=experiment_description,
-        experiment_tensorboard=experiment_tensorboard,
-        staging_bucket=staging_bucket,
-        credentials=credentials,
-        encryption_spec_key_name=encryption_spec_key_name,
-        network=network,
-        service_account=service_account,
-        api_endpoint=os.getenv(endpoint_env_name) if endpoint_env_name else endpoint_env_name,
-        request_metadata=request_metadata,
-    )
-
-    generation_config = GenerationConfig(
-        candidate_count=n_results,
-        stop_sequences=None,
-        max_output_tokens=max_output_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        response_mime_type="text/plain" if not json_mode else "application/json",
-        response_schema=response_schema,
-        presence_penalty=presence_penalty,
-        frequency_penalty=frequency_penalty,
-    )
-
-    return GenerativeModel(
-        model_name=model_name,
-        system_instruction=system_instruction,
-        generation_config=generation_config,
-    )
-
-
-class GeminiVertexAIChat(BaseClient):
+class GeminiVertexAIClient(BaseClient):
     def __init__(self, **kwargs):
         self.configure_params = create_parameters(vertexai.init, **kwargs)
 
     @override
-    def generate_content(self, **kwargs) -> GenerationResponse | Iterable[GenerationResponse]:
+    def generate_message(self, **kwargs) -> GenerationResponse | Iterable[GenerationResponse]:
         vertexai.init(**self.configure_params)
 
-        generation_params = create_parameters(GenerativeModel.generate_content, **kwargs)
+        generation_config_params = create_parameters(GenerationConfig, **kwargs)
+        generation_config = GenerationConfig(**generation_config_params)
+
+        generation_params = create_parameters(
+            GenerativeModel.generate_content,
+            exclude=["generation_config", "safety_config"],
+            **kwargs,
+        )
 
         model = GenerativeModel(model_name=kwargs.get("model_name"))
-        return model.generate_content(**generation_params)
+        return model.generate_content(generation_config=generation_config, **generation_params)
 
     @override
-    async def generate_content_async(
+    async def generate_message_async(
         self, **kwargs
     ) -> GenerationResponse | AsyncIterable[GenerationResponse]:
         vertexai.init(**self.configure_params)
 
-        generation_params = create_parameters(GenerativeModel.generate_content, **kwargs)
+        generation_config_params = create_parameters(GenerationConfig, **kwargs)
+        generation_config = GenerationConfig(**generation_config_params)
+
+        generation_params = create_parameters(
+            GenerativeModel.generate_content_async,
+            exclude=["generation_config", "safety_config"],
+            **kwargs,
+        )
 
         model = GenerativeModel(model_name=kwargs.get("model_name"))
-        return model.generate_content_async(**generation_params)
+        return await model.generate_content_async(
+            generation_config=generation_config,
+            **generation_params,
+        )
+
+    def count_tokens(self, **kwargs) -> int:
+        vertexai.init(**self.configure_params)
+
+        model = GenerativeModel(model_name=kwargs.get("model_name"))
+        count_tokens_params = create_parameters(
+            GenerativeModel.count_tokens,
+            exclude=["model_name"],
+            **kwargs,
+        )
+
+        return model.count_tokens(**count_tokens_params)
+
+    async def count_tokens_async(self, **kwargs) -> int:
+        vertexai.init(**self.configure_params)
+
+        model = GenerativeModel(model_name=kwargs.get("model_name"))
+        count_tokens_params = create_parameters(
+            GenerativeModel.count_tokens_async,
+            exclude=["model_name"],
+            **kwargs,
+        )
+        return await model.count_tokens_async(**count_tokens_params)

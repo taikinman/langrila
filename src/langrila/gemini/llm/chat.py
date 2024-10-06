@@ -1,4 +1,5 @@
 import copy
+import os
 from typing import Any, AsyncGenerator, Generator, Optional, Sequence
 
 from google.auth import credentials as auth_credentials
@@ -13,7 +14,7 @@ from ...base import (
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
-from ..gemini_utils import get_message_cls, get_model
+from ..gemini_utils import get_client, get_message_cls
 
 
 class GeminiChatCoreModule(BaseChatModule):
@@ -80,40 +81,45 @@ class GeminiChatCoreModule(BaseChatModule):
 
         self.system_instruction = system_instruction
 
+        self._client = get_client(
+            api_key_env_name=api_key_env_name,
+            api_type=api_type,
+            project_id_env_name=project_id_env_name,
+            location_env_name=location_env_name,
+            experiment=experiment,
+            experiment_description=experiment_description,
+            experiment_tensorboard=experiment_tensorboard,
+            staging_bucket=staging_bucket,
+            credentials=credentials,
+            encryption_spec_key_name=encryption_spec_key_name,
+            network=network,
+            service_account=service_account,
+            endpoint_env_name=endpoint_env_name,
+            request_metadata=request_metadata,
+        )
+
     def run(
         self, messages: list[dict[str, str]], n_results: int | None = None
     ) -> CompletionResults:
         if n_results is not None and (self.api_type == "genai" and n_results > 1):
             raise ValueError("n_results > 1 is not supported for Google AI API")
 
-        model = get_model(
+        response = self._client.generate_message(
+            contents=messages,
             model_name=self.model_name,
-            api_key_env_name=self.api_key_env_name,
-            max_output_tokens=self.max_output_tokens,
-            json_mode=self.json_mode,
             system_instruction=self.system_instruction,
-            api_type=self.api_type,
-            project_id_env_name=self.project_id_env_name,
-            location_env_name=self.location_env_name,
-            experiment=self.experiment,
-            experiment_description=self.experiment_description,
-            experiment_tensorboard=self.experiment_tensorboard,
-            staging_bucket=self.staging_bucket,
-            credentials=self.credentials,
-            encryption_spec_key_name=self.encryption_spec_key_name,
-            network=self.network,
-            service_account=self.service_account,
-            endpoint_env_name=self.endpoint_env_name,
-            request_metadata=self.request_metadata,
-            response_schema=self.response_schema,
-            n_results=n_results,
-            presence_penalty=self.presence_penalty,
-            frequency_penalty=self.frequency_penalty,
+            candidate_count=n_results,
+            stop_sequences=None,
+            max_output_tokens=self.max_output_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
             top_k=self.top_k,
+            response_mime_type="text/plain" if not self.json_mode else "application/json",
+            response_schema=self.response_schema,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            **self.additional_kwargs,
         )
-        response = model.generate_content(contents=messages, **self.additional_kwargs)
 
         usage_metadata = response.usage_metadata
         parts = []
@@ -146,35 +152,22 @@ class GeminiChatCoreModule(BaseChatModule):
         if n_results is not None and (self.api_type == "genai" and n_results > 1):
             raise ValueError("n_results > 1 is not supported for Google AI API")
 
-        model = get_model(
+        response = await self._client.generate_message_async(
+            contents=messages,
             model_name=self.model_name,
-            api_key_env_name=self.api_key_env_name,
-            max_output_tokens=self.max_output_tokens,
-            json_mode=self.json_mode,
             system_instruction=self.system_instruction,
-            api_type=self.api_type,
-            project_id_env_name=self.project_id_env_name,
-            location_env_name=self.location_env_name,
-            experiment=self.experiment,
-            experiment_description=self.experiment_description,
-            experiment_tensorboard=self.experiment_tensorboard,
-            staging_bucket=self.staging_bucket,
-            credentials=self.credentials,
-            encryption_spec_key_name=self.encryption_spec_key_name,
-            network=self.network,
-            service_account=self.service_account,
-            endpoint_env_name=self.endpoint_env_name,
-            request_metadata=self.request_metadata,
-            response_schema=self.response_schema,
-            n_results=n_results,
-            presence_penalty=self.presence_penalty,
-            frequency_penalty=self.frequency_penalty,
+            candidate_count=n_results,
+            stop_sequences=None,
+            max_output_tokens=self.max_output_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
             top_k=self.top_k,
+            response_mime_type="text/plain" if not self.json_mode else "application/json",
+            response_schema=self.response_schema,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            **self.additional_kwargs,
         )
-
-        response = await model.generate_content_async(contents=messages, **self.additional_kwargs)
 
         usage_metadata = response.usage_metadata
         parts = []
@@ -204,37 +197,26 @@ class GeminiChatCoreModule(BaseChatModule):
     def stream(
         self, messages: list[dict[str, str | list[str]]]
     ) -> Generator[CompletionResults, None, None]:
-        model = get_model(
+        responses = self._client.generate_message(
+            contents=messages,
             model_name=self.model_name,
-            api_key_env_name=self.api_key_env_name,
-            max_output_tokens=self.max_output_tokens,
-            json_mode=self.json_mode,
             system_instruction=self.system_instruction,
-            api_type=self.api_type,
-            project_id_env_name=self.project_id_env_name,
-            location_env_name=self.location_env_name,
-            experiment=self.experiment,
-            experiment_description=self.experiment_description,
-            experiment_tensorboard=self.experiment_tensorboard,
-            staging_bucket=self.staging_bucket,
-            credentials=self.credentials,
-            encryption_spec_key_name=self.encryption_spec_key_name,
-            network=self.network,
-            service_account=self.service_account,
-            endpoint_env_name=self.endpoint_env_name,
-            request_metadata=self.request_metadata,
-            response_schema=self.response_schema,
-            n_results=1,
-            presence_penalty=self.presence_penalty,
-            frequency_penalty=self.frequency_penalty,
+            stop_sequences=None,
+            max_output_tokens=self.max_output_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
             top_k=self.top_k,
+            response_mime_type="text/plain" if not self.json_mode else "application/json",
+            response_schema=self.response_schema,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            stream=True,
+            **self.additional_kwargs,
         )
-        responses = model.generate_content(contents=messages, stream=True, **self.additional_kwargs)
 
         chunk_all = ""
         for response in responses:
+            usage_metadata = response.usage_metadata
             content = response.candidates[0].content
             if content.parts[0].text:
                 chunk_all += content.parts[0].text
@@ -257,8 +239,8 @@ class GeminiChatCoreModule(BaseChatModule):
             message=last_content,
             usage=Usage(
                 model_name=self.model_name,
-                prompt_tokens=model.count_tokens(messages).total_tokens,
-                completion_tokens=model.count_tokens(chunk_all).total_tokens,
+                prompt_tokens=usage_metadata.prompt_token_count,
+                completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
         )
@@ -266,39 +248,26 @@ class GeminiChatCoreModule(BaseChatModule):
     async def astream(
         self, messages: list[dict[str, str]]
     ) -> AsyncGenerator[CompletionResults, None]:
-        model = get_model(
+        responses = await self._client.generate_message_async(
+            contents=messages,
             model_name=self.model_name,
-            api_key_env_name=self.api_key_env_name,
-            max_output_tokens=self.max_output_tokens,
-            json_mode=self.json_mode,
             system_instruction=self.system_instruction,
-            api_type=self.api_type,
-            project_id_env_name=self.project_id_env_name,
-            location_env_name=self.location_env_name,
-            experiment=self.experiment,
-            experiment_description=self.experiment_description,
-            experiment_tensorboard=self.experiment_tensorboard,
-            staging_bucket=self.staging_bucket,
-            credentials=self.credentials,
-            encryption_spec_key_name=self.encryption_spec_key_name,
-            network=self.network,
-            service_account=self.service_account,
-            endpoint_env_name=self.endpoint_env_name,
-            request_metadata=self.request_metadata,
-            response_schema=self.response_schema,
-            n_results=1,
-            presence_penalty=self.presence_penalty,
-            frequency_penalty=self.frequency_penalty,
+            stop_sequences=None,
+            max_output_tokens=self.max_output_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
             top_k=self.top_k,
-        )
-        responses = await model.generate_content_async(
-            contents=messages, stream=True, **self.additional_kwargs
+            response_mime_type="text/plain" if not self.json_mode else "application/json",
+            response_schema=self.response_schema,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            stream=True,
+            **self.additional_kwargs,
         )
 
         chunk_all = ""
         async for _response in responses:
+            usage_metadata = _response.usage_metadata
             content = _response.candidates[0].content
             if content.parts[0].text:
                 chunk_all += content.parts[0].text
@@ -322,8 +291,8 @@ class GeminiChatCoreModule(BaseChatModule):
             message=last_content,
             usage=Usage(
                 model_name=self.model_name,
-                prompt_tokens=(await model.count_tokens_async(messages)).total_tokens,
-                completion_tokens=(await model.count_tokens_async(chunk_all)).total_tokens,
+                prompt_tokens=usage_metadata.prompt_token_count,
+                completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
         )

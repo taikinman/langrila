@@ -1,8 +1,10 @@
 from copy import deepcopy
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, Literal, Mapping
 
+import httpx
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from openai._types import NOT_GIVEN, NotGiven
+from openai.lib.azure import AzureADTokenProvider
 from openai.types.chat import ChatCompletionAssistantMessageParam
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
@@ -16,150 +18,33 @@ from ...base import (
 from ...llm_wrapper import ChatWrapperModule
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
+from ...warnings import change_function
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
-from ..openai_utils import get_async_client, get_client, get_n_tokens, get_token_limit
-
-
-def completion(
-    client: OpenAI | AzureOpenAI,
-    model_name: str,
-    messages: Any,
-    max_tokens: int,
-    stream: bool,
-    top_p: float | NotGiven = NOT_GIVEN,
-    stop: str | NotGiven = NOT_GIVEN,
-    frequency_penalty: float | NotGiven = NOT_GIVEN,
-    n_results: int | NotGiven = NOT_GIVEN,
-    presence_penalty: float | NotGiven = NOT_GIVEN,
-    temperature: float | NotGiven = NOT_GIVEN,
-    user: str | NotGiven = NOT_GIVEN,
-    **kwargs,
-):
-    params = dict(
-        model=model_name,
-        messages=messages,
-        temperature=temperature,
-        max_completion_tokens=max_tokens,
-        top_p=top_p,
-        frequency_penalty=frequency_penalty,
-        presence_penalty=presence_penalty,
-        stop=stop,
-        stream=stream,
-        n=n_results,
-        user=user,
-        **kwargs,
-    )
-
-    return client.chat.completions.create(**params)
-
-
-async def acompletion(
-    client: AsyncOpenAI | AsyncAzureOpenAI,
-    model_name: str,
-    messages: Any,
-    max_tokens: int,
-    stream: bool,
-    top_p: float | NotGiven = NOT_GIVEN,
-    stop: str | NotGiven = NOT_GIVEN,
-    frequency_penalty: float | NotGiven = NOT_GIVEN,
-    n_results: int | NotGiven = NOT_GIVEN,
-    presence_penalty: float | NotGiven = NOT_GIVEN,
-    temperature: float | NotGiven = NOT_GIVEN,
-    user: str | NotGiven = NOT_GIVEN,
-    **kwargs,
-):
-    params = dict(
-        model=model_name,
-        messages=messages,
-        temperature=temperature,
-        max_completion_tokens=max_tokens,
-        top_p=top_p,
-        frequency_penalty=frequency_penalty,
-        presence_penalty=presence_penalty,
-        stop=stop,
-        stream=stream,
-        n=n_results,
-        user=user,
-        **kwargs,
-    )
-
-    return await client.chat.completions.create(**params)
-
-
-def parse(
-    client: OpenAI | AzureOpenAI,
-    model_name: str,
-    messages: Any,
-    max_tokens: int,
-    top_p: float | NotGiven = NOT_GIVEN,
-    stop: str | NotGiven = NOT_GIVEN,
-    frequency_penalty: float | NotGiven = NOT_GIVEN,
-    n_results: int | NotGiven = NOT_GIVEN,
-    presence_penalty: float | NotGiven = NOT_GIVEN,
-    temperature: float | NotGiven = NOT_GIVEN,
-    user: str | NotGiven = NOT_GIVEN,
-    **kwargs,
-):
-    params = dict(
-        model=model_name,
-        messages=messages,
-        temperature=temperature,
-        max_completion_tokens=max_tokens,
-        top_p=top_p,
-        frequency_penalty=frequency_penalty,
-        presence_penalty=presence_penalty,
-        stop=stop,
-        n=n_results,
-        user=user,
-        **kwargs,
-    )
-
-    return client.beta.chat.completions.parse(**params)
-
-
-async def aparse(
-    client: AsyncOpenAI | AsyncAzureOpenAI,
-    model_name: str,
-    messages: Any,
-    max_tokens: int,
-    top_p: float | NotGiven = NOT_GIVEN,
-    stop: str | NotGiven = NOT_GIVEN,
-    frequency_penalty: float | NotGiven = NOT_GIVEN,
-    n_results: int | NotGiven = NOT_GIVEN,
-    presence_penalty: float | NotGiven = NOT_GIVEN,
-    temperature: float | NotGiven = NOT_GIVEN,
-    user: str | NotGiven = NOT_GIVEN,
-    **kwargs,
-):
-    params = dict(
-        model=model_name,
-        messages=messages,
-        temperature=temperature,
-        max_completion_tokens=max_tokens,
-        top_p=top_p,
-        frequency_penalty=frequency_penalty,
-        presence_penalty=presence_penalty,
-        stop=stop,
-        n=n_results,
-        user=user,
-        **kwargs,
-    )
-
-    return await client.beta.chat.completions.parse(**params)
+from ..openai_utils import get_client, get_n_tokens, get_token_limit
 
 
 class OpenAIChatCoreModule(BaseChatModule):
+    @change_function("temperature", "run()/arun()/stream()/astream()")
+    @change_function("max_tokens", "run()/arun()/stream()/astream()")
+    @change_function("max_completion_tokens", "run()/arun()/stream()/astream()")
+    @change_function("top_p", "run()/arun()/stream()/astream()")
+    @change_function("frequency_penalty", "run()/arun()/stream()/astream()")
+    @change_function("presence_penalty", "run()/arun()/stream()/astream()")
+    @change_function("user", "run()/arun()/stream()/astream()")
+    @change_function("seed", "run()/arun()/stream()/astream()")
+    @change_function("response_format", "run()/arun()/stream()/astream()")
     def __init__(
         self,
         api_key_env_name: str,
         model_name: str,
         organization_id_env_name: str | None = None,
-        api_type: str = "openai",
+        api_type: Literal["openai", "azure"] = "openai",
         api_version: str | None = None,
         endpoint_env_name: str | None = None,
         deployment_id_env_name: str | None = None,
-        max_tokens: int = 2048,
+        max_tokens: int | NotGiven = NOT_GIVEN,
+        max_completion_tokens: int | NotGiven = NOT_GIVEN,
         timeout: int = 60,
         max_retries: int = 2,
         seed: int | NotGiven = NOT_GIVEN,
@@ -172,17 +57,21 @@ class OpenAIChatCoreModule(BaseChatModule):
         temperature: float | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
         response_schema: BaseModel | None = None,
+        project: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        azure_ad_token: str | None = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        http_client: httpx.Client | None = None,
+        _strict_response_validation: bool = False,
     ) -> None:
-        assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
-        if api_type == "azure":
-            assert (
-                api_version and endpoint_env_name and deployment_id_env_name
-            ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified for Azure API."
-
         self.api_key_env_name = api_key_env_name
         self.model_name = model_name
         self.organization_id_env_name = organization_id_env_name
+
         self.max_tokens = max_tokens
+        self.max_completion_tokens = max_completion_tokens
         self.timeout = timeout
         self.max_retries = max_retries
         self.api_type = api_type
@@ -219,6 +108,25 @@ class OpenAIChatCoreModule(BaseChatModule):
 
         self.conversation_length_adjuster = conversation_length_adjuster
 
+        self._client = get_client(
+            api_key_env_name=self.api_key_env_name,
+            organization_id_env_name=self.organization_id_env_name,
+            api_version=self.api_version,
+            endpoint_env_name=self.endpoint_env_name,
+            deployment_id_env_name=self.deployment_id_env_name,
+            api_type=self.api_type,
+            max_retries=self.max_retries,
+            timeout=self.timeout,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
+        )
+
     def run(
         self, messages: list[dict[str, str]], n_results: int | NotGiven = NOT_GIVEN
     ) -> CompletionResults:
@@ -228,52 +136,29 @@ class OpenAIChatCoreModule(BaseChatModule):
         if not isinstance(messages, list):
             raise ValueError("messages type must be list.")
 
-        client = get_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
-        )
-
         _messages = [self.system_instruction] + messages if self.system_instruction else messages
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        if isinstance(self.response_format, ModelMetaclass):
-            response = parse(
-                client=client,
-                model_name=self.model_name,
-                messages=_messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                frequency_penalty=self.frequency_penalty,
-                presence_penalty=self.presence_penalty,
-                stop=NOT_GIVEN,
-                n_results=n_results,
-                user=self.user,
-                **self.additional_inputs,
-            )
-        else:
-            response = completion(
-                client=client,
-                model_name=self.model_name,
-                messages=_messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                frequency_penalty=self.frequency_penalty,
-                presence_penalty=self.presence_penalty,
-                stop=NOT_GIVEN,
-                stream=False,
-                n_results=n_results,
-                user=self.user,
-                **self.additional_inputs,
-            )
+        token_arg = {}
+        if self.max_tokens is not NOT_GIVEN:
+            token_arg["max_tokens"] = self.max_tokens
+        if self.max_completion_tokens is not NOT_GIVEN:
+            token_arg["max_completion_tokens"] = self.max_completion_tokens
+
+        response = self._client.generate_message(
+            model=self.model_name,
+            messages=_messages,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
+            stop=NOT_GIVEN,
+            n=n_results,
+            user=self.user,
+            **self.additional_inputs,
+            **token_arg,
+        )
 
         usage = Usage(model_name=self.model_name)
         usage += response.usage
@@ -298,52 +183,29 @@ class OpenAIChatCoreModule(BaseChatModule):
         if not isinstance(messages, list):
             raise ValueError("messages type must be list.")
 
-        client = get_async_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
-        )
-
         _messages = [self.system_instruction] + messages if self.system_instruction else messages
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        if isinstance(self.response_format, ModelMetaclass):
-            response = await aparse(
-                client=client,
-                model_name=self.model_name,
-                messages=_messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                frequency_penalty=self.frequency_penalty,
-                presence_penalty=self.presence_penalty,
-                stop=NOT_GIVEN,
-                n_results=n_results,
-                user=self.user,
-                **self.additional_inputs,
-            )
-        else:
-            response = await acompletion(
-                client=client,
-                model_name=self.model_name,
-                messages=_messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                frequency_penalty=self.frequency_penalty,
-                presence_penalty=self.presence_penalty,
-                stop=NOT_GIVEN,
-                stream=False,
-                n_results=n_results,
-                user=self.user,
-                **self.additional_inputs,
-            )
+        token_arg = {}
+        if self.max_tokens is not NOT_GIVEN:
+            token_arg["max_tokens"] = self.max_tokens
+        if self.max_completion_tokens is not NOT_GIVEN:
+            token_arg["max_completion_tokens"] = self.max_completion_tokens
+
+        response = await self._client.generate_message_async(
+            model=self.model_name,
+            messages=_messages,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
+            stop=NOT_GIVEN,
+            n=n_results,
+            user=self.user,
+            **self.additional_inputs,
+            **token_arg,
+        )
 
         usage = Usage(model_name=self.model_name)
         usage += response.usage
@@ -359,49 +221,44 @@ class OpenAIChatCoreModule(BaseChatModule):
             prompt=deepcopy(_messages),
         )
 
-    def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
+    def stream(
+        self, messages: list[dict[str, str]], stream_options: dict[str, Any] | None = None
+    ) -> Generator[CompletionResults, None, None]:
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
 
         if not isinstance(messages, list):
             raise ValueError("messages type must be list.")
 
-        client = get_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
-        )
-
         _messages = [self.system_instruction] + messages if self.system_instruction else messages
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        if self.api_type == "openai":
-            stream_options = {"include_usage": True}
-            additional_inputs = self.additional_inputs | {"stream_options": stream_options}
+        if stream_options is None:
+            stream_options = {"stream_options": {"include_usage": True}}
         else:
-            # Azure OpenAI does not support stream_options
-            additional_inputs = self.additional_inputs
+            stream_options = {"stream_options": stream_options | {"include_usage": True}}
 
-        response = completion(
-            client=client,
-            model_name=self.model_name,
+        additional_inputs = self.additional_inputs | stream_options
+
+        token_arg = {}
+        if self.max_tokens is not NOT_GIVEN:
+            token_arg["max_tokens"] = self.max_tokens
+        if self.max_completion_tokens is not NOT_GIVEN:
+            token_arg["max_completion_tokens"] = self.max_completion_tokens
+
+        response = self._client.generate_message(
+            model=self.model_name,
             messages=_messages,
             temperature=self.temperature,
-            max_tokens=self.max_tokens,
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
             stop=NOT_GIVEN,
-            stream=True,
-            n_results=1,
             user=self.user,
+            stream=True,
             **additional_inputs,
+            **token_arg,
         )
 
         all_chunk = ""
@@ -422,23 +279,9 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
-                    else:
-                        if self.api_type == "azure":
-                            # Azure OpenAI does not return prompt_tokens and completion_tokens
-                            prompt_tokens = sum(
-                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
-                            )
-
-                            completion_tokens = get_n_tokens(
-                                ChatCompletionAssistantMessageParam(
-                                    role="assistant",
-                                    content=[{"type": "text", "text": all_chunk}],
-                                ),
-                                self.model_name,
-                            )["total"]
 
             else:
-                if self.api_type == "openai":
+                if r.usage:
                     prompt_tokens = r.usage.prompt_tokens
                     completion_tokens = r.usage.completion_tokens
 
@@ -459,7 +302,7 @@ class OpenAIChatCoreModule(BaseChatModule):
         )
 
     async def astream(
-        self, messages: list[dict[str, str]]
+        self, messages: list[dict[str, str]], stream_options: dict[str, Any] | None = None
     ) -> AsyncGenerator[CompletionResults, None]:
         if len(messages) == 0:
             raise ValueError("messages must not be empty.")
@@ -467,42 +310,35 @@ class OpenAIChatCoreModule(BaseChatModule):
         if not isinstance(messages, list):
             raise ValueError("messages type must be list.")
 
-        client = get_async_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
-        )
-
         _messages = [self.system_instruction] + messages if self.system_instruction else messages
         if self.conversation_length_adjuster:
             _messages = self.conversation_length_adjuster.run(_messages)
 
-        if self.api_type == "openai":
-            stream_options = {"include_usage": True}
-            additional_inputs = self.additional_inputs | {"stream_options": stream_options}
+        if stream_options is None:
+            stream_options = {"stream_options": {"include_usage": True}}
         else:
-            # Azure OpenAI does not support stream_options
-            additional_inputs = self.additional_inputs
+            stream_options = {"stream_options": stream_options | {"include_usage": True}}
 
-        response = await acompletion(
-            client=client,
-            model_name=self.model_name,
+        additional_inputs = self.additional_inputs | stream_options
+
+        token_arg = {}
+        if self.max_tokens is not NOT_GIVEN:
+            token_arg["max_tokens"] = self.max_tokens
+        if self.max_completion_tokens is not NOT_GIVEN:
+            token_arg["max_completion_tokens"] = self.max_completion_tokens
+
+        response = await self._client.generate_message_async(
+            model=self.model_name,
             messages=_messages,
             temperature=self.temperature,
-            max_tokens=self.max_tokens,
             top_p=self.top_p,
             frequency_penalty=self.frequency_penalty,
             presence_penalty=self.presence_penalty,
             stop=NOT_GIVEN,
-            stream=True,
-            n_results=1,
             user=self.user,
+            stream=True,
             **additional_inputs,
+            **token_arg,
         )
 
         all_chunk = ""
@@ -523,23 +359,9 @@ class OpenAIChatCoreModule(BaseChatModule):
                             ),
                             prompt=[{}],
                         )
-                    else:
-                        if self.api_type == "azure":
-                            # Azure OpenAI does not return prompt_tokens and completion_tokens
-                            prompt_tokens = sum(
-                                [get_n_tokens(m, self.model_name)["total"] for m in messages]
-                            )
-
-                            completion_tokens = get_n_tokens(
-                                ChatCompletionAssistantMessageParam(
-                                    role="assistant",
-                                    content=[{"type": "text", "text": all_chunk}],
-                                ),
-                                self.model_name,
-                            )["total"]
 
             else:
-                if self.api_type == "openai":
+                if r.usage:
                     prompt_tokens = r.usage.prompt_tokens
                     completion_tokens = r.usage.completion_tokens
 

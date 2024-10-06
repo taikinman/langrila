@@ -103,10 +103,10 @@ class BaseConversationMemory(ABC):
 
 
 class BaseClient(ABC):
-    def generate_content(self, **kwargs) -> Any:
+    def generate_message(self, **kwargs) -> Any:
         raise NotImplementedError
 
-    async def generate_content_async(self, **kwargs) -> Any:
+    async def generate_message_async(self, **kwargs) -> Any:
         raise NotImplementedError
 
 

@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 from typing import Any, Callable, Optional, Sequence
 
 from google.auth import credentials as auth_credentials
@@ -22,7 +23,6 @@ from ..gemini_utils import (
     get_call_config,
     get_client_tool_type,
     get_message_cls,
-    get_model,
     get_tool_cls,
 )
 
@@ -98,6 +98,32 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
         function_declarations = [config.format() for config in client_tool_configs]
         self.tool_configs = [tool_cls(function_declarations=function_declarations)]
 
+        if self.api_type == "genai":
+            from ..genai.client import GeminiAIStudioClient
+
+            self._client = GeminiAIStudioClient(
+                api_key=os.getenv(self.api_key_env_name),
+            )
+
+        else:
+            from ..vertexai.client import GeminiVertexAIClient
+
+            self._client = GeminiVertexAIClient(
+                project=os.getenv(self.project_id_env_name),
+                location=os.getenv(self.location_env_name),
+                experiment=self.experiment,
+                experiment_description=self.experiment_description,
+                experiment_tensorboard=self.experiment_tensorboard,
+                staging_bucket=self.staging_bucket,
+                credentials=self.credentials,
+                encryption_spec_key_name=self.encryption_spec_key_name,
+                network=self.network,
+                service_account=self.service_account,
+                api_endpoint=os.getenv(self.endpoint_env_name) if endpoint_env_name else None,
+                request_metadata=self.request_metadata,
+                api_key=os.getenv(api_key_env_name) if api_key_env_name else None,
+            )
+
     def _get_call_config(self, tool_choice: str | None = "auto"):
         return get_call_config(api_type=self.api_type, tool_choice=tool_choice)
 
@@ -107,41 +133,24 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
     def run(
         self, messages: list[dict[str, str]], tool_choice: list[str] | str | None = "auto"
     ) -> FunctionCallingResults:
-        model = get_model(
+        call_config = self._get_call_config(tool_choice=tool_choice)
+
+        response = self._client.generate_message(
+            contents=messages,
             model_name=self.model_name,
-            api_key_env_name=self.api_key_env_name,
-            max_output_tokens=self.max_output_tokens,
-            json_mode=self.json_mode,
             system_instruction=self.system_instruction,
-            api_type=self.api_type,
-            project_id_env_name=self.project_id_env_name,
-            location_env_name=self.location_env_name,
-            experiment=self.experiment,
-            experiment_description=self.experiment_description,
-            experiment_tensorboard=self.experiment_tensorboard,
-            staging_bucket=self.staging_bucket,
-            credentials=self.credentials,
-            encryption_spec_key_name=self.encryption_spec_key_name,
-            network=self.network,
-            service_account=self.service_account,
-            endpoint_env_name=self.endpoint_env_name,
-            request_metadata=self.request_metadata,
-            n_results=1,
-            presence_penalty=self.presence_penalty,
-            frequency_penalty=self.frequency_penalty,
+            stop_sequences=None,
+            max_output_tokens=self.max_output_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
             top_k=self.top_k,
-        )
-
-        call_config = self._get_call_config(tool_choice=tool_choice)
-
-        response = model.generate_content(
-            contents=messages,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
             tools=self.tool_configs,
             tool_config=call_config,
             **self.additional_kwargs,
         )
+
         parts = response.candidates[0].content.parts
 
         results = []
@@ -183,41 +192,24 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
     async def arun(
         self, messages: list[dict[str, str]], tool_choice: list[str] | str | None = "auto"
     ) -> FunctionCallingResults:
-        model = get_model(
+        call_config = self._get_call_config(tool_choice=tool_choice)
+
+        response = await self._client.generate_message_async(
+            contents=messages,
             model_name=self.model_name,
-            api_key_env_name=self.api_key_env_name,
-            max_output_tokens=self.max_output_tokens,
-            json_mode=self.json_mode,
             system_instruction=self.system_instruction,
-            api_type=self.api_type,
-            project_id_env_name=self.project_id_env_name,
-            location_env_name=self.location_env_name,
-            experiment=self.experiment,
-            experiment_description=self.experiment_description,
-            experiment_tensorboard=self.experiment_tensorboard,
-            staging_bucket=self.staging_bucket,
-            credentials=self.credentials,
-            encryption_spec_key_name=self.encryption_spec_key_name,
-            network=self.network,
-            service_account=self.service_account,
-            endpoint_env_name=self.endpoint_env_name,
-            request_metadata=self.request_metadata,
-            n_results=1,
-            presence_penalty=self.presence_penalty,
-            frequency_penalty=self.frequency_penalty,
+            stop_sequences=None,
+            max_output_tokens=self.max_output_tokens,
             temperature=self.temperature,
             top_p=self.top_p,
             top_k=self.top_k,
-        )
-
-        call_config = self._get_call_config(tool_choice=tool_choice)
-
-        response = await model.generate_content_async(
-            contents=messages,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
             tools=self.tool_configs,
             tool_config=call_config,
             **self.additional_kwargs,
         )
+
         parts = response.candidates[0].content.parts
 
         results = []

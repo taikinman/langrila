@@ -11,43 +11,7 @@ from ...base import BaseClient
 from ...utils import create_parameters
 
 
-def get_genai_model(
-    model_name: str,
-    api_key_env_name: str,
-    n_results: int = 1,
-    system_instruction: Optional[ContentType] = None,
-    max_output_tokens: int = 2048,
-    json_mode: bool = False,
-    response_schema: dict[str, Any] | None = None,
-    temperature: float | None = None,
-    top_p: float | None = None,
-    top_k: int | None = None,
-):
-    if api_key_env_name is None:
-        raise ValueError("api_key_env_name must be provided to use the Gemini API.")
-
-    generation_config = GenerationConfig(
-        candidate_count=n_results,
-        stop_sequences=None,
-        max_output_tokens=max_output_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        response_mime_type="text/plain" if not json_mode else "application/json",
-        response_schema=response_schema,
-    )
-
-    genai.configure(api_key=os.getenv(api_key_env_name))
-    return genai.GenerativeModel(
-        model_name=model_name,
-        system_instruction=system_instruction,
-        generation_config=generation_config,
-    )
-
-
-class GeminiAIStudioChat(BaseClient):
-    __doc__ = genai.configure.__doc__
-
+class GeminiAIStudioClient(BaseClient):
     def __init__(
         self,
         **kwargs,
@@ -55,21 +19,63 @@ class GeminiAIStudioChat(BaseClient):
         self.configure_params = create_parameters(genai.configure, **kwargs)
 
     @override
-    def generate_content(self, **kwargs) -> generation_types.GenerateContentResponse:
+    def generate_message(self, **kwargs) -> generation_types.GenerateContentResponse:
         genai.configure(**self.configure_params)
 
-        generation_params = create_parameters(genai.GenerativeModel.generate_content, **kwargs)
+        generation_config_params = create_parameters(GenerationConfig, **kwargs)
+        generation_config = GenerationConfig(**generation_config_params)
+
+        generation_params = create_parameters(
+            genai.GenerativeModel.generate_content,
+            exclude=["generation_config", "safety_config"],
+            **kwargs,
+        )
 
         model = genai.GenerativeModel(model_name=kwargs.get("model_name"))
-        return model.generate_content(**generation_params)
+        return model.generate_content(
+            generation_config=generation_config,
+            **generation_params,
+        )
 
     @override
-    async def generate_content_async(
+    async def generate_message_async(
         self, **kwargs
     ) -> generation_types.AsyncGenerateContentResponse:
         genai.configure(**self.configure_params)
 
-        generation_params = create_parameters(genai.GenerativeModel.generate_content, **kwargs)
+        generation_config_params = create_parameters(GenerationConfig, **kwargs)
+        generation_config = GenerationConfig(**generation_config_params)
+
+        generation_params = create_parameters(
+            genai.GenerativeModel.generate_content_async,
+            exclude=["generation_config", "safety_config"],
+            **kwargs,
+        )
 
         model = genai.GenerativeModel(model_name=kwargs.get("model_name"))
-        return await model.generate_content_async(**generation_params)
+        return await model.generate_content_async(
+            generation_config=generation_config,
+            **generation_params,
+        )
+
+    def count_tokens(self, **kwargs) -> int:
+        genai.configure(**self.configure_params)
+
+        model = genai.GenerativeModel(model_name=kwargs.get("model_name"))
+        count_tokens_params = create_parameters(
+            genai.GenerativeModel.count_tokens,
+            exclude=["model_name"],
+            **kwargs,
+        )
+        return model.count_tokens(**count_tokens_params)
+
+    async def count_tokens_async(self, **kwargs) -> int:
+        genai.configure(**self.configure_params)
+
+        model = genai.GenerativeModel(model_name=kwargs.get("model_name"))
+        count_tokens_params = create_parameters(
+            genai.GenerativeModel.count_tokens_async,
+            exclude=["model_name"],
+            **kwargs,
+        )
+        return await model.count_tokens_async(**count_tokens_params)
