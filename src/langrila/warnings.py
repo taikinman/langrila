@@ -36,8 +36,8 @@ def deprecated_argument(
                 if since:
                     message += f" {arg} in {func.__name__} will be deprecated {since}"
 
-                if removal:
-                    message += f" And will be removed in version {removal}."
+                    if removal:
+                        message += f" and will be removed in version {removal}."
 
                 if not message.endswith("."):
                     message += "."
