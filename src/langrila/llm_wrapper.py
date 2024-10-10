@@ -150,6 +150,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        **kwargs,
     ) -> Generator[CompletionResults, None, None]:
         ClientMessage = self._get_client_message_type()
 
@@ -180,7 +181,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             _messages = self.content_filter.apply(_messages)
 
         # Run the model
-        response = self.chat_model.stream(_messages)
+        response = self.chat_model.stream(_messages, **kwargs)
 
         for chunk in response:
             if isinstance(chunk, CompletionResults):
@@ -211,6 +212,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        **kwargs,
     ) -> AsyncGenerator[CompletionResults, None]:
         ClientMessage = self._get_client_message_type()
 
@@ -241,7 +243,7 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
             _messages = self.content_filter.apply(_messages)
 
         # Run the model
-        response = self.chat_model.astream(_messages)
+        response = self.chat_model.astream(_messages, **kwargs)
 
         async for chunk in response:
             if isinstance(chunk, CompletionResults):
