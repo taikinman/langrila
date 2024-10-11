@@ -111,9 +111,8 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
 
         contents = []
         calls = []
-        model = response.model
         usage = Usage(
-            model_name=model,
+            model_name=kwargs.get("model"),
             prompt_tokens=response.usage.input_tokens,
             completion_tokens=response.usage.output_tokens,
         )
@@ -150,6 +149,7 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
             results=contents,
             prompt=copy.deepcopy(messages),
             calls=calls,
+            raw=response,
         )
 
     async def arun(
@@ -166,9 +166,8 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
 
         contents = []
         calls = []
-        model = response.model
         usage = Usage(
-            model_name=model,
+            model_name=kwargs.get("model"),
             prompt_tokens=response.usage.input_tokens,
             completion_tokens=response.usage.output_tokens,
         )
@@ -205,6 +204,7 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
             results=contents,
             prompt=copy.deepcopy(messages),
             calls=calls,
+            raw=response,
         )
 
 
@@ -244,6 +244,13 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         temperature: float | NotGiven = NOT_GIVEN,
         top_k: int | NotGiven = NOT_GIVEN,
         top_p: float | NotGiven = NOT_GIVEN,
+        metadata: message_create_params.Metadata | NotGiven = NOT_GIVEN,
+        stop_sequences: list[str] | NotGiven = NOT_GIVEN,
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        tool_choice: Literal["auto", "any"] | str = "auto",
+        **kwargs: Any,
     ):
         self.model_name = model_name
         self.tools = tools
@@ -275,6 +282,12 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         self.temperature = temperature
         self.top_k = top_k
         self.top_p = top_p
+        self.metadata = metadata
+        self.stop_sequences = stop_sequences
+        self.extra_headers = extra_headers
+        self.extra_query = extra_query
+        self.extra_body = extra_body
+        self.tool_choice = tool_choice
 
         # The module to call client API
         function_calling_model = AnthropicFunctionCallingCoreModule(
@@ -328,15 +341,15 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         _kwargs = {}
         _kwargs["model"] = kwargs.get("model_name") or self.model_name
         _kwargs["max_tokens"] = kwargs.get("max_tokens") or self.max_tokens
-        _kwargs["metadata"] = kwargs.get("metadata")
-        _kwargs["stop_sequences"] = kwargs.get("stop_sequences")
+        _kwargs["metadata"] = kwargs.get("metadata") or self.metadata
+        _kwargs["stop_sequences"] = kwargs.get("stop_sequences") or self.stop_sequences
         _kwargs["system"] = kwargs.get("system_instruction") or self.system_instruction
         _kwargs["temperature"] = kwargs.get("temperature") or self.temperature
         _kwargs["top_k"] = kwargs.get("top_k") or self.top_k
         _kwargs["top_p"] = kwargs.get("top_p") or self.top_p
-        _kwargs["extra_headers"] = kwargs.get("extra_headers")
-        _kwargs["extra_query"] = kwargs.get("extra_query")
-        _kwargs["extra_body"] = kwargs.get("extra_body")
+        _kwargs["extra_headers"] = kwargs.get("extra_headers") or self.extra_headers
+        _kwargs["extra_query"] = kwargs.get("extra_query") or self.extra_query
+        _kwargs["extra_body"] = kwargs.get("extra_body") or self.extra_body
         _kwargs["timeout"] = kwargs.get("timeout") or self.timeout
 
         ClientToolConfig = self._get_client_tool_type()
@@ -351,7 +364,9 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
 
         _kwargs["tools"] = tool_configs
         _kwargs["runnable_tools_dict"] = tools
-        _kwargs["tool_choice"] = self._get_tool_choice(kwargs.get("tool_choice"))
+        _kwargs["tool_choice"] = self._get_tool_choice(
+            kwargs.get("tool_choice") or self.tool_choice
+        )
 
         return _kwargs
 
@@ -373,7 +388,7 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         top_p: float | NotGiven = NOT_GIVEN,
         tools: list[Callable] | NotGiven = NOT_GIVEN,
         tool_configs: list[ToolConfig] | NotGiven = NOT_GIVEN,
-        tool_choice: message_create_params.ToolChoice | NotGiven = NOT_GIVEN,
+        tool_choice: Literal["auto", "any"] | str = "auto",
         **kwargs: Any,
     ) -> FunctionCallingResults:
         generation_kwargs = self._get_generation_kwargs(
@@ -419,7 +434,7 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         top_p: float | NotGiven = NOT_GIVEN,
         tools: list[Callable] | NotGiven = NOT_GIVEN,
         tool_configs: list[ToolConfig] | NotGiven = NOT_GIVEN,
-        tool_choice: message_create_params.ToolChoice | NotGiven = NOT_GIVEN,
+        tool_choice: Literal["auto", "any"] | str = "auto",
         **kwargs: Any,
     ) -> FunctionCallingResults:
         generation_kwargs = self._get_generation_kwargs(

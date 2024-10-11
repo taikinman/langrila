@@ -113,6 +113,7 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
             results=results,
             calls=calls,
             prompt=copy.deepcopy(messages),
+            raw=response,
         )
 
     async def arun(
@@ -163,6 +164,7 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
             results=results,
             calls=calls,
             prompt=copy.deepcopy(messages),
+            raw=response,
         )
 
 
@@ -201,6 +203,8 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         logprobs: int | None = None,
         response_logprobs: bool | None = None,
         seed: int | None = None,
+        stop_sequences: Iterable[str] | None = None,
+        tool_choice: str = "auto",
         **kwargs: Any,
     ):
         self.model_name = model_name
@@ -232,6 +236,8 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         self.logprobs = logprobs
         self.response_logprobs = response_logprobs
         self.seed = seed
+        self.stop_sequences = stop_sequences
+        self.tool_choice = tool_choice
 
         # The module to call client API
         function_calling_model = GeminiFunctionCallingCoreModule(
@@ -272,7 +278,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         _kwargs["temperature"] = kwargs.get("temperature") or self.temperature
         _kwargs["top_p"] = kwargs.get("top_p") or self.top_p
         _kwargs["top_k"] = kwargs.get("top_k") or self.top_k
-        _kwargs["stop_sequences"] = kwargs.get("stop_sequences")
+        _kwargs["stop_sequences"] = kwargs.get("stop_sequences") or self.stop_sequences
         _kwargs["frequency_penalty"] = kwargs.get("frequency_penalty ") or self.frequency_penalty
         _kwargs["presence_penalty"] = kwargs.get("presence_penalty") or self.presence_penalty
         _kwargs["seed"] = kwargs.get("seed") or self.seed
@@ -290,7 +296,9 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
                 timeout=kwargs.get("timeout") or 60,
             )
 
-        _kwargs["tool_config"] = self._get_call_config(tool_choice=kwargs.get("tool_choice"))
+        _kwargs["tool_config"] = self._get_call_config(
+            tool_choice=kwargs.get("tool_choice") or self.tool_choice
+        )
 
         _tools = kwargs.get("tools") or self.tools
         _tool_configs = kwargs.get("tool_configs") or self.tool_configs

@@ -100,6 +100,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             usage=usage,
             message=ChatCompletionAssistantMessageParam(role="assistant", content=contents),
             prompt=deepcopy(_messages),
+            raw=response,
         )
 
     async def arun(
@@ -136,6 +137,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             usage=usage,
             message=ChatCompletionAssistantMessageParam(role="assistant", content=contents),
             prompt=deepcopy(_messages),
+            raw=response,
         )
 
     def stream(
@@ -164,7 +166,9 @@ class OpenAIChatCoreModule(BaseChatModule):
         all_chunk = ""
         prompt_tokens = 0
         completion_tokens = 0
+        raw_responses = []
         for r in response:
+            raw_responses.append(r)
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
                 if delta is not None:
@@ -199,6 +203,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                 content=[{"type": "text", "text": all_chunk}],
             ),
             prompt=deepcopy(_messages),
+            raw=raw_responses,
         )
 
     async def astream(
@@ -233,7 +238,9 @@ class OpenAIChatCoreModule(BaseChatModule):
         all_chunk = ""
         prompt_tokens = 0
         completion_tokens = 0
+        raw_responses = []
         async for r in response:
+            raw_responses.append(r)
             if len(r.choices) > 0:
                 delta = r.choices[0].delta
                 if delta is not None:
@@ -268,6 +275,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                 content=[{"type": "text", "text": all_chunk}],
             ),
             prompt=deepcopy(_messages),
+            raw=raw_responses,
         )
 
 
@@ -298,6 +306,8 @@ class OpenAIChatModule(ChatWrapperModule):
         temperature: float | None | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
         response_schema: BaseModel | None = None,
+        stop: str | list[str] | NotGiven = NOT_GIVEN,
+        n_results: int | None = None,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
         azure_ad_token: str | None = None,
@@ -329,6 +339,8 @@ class OpenAIChatModule(ChatWrapperModule):
         self.temperature = temperature
         self.user = user
         self.response_schema = response_schema
+        self.stop = stop
+        self.n_results = n_results
         self.project = project
         self.base_url = base_url
         self.azure_ad_token = azure_ad_token
@@ -384,10 +396,9 @@ class OpenAIChatModule(ChatWrapperModule):
     ) -> dict[str, Any] | NotGiven:
         if json_mode:
             if response_schema:
-                return {"response_format": response_schema}
+                return response_schema
             else:
-                response_format = {"type": "json_object"} if json_mode else NOT_GIVEN
-                return {"response_format": response_format}
+                return {"type": "json_object"}
         else:
             return NOT_GIVEN
 
@@ -399,12 +410,12 @@ class OpenAIChatModule(ChatWrapperModule):
         _kwargs["model"] = kwargs.get("model_name") or self.model_name
         _kwargs["temperature"] = kwargs.get("temperature") or self.temperature
         _kwargs["top_p"] = kwargs.get("top_p") or self.top_p
-        _kwargs["stop"] = kwargs.get("stop")
+        _kwargs["stop"] = kwargs.get("stop") or self.stop
         _kwargs["frequency_penalty"] = kwargs.get("frequency_penalty ") or self.frequency_penalty
         _kwargs["presence_penalty"] = kwargs.get("presence_penalty") or self.presence_penalty
         _kwargs["user"] = kwargs.get("user") or self.user
         _kwargs["seed"] = kwargs.get("seed") or self.seed
-        _kwargs["n"] = kwargs.get("n_results")
+        _kwargs["n"] = kwargs.get("n_results") or self.n_results
         _kwargs["response_format"] = self._get_response_format(
             json_mode=kwargs.get("json_mode") or self.json_mode,
             response_schema=kwargs.get("response_schema") or self.response_schema,

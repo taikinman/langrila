@@ -126,7 +126,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                 calls.append(call)
 
         return FunctionCallingResults(
-            usage=usage, results=results, prompt=copy.deepcopy(_messages), calls=calls
+            usage=usage, results=results, prompt=copy.deepcopy(_messages), calls=calls, raw=response
         )
 
     async def arun(
@@ -187,7 +187,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
                 calls.append(call)
 
         return FunctionCallingResults(
-            usage=usage, results=results, prompt=copy.deepcopy(_messages), calls=calls
+            usage=usage, results=results, prompt=copy.deepcopy(_messages), calls=calls, raw=response
         )
 
 
@@ -198,6 +198,8 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         model_name: str | None = None,
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
+        parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
+        tool_choice: str = "auto",
         organization_id_env_name: str | None = None,
         api_type: str = "openai",
         api_version: str | None = None,
@@ -218,6 +220,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         presence_penalty: float | NotGiven = NOT_GIVEN,
         temperature: float | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
+        stop: str | list[str] | NotGiven = NOT_GIVEN,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
         azure_ad_token: str | None = None,
@@ -232,6 +235,8 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         self.model_name = model_name
         self.tools = tools
         self.tool_configs = tool_configs
+        self.parallel_tool_calls = parallel_tool_calls
+        self.tool_choice = tool_choice
         self.organization_id_env_name = organization_id_env_name
         self.api_type = api_type
         self.api_version = api_version
@@ -249,6 +254,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         self.presence_penalty = presence_penalty
         self.temperature = temperature
         self.user = user
+        self.stop = stop
 
         # The module to call client API
         function_calling_model = FunctionCallingCoreModule(
@@ -294,6 +300,15 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
     def _get_client_tool_config_type(self) -> ToolConfig:
         return OpenAIToolConfig
 
+    def _get_tool_choice_dict(self, tool_choice: str | None) -> dict[str, Any]:
+        if tool_choice is None:
+            return {"type": "auto"}
+
+        if tool_choice in ["auto", "required"]:
+            return {"type": tool_choice}
+        else:
+            return {"type": "function", "function": {"name": tool_choice}}
+
     def _get_generation_kwargs(self, **kwargs: Any) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["system_instruction"] = self._system_instruction_to_message(
@@ -302,24 +317,22 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         _kwargs["model"] = kwargs.get("model_name") or self.model_name
         _kwargs["temperature"] = kwargs.get("temperature") or self.temperature
         _kwargs["top_p"] = kwargs.get("top_p") or self.top_p
-        _kwargs["stop"] = kwargs.get("stop")
+        _kwargs["stop"] = kwargs.get("stop") or self.stop
         _kwargs["frequency_penalty"] = kwargs.get("frequency_penalty ") or self.frequency_penalty
         _kwargs["presence_penalty"] = kwargs.get("presence_penalty") or self.presence_penalty
         _kwargs["user"] = kwargs.get("user") or self.user
         _kwargs["seed"] = kwargs.get("seed") or self.seed
-        _kwargs["n"] = kwargs.get("n_results")
-        _kwargs["parallel_tool_calls"] = kwargs.get("parallel_tool_calls")
+        _kwargs["n"] = 1
+        _kwargs["parallel_tool_calls"] = (
+            kwargs.get("parallel_tool_calls") or self.parallel_tool_calls
+        )
 
         _kwargs["max_tokens"] = kwargs.get("max_tokens") or self.max_tokens
         _kwargs["max_completion_tokens"] = (
             kwargs.get("max_completion_tokens") or self.max_completion_tokens
         )
 
-        _kwargs["tool_choice"] = (
-            str(kwargs.get("tool_choice")).lower()
-            if kwargs.get("tool_choice") in ["auto", "required", None]
-            else {"type": "function", "function": {"name": kwargs.get("tool_choice")}}
-        )
+        _kwargs["tool_choice"] = self._get_tool_choice_dict(kwargs.get("tool_choice"))
 
         _tools = kwargs.get("tools") or self.tools
         _tool_configs = kwargs.get("tool_configs") or self.tool_configs

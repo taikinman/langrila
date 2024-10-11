@@ -103,11 +103,12 @@ class AnthropicChatCoreModule(BaseChatModule):
         return CompletionResults(
             message=MessageParam(role=response.role, content=response.content),
             usage=Usage(
-                model_name=response.model,
+                model_name=kwargs.get("model"),
                 prompt_tokens=response.usage.input_tokens,
                 completion_tokens=response.usage.output_tokens,
             ),
             prompt=copy.deepcopy(messages),
+            raw=response,
         )
 
     async def arun(
@@ -123,11 +124,12 @@ class AnthropicChatCoreModule(BaseChatModule):
         return CompletionResults(
             message=MessageParam(role=response.role, content=response.content),
             usage=Usage(
-                model_name=response.model,
+                model_name=kwargs.get("model"),
                 prompt_tokens=response.usage.input_tokens,
                 completion_tokens=response.usage.output_tokens,
             ),
             prompt=copy.deepcopy(messages),
+            raw=response,
         )
 
     def stream(
@@ -142,11 +144,13 @@ class AnthropicChatCoreModule(BaseChatModule):
         )
 
         all_chunks = ""
+        all_responses = []
         with response as stream:
             for r in stream:
+                all_responses.append(r)
                 if isinstance(r, RawMessageStartEvent):
                     usage = Usage(
-                        model_name=r.message.model,
+                        model_name=kwargs.get("model"),
                         prompt_tokens=r.message.usage.input_tokens,
                         completion_tokens=r.message.usage.output_tokens,
                     )
@@ -173,6 +177,7 @@ class AnthropicChatCoreModule(BaseChatModule):
             message=MessageParam(role=role, content=[TextBlockParam(text=all_chunks, type="text")]),
             usage=usage,
             prompt=copy.deepcopy(messages),
+            raw=all_responses,
         )
 
     async def astream(
@@ -187,11 +192,13 @@ class AnthropicChatCoreModule(BaseChatModule):
         )
 
         all_chunks = ""
+        all_responses = []
         async with response as stream:
             async for r in stream:
+                all_responses.append(r)
                 if isinstance(r, RawMessageStartEvent):
                     usage = Usage(
-                        model_name=r.message.model,
+                        model_name=kwargs.get("model"),
                         prompt_tokens=r.message.usage.input_tokens,
                         completion_tokens=r.message.usage.output_tokens,
                     )
@@ -220,6 +227,7 @@ class AnthropicChatCoreModule(BaseChatModule):
                 ),
                 usage=usage,
                 prompt=copy.deepcopy(messages),
+                raw=all_responses,
             )
 
 
@@ -257,6 +265,11 @@ class AnthropicChatModule(ChatWrapperModule):
         temperature: float | NotGiven = NOT_GIVEN,
         top_k: int | NotGiven = NOT_GIVEN,
         top_p: float | NotGiven = NOT_GIVEN,
+        metadata: message_create_params.Metadata | NotGiven = NOT_GIVEN,
+        stop_sequences: list[str] | NotGiven = NOT_GIVEN,
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
         **kwargs,
     ):
         self.model_name = model_name
@@ -287,6 +300,11 @@ class AnthropicChatModule(ChatWrapperModule):
         self.temperature = temperature
         self.top_k = top_k
         self.top_p = top_p
+        self.metadata = metadata
+        self.stop_sequences = stop_sequences
+        self.extra_headers = extra_headers
+        self.extra_query = extra_query
+        self.extra_body = extra_body
 
         # The module to call client API
         chat_model = AnthropicChatCoreModule(
@@ -327,15 +345,15 @@ class AnthropicChatModule(ChatWrapperModule):
         _kwargs = {}
         _kwargs["model"] = kwargs.get("model_name") or self.model_name
         _kwargs["max_tokens"] = kwargs.get("max_tokens") or self.max_tokens
-        _kwargs["metadata"] = kwargs.get("metadata")
-        _kwargs["stop_sequences"] = kwargs.get("stop_sequences")
+        _kwargs["metadata"] = kwargs.get("metadata") or self.metadata
+        _kwargs["stop_sequences"] = kwargs.get("stop_sequences") or self.stop_sequences
         _kwargs["system"] = kwargs.get("system_instruction") or self.system_instruction
         _kwargs["temperature"] = kwargs.get("temperature") or self.temperature
         _kwargs["top_k"] = kwargs.get("top_k") or self.top_k
         _kwargs["top_p"] = kwargs.get("top_p") or self.top_p
-        _kwargs["extra_headers"] = kwargs.get("extra_headers")
-        _kwargs["extra_query"] = kwargs.get("extra_query")
-        _kwargs["extra_body"] = kwargs.get("extra_body")
+        _kwargs["extra_headers"] = kwargs.get("extra_headers") or self.extra_headers
+        _kwargs["extra_query"] = kwargs.get("extra_query") or self.extra_query
+        _kwargs["extra_body"] = kwargs.get("extra_body") or self.extra_body
         _kwargs["timeout"] = kwargs.get("timeout") or self.timeout
         return _kwargs
 

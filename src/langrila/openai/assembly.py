@@ -11,82 +11,11 @@ from ..message_content import ConversationType, InputType, Message, ToolContent
 from ..result import CompletionResults, FunctionCallingResults
 from ..tools import ToolConfig
 from ..usage import TokenCounter, Usage
-from ..warnings import deprecated_argument
 from .llm.chat import OpenAIChatModule
 from .llm.function_calling import OpenAIFunctionCallingModule
 
 
 class OpenAIFunctionalChat(BaseAssembly):
-    @deprecated_argument(
-        arg="temperature",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="max_tokens",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="max_completion_tokens",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="top_p", move_to="run()/arun()/stream()/astream()", since="v0.4.0", removal="v1.0.0"
-    )
-    @deprecated_argument(
-        arg="frequency_penalty",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="presence_penalty",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="user", move_to="run()/arun()/stream()/astream()", since="v0.4.0", removal="v1.0.0"
-    )
-    @deprecated_argument(
-        arg="seed", move_to="run()/arun()/stream()/astream()", since="v0.4.0", removal="v1.0.0"
-    )
-    @deprecated_argument(arg="json_mode", move_to="run()/arun()", since="v0.4.0", removal="v1.0.0")
-    @deprecated_argument(
-        arg="response_schema", move_to="run()/arun()", since="v0.4.0", removal="v1.0.0"
-    )
-    @deprecated_argument(
-        arg="system_instruction",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="model_name",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="tool_choice",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
-    @deprecated_argument(
-        arg="tools", move_to="run()/arun()/stream()/astream()", since="v0.4.0", removal="v1.0.0"
-    )
-    @deprecated_argument(
-        arg="tool_configs",
-        move_to="run()/arun()/stream()/astream()",
-        since="v0.4.0",
-        removal="v1.0.0",
-    )
     def __init__(
         self,
         api_key_env_name: str,

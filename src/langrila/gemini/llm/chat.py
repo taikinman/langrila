@@ -76,6 +76,7 @@ class GeminiChatCoreModule(BaseChatModule):
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
+            raw=response,
         )
 
     async def arun(
@@ -99,6 +100,7 @@ class GeminiChatCoreModule(BaseChatModule):
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
+            raw=response,
         )
 
     def stream(
@@ -113,7 +115,9 @@ class GeminiChatCoreModule(BaseChatModule):
         )
 
         chunk_all = ""
+        all_responses = []
         for response in responses:
+            all_responses.append(response)
             usage_metadata = response.usage_metadata
             content = response.candidates[0].content
             if content.parts[0].text:
@@ -141,6 +145,7 @@ class GeminiChatCoreModule(BaseChatModule):
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
+            raw=all_responses,
         )
 
     async def astream(
@@ -155,7 +160,9 @@ class GeminiChatCoreModule(BaseChatModule):
         )
 
         chunk_all = ""
+        all_responses = []
         async for _response in responses:
+            all_responses.append(_response)
             usage_metadata = _response.usage_metadata
             content = _response.candidates[0].content
             if content.parts[0].text:
@@ -184,6 +191,7 @@ class GeminiChatCoreModule(BaseChatModule):
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
             prompt=copy.deepcopy(messages),
+            raw=all_responses,
         )
 
 
@@ -223,6 +231,7 @@ class GeminiChatModule(ChatWrapperModule):
         logprobs: int | None = None,
         response_logprobs: bool | None = None,
         response_mime_type: str | None = None,
+        stop_sequences: Iterable[str] | None = None,
         **kwargs: Any,
     ):
         self.model_name = model_name
@@ -255,6 +264,7 @@ class GeminiChatModule(ChatWrapperModule):
         self.logprobs = logprobs
         self.response_logprobs = response_logprobs
         self.response_mime_type = response_mime_type
+        self.stop_sequences = stop_sequences
 
         # The module to call client API
         chat_model = GeminiChatCoreModule(
