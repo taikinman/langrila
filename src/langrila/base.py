@@ -31,7 +31,6 @@ from .result import (
 from .types import RoleType
 from .utils import decode_image, is_valid_uri, model2func
 
-logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 ROLES = ["system", "user", "assistant", "function", "function_call", "tool"]

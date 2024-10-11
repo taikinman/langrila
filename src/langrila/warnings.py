@@ -1,4 +1,5 @@
 import functools
+import logging
 import warnings
 
 
@@ -6,8 +7,7 @@ def custom_formatwarning(message, category, filename, lineno, line=None):
     return f"{category.__name__}: {message}\n"
 
 
-warnings.simplefilter("always", DeprecationWarning)
-warnings.formatwarning = custom_formatwarning
+LOGGER = logging.getLogger(__name__)
 
 
 def deprecated_argument(
@@ -34,7 +34,7 @@ def deprecated_argument(
                     )
 
                 if since:
-                    message += f" {arg} in {func.__name__} will be deprecated {since}"
+                    message += f" {arg} in {func.__name__} will be deprecated since {since}"
 
                     if removal:
                         message += f" and will be removed in version {removal}."
@@ -42,7 +42,7 @@ def deprecated_argument(
                 if not message.endswith("."):
                     message += "."
 
-                warnings.warn(message, DeprecationWarning, stacklevel=2)
+                LOGGER.warning(message)
             return func(*args, **kwargs)
 
         return wrapper
