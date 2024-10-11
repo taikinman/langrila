@@ -126,7 +126,7 @@ class GeminiChatCoreModule(BaseChatModule):
                 last_content = content
                 result = CompletionResults(
                     message=content,
-                    usage=Usage(model_name=self.model_name or kwargs.get("model_name")),
+                    usage=Usage(model_name=kwargs.get("model_name")),
                     prompt="",
                 )
 
@@ -136,7 +136,7 @@ class GeminiChatCoreModule(BaseChatModule):
         yield CompletionResults(
             message=last_content,
             usage=Usage(
-                model_name=self.model_name or kwargs.get("model_name"),
+                model_name=kwargs.get("model_name"),
                 prompt_tokens=usage_metadata.prompt_token_count,
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
@@ -169,7 +169,7 @@ class GeminiChatCoreModule(BaseChatModule):
 
                 result = CompletionResults(
                     message=content,
-                    usage=Usage(model_name=self.model_name or kwargs.get("model_name")),
+                    usage=Usage(model_name=kwargs.get("model_name")),
                     prompt="",
                 )
 
@@ -179,7 +179,7 @@ class GeminiChatCoreModule(BaseChatModule):
         yield CompletionResults(
             message=last_content,
             usage=Usage(
-                model_name=self.model_name or kwargs.get("model_name"),
+                model_name=kwargs.get("model_name"),
                 prompt_tokens=usage_metadata.prompt_token_count,
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
