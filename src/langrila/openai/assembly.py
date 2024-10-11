@@ -1,6 +1,8 @@
-from typing import Any, AsyncGenerator, Callable, Generator, Literal
+from typing import Any, AsyncGenerator, Callable, Generator, Literal, Mapping
 
+import httpx
 from openai._types import NOT_GIVEN, NotGiven
+from openai.lib.azure import AzureADTokenProvider
 from pydantic import BaseModel
 
 from ..base import BaseConversationLengthAdjuster, BaseConversationMemory, BaseFilter
@@ -113,6 +115,14 @@ class OpenAIFunctionalChat(BaseAssembly):
         temperature: float | None | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
         response_schema: BaseModel | None = None,
+        project: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        azure_ad_token: str | None = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        http_client: httpx.Client | None = None,
+        _strict_response_validation: bool = False,
     ) -> None:
         super().__init__(conversation_memory=conversation_memory)
 
@@ -142,6 +152,14 @@ class OpenAIFunctionalChat(BaseAssembly):
         self.user = user
         self.response_schema = response_schema
         self.json_mode = json_mode
+        self.project = project
+        self.base_url = base_url
+        self.azure_ad_token = azure_ad_token
+        self.azure_ad_token_provider = azure_ad_token_provider
+        self.default_headers = default_headers
+        self.default_query = default_query
+        self.http_client = http_client
+        self._strict_response_validation = _strict_response_validation
 
         self.chat = OpenAIChatModule(
             api_key_env_name=api_key_env_name,
@@ -167,6 +185,14 @@ class OpenAIFunctionalChat(BaseAssembly):
             temperature=temperature,
             user=user,
             response_schema=response_schema,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
         )
 
         self.function_calling = OpenAIFunctionCallingModule(
@@ -193,6 +219,14 @@ class OpenAIFunctionalChat(BaseAssembly):
             presence_penalty=presence_penalty,
             temperature=temperature,
             user=user,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
         )
 
     def _get_generation_kwargs(self, **kwargs: Any) -> dict[str, Any]:

@@ -340,6 +340,14 @@ class OpenAIChatModule(ChatWrapperModule):
         temperature: float | None | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
         response_schema: BaseModel | None = None,
+        project: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        azure_ad_token: str | None = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        http_client: httpx.Client | None = None,
+        _strict_response_validation: bool = False,
         **kwargs: Any,
     ):
         self.api_key_env_name = api_key_env_name
@@ -363,6 +371,14 @@ class OpenAIChatModule(ChatWrapperModule):
         self.temperature = temperature
         self.user = user
         self.response_schema = response_schema
+        self.project = project
+        self.base_url = base_url
+        self.azure_ad_token = azure_ad_token
+        self.azure_ad_token_provider = azure_ad_token_provider
+        self.default_headers = default_headers
+        self.default_query = default_query
+        self.http_client = http_client
+        self._strict_response_validation = _strict_response_validation
 
         # The module to call client API
         chat_model = OpenAIChatCoreModule(
@@ -387,6 +403,14 @@ class OpenAIChatModule(ChatWrapperModule):
             temperature=temperature,
             user=user,
             response_schema=response_schema,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
             **kwargs,
         )
 

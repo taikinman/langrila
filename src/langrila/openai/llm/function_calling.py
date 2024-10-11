@@ -261,6 +261,14 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         presence_penalty: float | NotGiven = NOT_GIVEN,
         temperature: float | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
+        project: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        azure_ad_token: str | None = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        http_client: httpx.Client | None = None,
+        _strict_response_validation: bool = False,
         **kwargs: Any,
     ) -> None:
         self.api_key_env_name = api_key_env_name
@@ -308,6 +316,14 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             presence_penalty=presence_penalty,
             temperature=temperature,
             user=user,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
             **kwargs,
         )
 
