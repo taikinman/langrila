@@ -1,3 +1,5 @@
+import logging
+import warnings
 from abc import ABC, abstractmethod
 from inspect import isfunction, ismethod
 from pathlib import Path
@@ -28,6 +30,9 @@ from .result import (
 )
 from .types import RoleType
 from .utils import decode_image, is_valid_uri, model2func
+
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 ROLES = ["system", "user", "assistant", "function", "function_call", "tool"]
 IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "heic", "heif"]
@@ -108,6 +113,16 @@ class BaseClient(ABC):
 
     async def generate_message_async(self, **kwargs) -> Any:
         raise NotImplementedError
+
+    def _warn_ignore_params(
+        self, all_kwargs: dict[str, Any], used_kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
+        _notnull_kwargs_list = [k for k, v in all_kwargs.items() if v]
+        _not_null_used_kwargs_list = [k for k, v in used_kwargs.items() if v]
+        ignored_params = set(_notnull_kwargs_list) - set(_not_null_used_kwargs_list)
+
+        if ignored_params:
+            LOGGER.warning(f"Ignoring unupported parameters: {', '.join(ignored_params)}")
 
 
 class BaseMessage(ABC):

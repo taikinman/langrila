@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Generator, Optional
+from inspect import isfunction, ismethod
+from typing import Any, AsyncGenerator, Callable, Generator, Optional
+
+from pydantic import BaseModel
 
 from .base import (
     BaseChatModule,
@@ -12,6 +15,7 @@ from .message_content import ConversationType, InputType, Message
 from .mixin import ConversationMixin, FilterMixin
 from .result import CompletionResults, FunctionCallingResults
 from .usage import TokenCounter
+from .utils import model2func
 
 
 class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
@@ -284,6 +288,9 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         self.content_filter = content_filter
         self.token_counter = token_counter
         self._INIT_STATUS = False
+
+    def _set_runnable_tools_dict(self, tools: list[Callable | BaseModel]) -> dict[str, callable]:
+        return {f.__name__: f if (isfunction(f) or ismethod(f)) else model2func(f) for f in tools}
 
     @abstractmethod
     def _get_client_message_type(self) -> type[BaseMessage]:
