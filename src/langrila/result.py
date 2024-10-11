@@ -9,6 +9,12 @@ class CompletionResults(BaseModel):
     message: Any
     usage: Usage = Usage()
     prompt: Any = None
+    raw: Any | None = None
+
+    def model_dump(self, **kwargs):
+        exclude = kwargs.pop("exclude", [])
+        exclude.append("raw")
+        return super().model_dump(exclude=exclude, **kwargs)
 
 
 class ToolCallResponse(BaseModel):
@@ -29,6 +35,12 @@ class FunctionCallingResults(BaseModel):
     results: list[Any]
     calls: Any | None = None
     prompt: Any | None = None
+    raw: Any | None = None
+
+    def model_dump(self, **kwargs):
+        exclude = kwargs.pop("exclude", [])
+        exclude.append("raw")
+        return super().model_dump(exclude=exclude, **kwargs)
 
 
 class EmbeddingResults(BaseModel):
