@@ -173,11 +173,6 @@ class BaseMessage(ABC):
         raise NotImplementedError
 
     @classmethod
-    @abstractmethod
-    def _from_completion_results(cls, results: CompletionResults) -> list[dict[str, str]]:
-        raise NotImplementedError
-
-    @classmethod
     def _from_completion_results(cls, response: CompletionResults) -> Message:
         return cls.from_client_message(response.message)
 
