@@ -25,26 +25,14 @@ class OpenAIChatCoreModule(BaseChatModule):
     def __init__(
         self,
         api_key_env_name: str,
-        model_name: str | None = None,
         organization_id_env_name: str | None = None,
         api_type: Literal["openai", "azure"] = "openai",
         api_version: str | None = None,
         endpoint_env_name: str | None = None,
         deployment_id_env_name: str | None = None,
-        max_tokens: int | NotGiven = NOT_GIVEN,
-        max_completion_tokens: int | NotGiven = NOT_GIVEN,
         timeout: int | NotGiven = NOT_GIVEN,
         max_retries: int = 2,
-        seed: int | NotGiven = NOT_GIVEN,
-        json_mode: bool = False,
-        system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
-        top_p: float | NotGiven = NOT_GIVEN,
-        frequency_penalty: float | NotGiven = NOT_GIVEN,
-        presence_penalty: float | NotGiven = NOT_GIVEN,
-        temperature: float | NotGiven = NOT_GIVEN,
-        user: str | NotGiven = NOT_GIVEN,
-        response_schema: BaseModel | None = None,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
         azure_ad_token: str | None = None,
@@ -55,47 +43,17 @@ class OpenAIChatCoreModule(BaseChatModule):
         _strict_response_validation: bool = False,
         **kwargs: Any,
     ) -> None:
-        self.api_key_env_name = api_key_env_name
-        self.model_name = model_name
-        self.organization_id_env_name = organization_id_env_name
-
-        self.max_tokens = max_tokens
-        self.max_completion_tokens = max_completion_tokens
-        self.timeout = timeout
-        self.max_retries = max_retries
-        self.api_type = api_type
-        self.api_version = api_version
-        self.endpoint_env_name = endpoint_env_name
-        self.deployment_id_env_name = deployment_id_env_name
-        self.frequency_penalty = frequency_penalty
-        self.presence_penalty = presence_penalty
-        self.temperature = temperature
-        self.user = user
-        self.top_p = top_p
-
-        self.seed = seed
-        self.json_mode = json_mode
-        self.response_schema = response_schema
-
-        if system_instruction:
-            system_instruction = OpenAIMessage.to_universal_message(
-                role="system", message=system_instruction
-            )
-            self.system_instruction = OpenAIMessage.to_client_message(system_instruction)
-        else:
-            self.system_instruction = None
-
         self.conversation_length_adjuster = conversation_length_adjuster
 
         self._client = get_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
+            api_key_env_name=api_key_env_name,
+            organization_id_env_name=organization_id_env_name,
+            api_version=api_version,
+            endpoint_env_name=endpoint_env_name,
+            deployment_id_env_name=deployment_id_env_name,
+            api_type=api_type,
+            max_retries=max_retries,
+            timeout=timeout,
             project=project,
             base_url=base_url,
             azure_ad_token=azure_ad_token,
@@ -130,7 +88,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             **kwargs,
         )
 
-        usage = Usage(model_name=kwargs.get("model") or self.model_name)
+        usage = Usage(model_name=kwargs.get("model"))
         usage += response.usage
         choices = response.choices
         contents = []
@@ -166,7 +124,7 @@ class OpenAIChatCoreModule(BaseChatModule):
             **kwargs,
         )
 
-        usage = Usage(model_name=kwargs.get("model") or self.model_name)
+        usage = Usage(model_name=kwargs.get("model"))
         usage += response.usage
         choices = response.choices
         contents = []
@@ -214,7 +172,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                     if chunk is not None:
                         all_chunk += chunk
                         yield CompletionResults(
-                            usage=Usage(model_name=kwargs.get("model") or self.model_name),
+                            usage=Usage(model_name=kwargs.get("model")),
                             message=ChatCompletionAssistantMessageParam(
                                 role="assistant",
                                 content=[{"type": "text", "text": all_chunk}],
@@ -229,7 +187,7 @@ class OpenAIChatCoreModule(BaseChatModule):
 
         # at the end of stream, return the whole message and usage
         usage = Usage(
-            model_name=kwargs.get("model") or self.model_name,
+            model_name=kwargs.get("model"),
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
@@ -283,7 +241,7 @@ class OpenAIChatCoreModule(BaseChatModule):
                     if chunk is not None:
                         all_chunk += chunk
                         yield CompletionResults(
-                            usage=Usage(model_name=kwargs.get("model") or self.model_name),
+                            usage=Usage(model_name=kwargs.get("model")),
                             message=ChatCompletionAssistantMessageParam(
                                 role="assistant",
                                 content=[{"type": "text", "text": all_chunk}],
@@ -298,7 +256,7 @@ class OpenAIChatCoreModule(BaseChatModule):
 
         # at the end of stream, return the whole message and usage
         usage = Usage(
-            model_name=kwargs.get("model") or self.model_name,
+            model_name=kwargs.get("model"),
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
@@ -384,25 +342,13 @@ class OpenAIChatModule(ChatWrapperModule):
         chat_model = OpenAIChatCoreModule(
             api_key_env_name=api_key_env_name,
             organization_id_env_name=organization_id_env_name,
-            model_name=model_name,
-            max_tokens=max_tokens,
-            max_completion_tokens=max_completion_tokens,
             api_type=api_type,
             api_version=api_version,
             endpoint_env_name=endpoint_env_name,
             deployment_id_env_name=deployment_id_env_name,
             timeout=timeout,
             max_retries=max_retries,
-            seed=seed,
-            json_mode=json_mode,
-            system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
-            top_p=top_p,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            temperature=temperature,
-            user=user,
-            response_schema=response_schema,
             project=project,
             base_url=base_url,
             azure_ad_token=azure_ad_token,
@@ -445,7 +391,7 @@ class OpenAIChatModule(ChatWrapperModule):
         else:
             return NOT_GIVEN
 
-    def _get_generation_kwargs(self, **kwargs: Any) -> None:
+    def _get_generation_kwargs(self, **kwargs: Any) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["system_instruction"] = self._system_instruction_to_message(
             kwargs.get("system_instruction") or self.system_instruction

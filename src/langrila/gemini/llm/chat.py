@@ -15,13 +15,12 @@ from ...llm_wrapper import ChatWrapperModule
 from ...message_content import ConversationType, InputType
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
-from ..gemini_utils import get_client, get_message_cls
+from ..gemini_utils import get_client, get_message_cls, merge_responses
 
 
 class GeminiChatCoreModule(BaseChatModule):
     def __init__(
         self,
-        model_name: str,
         api_key_env_name: str | None = None,
         api_type: str = "genai",
         project_id_env_name: str | None = None,
@@ -36,54 +35,9 @@ class GeminiChatCoreModule(BaseChatModule):
         service_account: str | None = None,
         endpoint_env_name: str | None = None,
         request_metadata: Sequence[tuple[str, str]] | None = None,
-        max_output_tokens: int = 2048,
-        json_mode: bool = False,
-        timeout: int = 60,
-        system_instruction: str | None = None,
-        response_schema: dict[str, Any] | None = None,
-        presence_penalty: float | None = None,
-        frequency_penalty: float | None = None,
-        temperature: float | None = None,
-        top_p: float | None = None,
-        top_k: int | None = None,
-        seed: int | None = None,
-        routing_config: Any | None = None,
-        logprobs: int | None = None,
-        response_logprobs: bool | None = None,
-        response_mime_type: str | None = None,
         **kwargs: Any,
     ):
-        self.api_key_env_name = api_key_env_name
-        self.model_name = model_name
-        self.max_output_tokens = max_output_tokens
         self.api_type = api_type
-        self.project_id_env_name = project_id_env_name
-        self.location_env_name = location_env_name
-        self.experiment = experiment
-        self.experiment_description = experiment_description
-        self.experiment_tensorboard = experiment_tensorboard
-        self.staging_bucket = staging_bucket
-        self.credentials = credentials
-        self.encryption_spec_key_name = encryption_spec_key_name
-        self.network = network
-        self.service_account = service_account
-        self.endpoint_env_name = endpoint_env_name
-        self.request_metadata = request_metadata
-        self.json_mode = json_mode
-        self.response_schema = response_schema
-        self.presence_penalty = presence_penalty
-        self.frequency_penalty = frequency_penalty
-        self.temperature = temperature
-        self.top_p = top_p
-        self.top_k = top_k
-        self.seed = seed
-        self.timeout = timeout
-        self.routing_config = routing_config
-        self.logprobs = logprobs
-        self.response_logprobs = response_logprobs
-        self.system_instruction = system_instruction
-        self.response_mime_type = response_mime_type
-
         self._client = get_client(
             api_key_env_name=api_key_env_name,
             api_type=api_type,
@@ -112,24 +66,12 @@ class GeminiChatCoreModule(BaseChatModule):
         )
 
         usage_metadata = response.usage_metadata
-        parts = []
-        candidates = response.candidates
-        for candidate in candidates:
-            content = candidate.content
-            parts.extend(content.parts)
-
-        if self.api_type == "genai":
-            from google.ai.generativelanguage import Content
-
-        else:
-            from vertexai.generative_models import Content
-
-        content = Content(role="model", parts=parts)
+        content = merge_responses(response, api_type=self.api_type)
 
         return CompletionResults(
             message=content,
             usage=Usage(
-                model_name=self.model_name or kwargs.get("model_name"),
+                model_name=kwargs.get("model_name"),
                 prompt_tokens=usage_metadata.prompt_token_count,
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
@@ -147,24 +89,12 @@ class GeminiChatCoreModule(BaseChatModule):
         )
 
         usage_metadata = response.usage_metadata
-        parts = []
-        candidates = response.candidates
-        for candidate in candidates:
-            content = candidate.content
-            parts.extend(content.parts)
-
-        if self.api_type == "genai":
-            from google.ai.generativelanguage import Content
-
-        else:
-            from vertexai.generative_models import Content
-
-        content = Content(role="model", parts=parts)
+        content = merge_responses(response, api_type=self.api_type)
 
         return CompletionResults(
             message=content,
             usage=Usage(
-                model_name=self.model_name or kwargs.get("model_name"),
+                model_name=kwargs.get("model_name"),
                 prompt_tokens=usage_metadata.prompt_token_count,
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
@@ -368,7 +298,7 @@ class GeminiChatModule(ChatWrapperModule):
             token_counter=token_counter,
         )
 
-    def _get_generation_kwargs(self, **kwargs: Any) -> None:
+    def _get_generation_kwargs(self, **kwargs: Any) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["system_instruction"] = kwargs.get("system_instruction") or self.system_instruction
         _kwargs["model_name"] = kwargs.get("model_name") or self.model_name

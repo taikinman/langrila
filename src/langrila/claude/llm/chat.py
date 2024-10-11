@@ -44,7 +44,6 @@ from ..message import ClaudeMessage
 class AnthropicChatCoreModule(BaseChatModule):
     def __init__(
         self,
-        model_name: str,
         api_type: str = "anthropic",
         api_key_env_name: str | None = None,
         auth_token_env_name: str | None = None,
@@ -58,7 +57,6 @@ class AnthropicChatCoreModule(BaseChatModule):
         gc_access_token_env_name: str | None = None,
         credentials: Any | None = None,
         timeout: float | Timeout | None | NotGiven = 60,
-        max_tokens: int | None = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
         default_headers: Mapping[str, str] | None = None,
         default_query: Mapping[str, object] | None = None,
@@ -67,63 +65,29 @@ class AnthropicChatCoreModule(BaseChatModule):
         proxies: ProxiesTypes | None = None,
         connection_pool_limits: httpx.Limits | None = None,
         _strict_response_validation: bool = False,
-        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
-        system_instruction: str | Iterable[TextBlockParam] | NotGiven = NOT_GIVEN,
-        temperature: float | NotGiven = NOT_GIVEN,
-        top_k: int | NotGiven = NOT_GIVEN,
-        top_p: float | NotGiven = NOT_GIVEN,
     ):
-        self.model_name = model_name
-        self.api_type = api_type
-        self.api_key_env_name = api_key_env_name
-        self.auth_token_env_name = auth_token_env_name
-        self.endpoint_env_name = endpoint_env_name
-        self.aws_secret_key_env_name = aws_secret_key_env_name
-        self.aws_access_key_env_name = aws_access_key_env_name
-        self.aws_region_env_name = aws_region_env_name
-        self.aws_session_token_env_name = aws_session_token_env_name
-        self.timeout = timeout
-        self.max_tokens = max_tokens
-        self.max_retries = max_retries
-        self.default_headers = default_headers
-        self.default_query = default_query
-        self.http_client = http_client
-        self.transport = transport
-        self.proxies = proxies
-        self.connection_pool_limits = connection_pool_limits
-        self._strict_response_validation = _strict_response_validation
-        self.conversation_length_adjuster = conversation_length_adjuster
-        self.system_instruction = system_instruction
-        self.gc_region_env_name = gc_region_env_name
-        self.gc_project_id_env_name = gc_project_id_env_name
-        self.gc_access_token_env_name = gc_access_token_env_name
-        self.credentials = credentials
-        self.temperature = temperature
-        self.top_k = top_k
-        self.top_p = top_p
-
         self._client = get_client(
-            api_type=self.api_type,
-            api_key_env_name=self.api_key_env_name,
-            auth_token_env_name=self.auth_token_env_name,
-            endpoint_env_name=self.endpoint_env_name,
-            aws_secret_key_env_name=self.aws_secret_key_env_name,
-            aws_access_key_env_name=self.aws_access_key_env_name,
-            aws_region_env_name=self.aws_region_env_name,
-            aws_session_token_env_name=self.aws_session_token_env_name,
-            gc_region_env_name=self.gc_region_env_name,
-            gc_project_id_env_name=self.gc_project_id_env_name,
-            gc_access_token_env_name=self.gc_access_token_env_name,
-            credentials=self.credentials,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            default_headers=self.default_headers,
-            default_query=self.default_query,
-            http_client=self.http_client,
-            transport=self.transport,
-            proxies=self.proxies,
-            connection_pool_limits=self.connection_pool_limits,
-            _strict_response_validation=self._strict_response_validation,
+            api_type=api_type,
+            api_key_env_name=api_key_env_name,
+            auth_token_env_name=auth_token_env_name,
+            endpoint_env_name=endpoint_env_name,
+            aws_secret_key_env_name=aws_secret_key_env_name,
+            aws_access_key_env_name=aws_access_key_env_name,
+            aws_region_env_name=aws_region_env_name,
+            aws_session_token_env_name=aws_session_token_env_name,
+            gc_region_env_name=gc_region_env_name,
+            gc_project_id_env_name=gc_project_id_env_name,
+            gc_access_token_env_name=gc_access_token_env_name,
+            credentials=credentials,
+            timeout=timeout,
+            max_retries=max_retries,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            transport=transport,
+            proxies=proxies,
+            connection_pool_limits=connection_pool_limits,
+            _strict_response_validation=_strict_response_validation,
         )
 
     def run(
@@ -326,7 +290,6 @@ class AnthropicChatModule(ChatWrapperModule):
 
         # The module to call client API
         chat_model = AnthropicChatCoreModule(
-            model_name=model_name,
             api_type=api_type,
             api_key_env_name=api_key_env_name,
             auth_token_env_name=auth_token_env_name,
@@ -340,7 +303,6 @@ class AnthropicChatModule(ChatWrapperModule):
             gc_access_token_env_name=gc_access_token_env_name,
             credentials=credentials,
             timeout=timeout,
-            max_tokens=max_tokens,
             max_retries=max_retries,
             default_headers=default_headers,
             default_query=default_query,
@@ -349,11 +311,6 @@ class AnthropicChatModule(ChatWrapperModule):
             proxies=proxies,
             connection_pool_limits=connection_pool_limits,
             _strict_response_validation=_strict_response_validation,
-            conversation_length_adjuster=conversation_length_adjuster,
-            system_instruction=system_instruction,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
         )
 
         super().__init__(

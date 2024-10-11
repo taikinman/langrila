@@ -130,3 +130,19 @@ def get_call_config(api_type: str, tool_choice: str | None = "auto"):
             )
     else:
         raise ValueError(f"Unknown API type: {api_type}")
+
+
+def merge_responses(response, api_type: str):
+    parts = []
+    candidates = response.candidates
+    for candidate in candidates:
+        content = candidate.content
+        parts.extend(content.parts)
+
+    if api_type == "genai":
+        from google.ai.generativelanguage import Content
+
+    else:
+        from vertexai.generative_models import Content
+
+    return Content(role="model", parts=parts)

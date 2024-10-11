@@ -26,9 +26,6 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
     def __init__(
         self,
         api_key_env_name: str,
-        model_name: str | None = None,
-        tools: list[Callable] | None = None,
-        tool_configs: list[ToolConfig] | None = None,
         api_type: Literal["openai", "azure"] = "openai",
         api_version: str | None = None,
         endpoint_env_name: str | None = None,
@@ -36,15 +33,6 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         organization_id_env_name: str | None = None,
         timeout: int = 30,
         max_retries: int = 2,
-        max_tokens: int | NotGiven = NOT_GIVEN,
-        max_completion_tokens: int | NotGiven = NOT_GIVEN,
-        seed: int | NotGiven = NOT_GIVEN,
-        top_p: float | NotGiven = NOT_GIVEN,
-        frequency_penalty: float | NotGiven = NOT_GIVEN,
-        presence_penalty: float | NotGiven = NOT_GIVEN,
-        temperature: float | NotGiven = NOT_GIVEN,
-        user: str | NotGiven = NOT_GIVEN,
-        system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
@@ -56,48 +44,17 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
         _strict_response_validation: bool = False,
         **kwargs: Any,
     ) -> None:
-        self.api_key_env_name = api_key_env_name
-        self.organization_id_env_name = organization_id_env_name
-        self.api_type = api_type
-        self.api_version = api_version
-        self.endpoint_env_name = endpoint_env_name
-        self.deployment_id_env_name = deployment_id_env_name
-        self.model_name = model_name
-        self.timeout = timeout
-        self.max_retries = max_retries
-        self.top_p = top_p
-        self.frequency_penalty = frequency_penalty
-        self.presence_penalty = presence_penalty
-        self.temperature = temperature
-        self.user = user
-
-        self.tools = tools
-        self.tool_configs = tool_configs
-
-        self.max_tokens = max_tokens
-        self.max_completion_tokens = max_completion_tokens
-
-        self.seed = seed
-
-        if system_instruction:
-            system_instruction = OpenAIMessage.to_universal_message(
-                role="system", message=system_instruction
-            )
-            self.system_instruction = OpenAIMessage.to_client_message(system_instruction)
-        else:
-            self.system_instruction = None
-
         self.conversation_length_adjuster = conversation_length_adjuster
 
         self._client = get_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
+            api_key_env_name=api_key_env_name,
+            organization_id_env_name=organization_id_env_name,
+            api_version=api_version,
+            endpoint_env_name=endpoint_env_name,
+            deployment_id_env_name=deployment_id_env_name,
+            api_type=api_type,
+            max_retries=max_retries,
+            timeout=timeout,
             project=project,
             base_url=base_url,
             azure_ad_token=azure_ad_token,
@@ -136,7 +93,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             **kwargs,
         )
 
-        usage = Usage(model_name=self.model_name or kwargs.get("model"))
+        usage = Usage(model_name=kwargs.get("model"))
         usage += response.usage
 
         response_message = response.choices[0].message
@@ -197,7 +154,7 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             **kwargs,
         )
 
-        usage = Usage(model_name=self.model_name or kwargs.get("model"))
+        usage = Usage(model_name=kwargs.get("model"))
         usage += response.usage
 
         response_message = response.choices[0].message
@@ -301,21 +258,9 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             api_version=api_version,
             endpoint_env_name=endpoint_env_name,
             deployment_id_env_name=deployment_id_env_name,
-            tools=tools,
-            tool_configs=tool_configs,
-            model_name=model_name,
-            max_tokens=max_tokens,
-            max_completion_tokens=max_completion_tokens,
             timeout=timeout,
             max_retries=max_retries,
-            seed=seed,
-            system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
-            top_p=top_p,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            temperature=temperature,
-            user=user,
             project=project,
             base_url=base_url,
             azure_ad_token=azure_ad_token,
@@ -349,7 +294,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
     def _get_client_tool_config_type(self) -> ToolConfig:
         return OpenAIToolConfig
 
-    def _get_generation_kwargs(self, **kwargs: Any) -> None:
+    def _get_generation_kwargs(self, **kwargs: Any) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["system_instruction"] = self._system_instruction_to_message(
             kwargs.get("system_instruction") or self.system_instruction

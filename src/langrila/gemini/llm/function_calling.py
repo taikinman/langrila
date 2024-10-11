@@ -22,6 +22,7 @@ from ...usage import TokenCounter, Usage
 from ...utils import generate_dummy_call_id
 from ..gemini_utils import (
     get_call_config,
+    get_client,
     get_client_tool_type,
     get_message_cls,
     get_tool_cls,
@@ -31,9 +32,6 @@ from ..gemini_utils import (
 class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
     def __init__(
         self,
-        model_name: str,
-        tools: list[Callable] | None = None,
-        tool_configs: list[ToolConfig] | None = None,
         api_key_env_name: str | None = None,
         api_type: str = "genai",
         project_id_env_name: str | None = None,
@@ -48,76 +46,25 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
         service_account: str | None = None,
         endpoint_env_name: str | None = None,
         request_metadata: Sequence[tuple[str, str]] | None = None,
-        max_output_tokens: int | None = None,
-        timeout: int | None = None,
-        seed: int | None = None,
-        system_instruction: str | None = None,
-        presence_penalty: float | None = None,
-        frequency_penalty: float | None = None,
-        temperature: float | None = None,
-        top_p: float | None = None,
-        top_k: int | None = None,
-        routing_config: Any | None = None,
-        logprobs: int | None = None,
-        response_logprobs: bool | None = None,
         **kwargs: Any,
     ):
-        self.api_key_env_name = api_key_env_name
-        self.model_name = model_name
-        self.max_output_tokens = max_output_tokens
         self.api_type = api_type
-        self.project_id_env_name = project_id_env_name
-        self.location_env_name = location_env_name
-        self.experiment = experiment
-        self.experiment_description = experiment_description
-        self.experiment_tensorboard = experiment_tensorboard
-        self.staging_bucket = staging_bucket
-        self.credentials = credentials
-        self.encryption_spec_key_name = encryption_spec_key_name
-        self.network = network
-        self.service_account = service_account
-        self.endpoint_env_name = endpoint_env_name
-        self.request_metadata = request_metadata
-        self.system_instruction = system_instruction
-        self.presence_penalty = presence_penalty
-        self.frequency_penalty = frequency_penalty
-        self.temperature = temperature
-        self.top_p = top_p
-        self.top_k = top_k
-        self.timeout = timeout
-        self.seed = seed
-
-        self.tool_configs = tool_configs
-        self.tools = tools
-        self.routing_config = routing_config
-        self.logprobs = logprobs
-        self.response_logprobs = response_logprobs
-
-        if self.api_type == "genai":
-            from ..genai.client import GeminiAIStudioClient
-
-            self._client = GeminiAIStudioClient(
-                api_key=os.getenv(self.api_key_env_name),
-            )
-
-        else:
-            from ..vertexai.client import GeminiVertexAIClient
-
-            self._client = GeminiVertexAIClient(
-                project=os.getenv(self.project_id_env_name),
-                location=os.getenv(self.location_env_name),
-                experiment=self.experiment,
-                experiment_description=self.experiment_description,
-                experiment_tensorboard=self.experiment_tensorboard,
-                staging_bucket=self.staging_bucket,
-                credentials=self.credentials,
-                encryption_spec_key_name=self.encryption_spec_key_name,
-                network=self.network,
-                service_account=self.service_account,
-                api_endpoint=os.getenv(self.endpoint_env_name) if endpoint_env_name else None,
-                request_metadata=self.request_metadata,
-                api_key=os.getenv(api_key_env_name) if api_key_env_name else None,
-            )
+        self._client = get_client(
+            api_key_env_name=api_key_env_name,
+            api_type=api_type,
+            project_id_env_name=project_id_env_name,
+            location_env_name=location_env_name,
+            experiment=experiment,
+            experiment_description=experiment_description,
+            experiment_tensorboard=experiment_tensorboard,
+            staging_bucket=staging_bucket,
+            credentials=credentials,
+            encryption_spec_key_name=encryption_spec_key_name,
+            network=network,
+            service_account=service_account,
+            endpoint_env_name=endpoint_env_name,
+            request_metadata=request_metadata,
+        )
 
     def run(
         self,
@@ -159,7 +106,7 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
 
         return FunctionCallingResults(
             usage=Usage(
-                model_name=self.model_name or kwargs.get("model_name"),
+                model_name=kwargs.get("model_name"),
                 prompt_tokens=usage_metadata.prompt_token_count,
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
@@ -209,7 +156,7 @@ class GeminiFunctionCallingCoreModule(BaseFunctionCallingModule):
 
         return FunctionCallingResults(
             usage=Usage(
-                model_name=self.model_name or kwargs.get("model_name"),
+                model_name=kwargs.get("model_name"),
                 prompt_tokens=usage_metadata.prompt_token_count,
                 completion_tokens=usage_metadata.candidates_token_count,
             ),
@@ -289,11 +236,6 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         # The module to call client API
         function_calling_model = GeminiFunctionCallingCoreModule(
             api_key_env_name=api_key_env_name,
-            model_name=model_name,
-            max_output_tokens=max_output_tokens,
-            timeout=timeout,
-            tools=tools,
-            tool_configs=tool_configs,
             api_type=api_type,
             project_id_env_name=project_id_env_name,
             location_env_name=location_env_name,
@@ -307,16 +249,6 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
             service_account=service_account,
             endpoint_env_name=endpoint_env_name,
             request_metadata=request_metadata,
-            system_instruction=system_instruction,
-            presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            routing_config=routing_config,
-            logprobs=logprobs,
-            response_logprobs=response_logprobs,
-            seed=seed,
             **kwargs,
         )
 
@@ -333,7 +265,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
     def _get_client_tool_config_type(self, api_type: str):
         return get_client_tool_type(api_type=api_type)
 
-    def _get_generation_kwargs(self, **kwargs: Any) -> None:
+    def _get_generation_kwargs(self, **kwargs: Any) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["system_instruction"] = kwargs.get("system_instruction") or self.system_instruction
         _kwargs["model_name"] = kwargs.get("model_name") or self.model_name
@@ -379,7 +311,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         return _kwargs
 
     def _get_client_message_type(self) -> type[BaseMessage]:
-        return get_message_cls(self.function_calling_model.api_type)
+        return get_message_cls(self.api_type)
 
     def run(
         self,
