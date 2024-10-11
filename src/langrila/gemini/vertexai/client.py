@@ -22,13 +22,22 @@ class GeminiVertexAIClient(BaseClient):
         generation_config_params = create_parameters(GenerationConfig, **kwargs)
         generation_config = GenerationConfig(**generation_config_params)
 
-        generation_params = create_parameters(
-            GenerativeModel.generate_content,
-            exclude=["generation_config", "safety_config"],
-            **kwargs,
+        generation_params = create_parameters(GenerativeModel.generate_content, **kwargs)
+
+        model = GenerativeModel(
+            model_name=kwargs.get("model_name"), system_instruction=kwargs.get("system_instruction")
         )
 
-        model = GenerativeModel(model_name=kwargs.get("model_name"))
+        self._warn_ignore_params(
+            kwargs,
+            {
+                **generation_config_params,
+                **generation_params,
+                "model_name": kwargs.get("model_name"),
+                "system_instruction": kwargs.get("system_instruction"),
+            },
+        )
+
         return model.generate_content(generation_config=generation_config, **generation_params)
 
     @override
@@ -40,13 +49,22 @@ class GeminiVertexAIClient(BaseClient):
         generation_config_params = create_parameters(GenerationConfig, **kwargs)
         generation_config = GenerationConfig(**generation_config_params)
 
-        generation_params = create_parameters(
-            GenerativeModel.generate_content_async,
-            exclude=["generation_config", "safety_config"],
-            **kwargs,
+        generation_params = create_parameters(GenerativeModel.generate_content_async, **kwargs)
+
+        model = GenerativeModel(
+            model_name=kwargs.get("model_name"), system_instruction=kwargs.get("system_instruction")
         )
 
-        model = GenerativeModel(model_name=kwargs.get("model_name"))
+        self._warn_ignore_params(
+            kwargs,
+            {
+                **generation_config_params,
+                **generation_params,
+                "model_name": kwargs.get("model_name"),
+                "system_instruction": kwargs.get("system_instruction"),
+            },
+        )
+
         return await model.generate_content_async(
             generation_config=generation_config,
             **generation_params,
