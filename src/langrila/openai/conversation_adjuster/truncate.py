@@ -25,7 +25,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
         total_tool_use_tokens = 0
         for message in messages[::-1]:
             if message.get("role") == "tool":
-                n_tool_use_tokens = self._get_n_tokens(message, self.model_name)["total"]
+                n_tool_use_tokens = self.get_n_tokens(message, self.model_name)["total"]
                 total_tool_use_tokens += n_tool_use_tokens
                 if total_n_tokens + total_tool_use_tokens <= self.context_length:
                     used_tool_use_message.append(message)
@@ -39,7 +39,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     _tmp_message = {k: v for k, v in message.items() if k != "tool_calls"}
                     _tmp_message["tool_calls"] = tool_calls
 
-                    total_tool_call_tokens = self._get_n_tokens(_tmp_message, self.model_name)[
+                    total_tool_call_tokens = self.get_n_tokens(_tmp_message, self.model_name)[
                         "total"
                     ]
                     if (
@@ -59,7 +59,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     ]
                     new_message.append(tool_call_message)
                     for m in new_message:
-                        n_tokens = self._get_n_tokens(m, self.model_name)["total"]
+                        n_tokens = self.get_n_tokens(m, self.model_name)["total"]
                         total_n_tokens += n_tokens
 
                 else:
@@ -96,7 +96,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
     def adjust_message_length_and_update_total_tokens(
         self, message: dict[str, dict[str, str]], total_n_tokens: int = 0
     ) -> dict[str, Any]:
-        n_tokens = self._get_n_tokens(message, self.model_name)
+        n_tokens = get_n_tokens(message, self.model_name)
 
         if total_n_tokens + n_tokens["total"] <= self.context_length:
             total_n_tokens += n_tokens["total"]

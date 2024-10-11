@@ -12,12 +12,8 @@ from .azure.client import AzureOpenAIClient
 from .model_config import (
     _TILE_SIZE,
     _TOKENS_PER_TILE,
-    EMBEDDING_CONFIG,
-    MODEL_CONFIG,
 )
 from .origin.client import OpenAIClient
-
-MODEL_ZOO = set(MODEL_CONFIG.keys()) | set(EMBEDDING_CONFIG.keys())
 
 
 def get_encoding(model_name: str) -> tiktoken.Encoding:
@@ -182,15 +178,6 @@ def get_n_tokens(
 
     total_tokens = n_content_tokens + n_other_tokens
     return {"total": total_tokens, "content": n_content_tokens, "other": n_other_tokens}
-
-
-def get_token_limit(model_name: str) -> int:
-    if model_name in MODEL_ZOO:
-        return MODEL_CONFIG[model_name]["max_tokens"]
-    else:
-        raise NotImplementedError(
-            f"get_token_limit() is not implemented for model {model_name}. Please choose from following model : {', '.join(sorted(list(MODEL_ZOO)))}."
-        )
 
 
 def calculate_high_resolution_image_tokens(image_size: tuple[int, int] | list[int, int]) -> int:
