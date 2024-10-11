@@ -216,7 +216,7 @@ class ClaudeFunctionalChat(BaseAssembly):
         top_p: float | NotGiven = NOT_GIVEN,
         tools: list[Callable] | NotGiven = NOT_GIVEN,
         tool_configs: list[ToolConfig] | NotGiven = NOT_GIVEN,
-        tool_choice: Literal["auto", "any"] | str | None = None,
+        tool_choice: Literal["auto", "any"] | str = "auto",
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
         generation_kwargs = self._get_generation_kwargs(
@@ -267,9 +267,6 @@ class ClaudeFunctionalChat(BaseAssembly):
                         None  # if tool is used, init_conversation is stored in the memory
                     )
 
-                    generation_kwargs.pop("tool_choice")
-                    generation_kwargs.pop("tools")
-                    generation_kwargs.pop("tool_configs")
                     response_function_calling: FunctionCallingResults = self.function_calling.run(
                         prompt, init_conversation=init_conversation, **generation_kwargs
                     )
@@ -320,7 +317,7 @@ class ClaudeFunctionalChat(BaseAssembly):
         top_p: float | NotGiven = NOT_GIVEN,
         tools: list[Callable] | NotGiven = NOT_GIVEN,
         tool_configs: list[ToolConfig] | NotGiven = NOT_GIVEN,
-        tool_choice: Literal["auto", "any"] | str | None = None,
+        tool_choice: Literal["auto", "any"] | str = "auto",
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
         generation_kwargs = self._get_generation_kwargs(
@@ -371,9 +368,6 @@ class ClaudeFunctionalChat(BaseAssembly):
                         None  # if tool is used, init_conversation is stored in the memory
                     )
 
-                    generation_kwargs.pop("tool_choice")
-                    generation_kwargs.pop("tools")
-                    generation_kwargs.pop("tool_configs")
                     response_function_calling: FunctionCallingResults = (
                         await self.function_calling.arun(
                             prompt, init_conversation=init_conversation, **generation_kwargs
