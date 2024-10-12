@@ -286,7 +286,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         _kwargs["routing_config"] = kwargs.get("routing_config") or self.routing_config
         _kwargs["logprobs"] = kwargs.get("logprobs") or self.logprobs
         _kwargs["response_logprobs"] = kwargs.get("response_logprobs") or self.response_logprobs
-        _kwargs["candidate_count"] = kwargs.get("n_results") or 1
+        _kwargs["candidate_count"] = 1
         _kwargs["response_mime_type"] = "text/plain"
 
         if self.api_type == "genai":

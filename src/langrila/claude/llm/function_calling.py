@@ -211,9 +211,9 @@ class AnthropicFunctionCallingCoreModule(BaseFunctionCallingModule):
 class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
     def __init__(
         self,
-        model_name: str,
-        tools: list[Callable],
-        tool_configs: list[ToolConfig],
+        model_name: str | None = None,
+        tools: list[Callable] | None = None,
+        tool_configs: list[ToolConfig] | None = None,
         api_type: str = "anthropic",
         api_key_env_name: str | None = None,
         auth_token_env_name: str | None = None,

@@ -234,7 +234,7 @@ class AnthropicChatCoreModule(BaseChatModule):
 class AnthropicChatModule(ChatWrapperModule):
     def __init__(
         self,
-        model_name: str,
+        model_name: str | None = None,
         api_type: str = "anthropic",
         api_key_env_name: str | None = None,
         auth_token_env_name: str | None = None,

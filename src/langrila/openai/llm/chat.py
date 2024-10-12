@@ -289,7 +289,7 @@ class OpenAIChatModule(ChatWrapperModule):
         endpoint_env_name: str | None = None,
         deployment_id_env_name: str | None = None,
         organization_id_env_name: str | None = None,
-        max_tokens: int | None = None,
+        max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
         timeout: int | NotGiven = NOT_GIVEN,
         max_retries: int = 2,
@@ -308,6 +308,7 @@ class OpenAIChatModule(ChatWrapperModule):
         response_schema: BaseModel | None = None,
         stop: str | list[str] | NotGiven = NOT_GIVEN,
         n_results: int | None = None,
+        stream_options: dict[str, Any] | None = None,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
         azure_ad_token: str | None = None,
@@ -341,6 +342,7 @@ class OpenAIChatModule(ChatWrapperModule):
         self.response_schema = response_schema
         self.stop = stop
         self.n_results = n_results
+        self.stream_options = stream_options
         self.project = project
         self.base_url = base_url
         self.azure_ad_token = azure_ad_token
@@ -553,13 +555,15 @@ class OpenAIChatModule(ChatWrapperModule):
             **kwargs,
         )
 
-        if kwargs.get("stream_options") is None:
-            stream_options = {"include_usage": True}
-            generation_kwargs["stream_options"] = stream_options
+        if stream_options is None:
+            generation_kwargs["stream_options"] = {
+                "include_usage": True,
+                **(self.stream_options or {}),
+            }
         else:
             generation_kwargs["stream_options"] = {
                 "include_usage": True,
-                **kwargs.get("stream_options", {}),
+                **stream_options,
             }
 
         return super().stream(
@@ -605,13 +609,15 @@ class OpenAIChatModule(ChatWrapperModule):
             **kwargs,
         )
 
-        if kwargs.get("stream_options") is None:
-            stream_options = {"include_usage": True}
-            generation_kwargs["stream_options"] = stream_options
+        if stream_options is None:
+            generation_kwargs["stream_options"] = {
+                "include_usage": True,
+                **(self.stream_options or {}),
+            }
         else:
             generation_kwargs["stream_options"] = {
                 "include_usage": True,
-                **kwargs.get("stream_options", {}),
+                **stream_options,
             }
 
         return super().astream(

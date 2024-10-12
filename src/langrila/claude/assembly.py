@@ -67,11 +67,17 @@ class ClaudeFunctionalChat(BaseAssembly):
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,
         token_counter: TokenCounter | None = None,
-        tools: list[Callable] | None = None,
-        tool_configs: list[ToolConfig] | None = None,
         temperature: float | NotGiven = NOT_GIVEN,
         top_k: int | NotGiven = NOT_GIVEN,
         top_p: float | NotGiven = NOT_GIVEN,
+        metadata: message_create_params.Metadata | NotGiven = NOT_GIVEN,
+        stop_sequences: list[str] | NotGiven = NOT_GIVEN,
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        tools: list[Callable] | None = None,
+        tool_configs: list[ToolConfig] | None = None,
+        tool_choice: Literal["auto", "any"] | str = "auto",
     ):
         super().__init__(conversation_memory=conversation_memory)
 
@@ -107,6 +113,12 @@ class ClaudeFunctionalChat(BaseAssembly):
         self.temperature = temperature
         self.top_k = top_k
         self.top_p = top_p
+        self.metadata = metadata
+        self.stop_sequences = stop_sequences
+        self.extra_headers = extra_headers
+        self.extra_query = extra_query
+        self.extra_body = extra_body
+        self.tool_choice = tool_choice
 
         self.chat = AnthropicChatModule(
             model_name=model_name,
@@ -140,6 +152,11 @@ class ClaudeFunctionalChat(BaseAssembly):
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
+            metadata=metadata,
+            stop_sequences=stop_sequences,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
         )
 
         self.function_calling = AnthropicFunctionCallingModule(
@@ -176,23 +193,29 @@ class ClaudeFunctionalChat(BaseAssembly):
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
+            metadata=metadata,
+            stop_sequences=stop_sequences,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            tool_choice=tool_choice,
         )
 
     def _get_generation_kwargs(self, **kwargs) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["model_name"] = kwargs.get("model_name") or self.model_name
         _kwargs["max_tokens"] = kwargs.get("max_tokens") or self.max_tokens
-        _kwargs["metadata"] = kwargs.get("metadata")
-        _kwargs["stop_sequences"] = kwargs.get("stop_sequences")
+        _kwargs["metadata"] = kwargs.get("metadata") or self.metadata
+        _kwargs["stop_sequences"] = kwargs.get("stop_sequences") or self.stop_sequences
         _kwargs["system_instruction"] = kwargs.get("system_instruction") or self.system_instruction
         _kwargs["temperature"] = kwargs.get("temperature") or self.temperature
         _kwargs["top_k"] = kwargs.get("top_k") or self.top_k
         _kwargs["top_p"] = kwargs.get("top_p") or self.top_p
-        _kwargs["extra_headers"] = kwargs.get("extra_headers")
-        _kwargs["extra_query"] = kwargs.get("extra_query")
-        _kwargs["extra_body"] = kwargs.get("extra_body")
+        _kwargs["extra_headers"] = kwargs.get("extra_headers") or self.extra_headers
+        _kwargs["extra_query"] = kwargs.get("extra_query") or self.extra_query
+        _kwargs["extra_body"] = kwargs.get("extra_body") or self.extra_body
         _kwargs["timeout"] = kwargs.get("timeout") or self.timeout
-        _kwargs["tool_choice"] = kwargs.get("tool_choice")
+        _kwargs["tool_choice"] = kwargs.get("tool_choice") or self.tool_choice
         _kwargs["tools"] = kwargs.get("tools") or self.tools
         _kwargs["tool_configs"] = kwargs.get("tool_configs") or self.tool_configs
 

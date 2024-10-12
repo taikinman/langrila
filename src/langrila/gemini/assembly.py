@@ -21,9 +21,7 @@ class GeminiFunctionalChat(BaseAssembly):
         model_name: str | None = None,
         api_key_env_name: str | None = None,
         max_output_tokens: int | None = None,
-        response_mime_type: str | None = None,
         json_mode: bool = False,
-        response_schema: dict[str, Any] | None = None,
         timeout: int | None = None,
         content_filter: BaseFilter | None = None,
         conversation_memory: BaseConversationMemory | None = None,
@@ -42,8 +40,7 @@ class GeminiFunctionalChat(BaseAssembly):
         service_account: str | None = None,
         endpoint_env_name: str | None = None,
         request_metadata: Sequence[tuple[str, str]] | None = None,
-        tools: list[Callable] | None = None,
-        tool_configs: list[ToolConfig] | None = None,
+        response_schema: dict[str, Any] | None = None,
         presence_penalty: float | None = None,
         frequency_penalty: float | None = None,
         temperature: float | None = None,
@@ -53,6 +50,12 @@ class GeminiFunctionalChat(BaseAssembly):
         routing_config: Any | None = None,
         logprobs: int | None = None,
         response_logprobs: bool | None = None,
+        response_mime_type: str | None = None,
+        stop_sequences: Iterable[str] | None = None,
+        tools: list[Callable] | None = None,
+        tool_configs: list[ToolConfig] | None = None,
+        n_results: int | None = None,
+        tool_choice: str = "auto",
     ):
         super().__init__(conversation_memory=conversation_memory)
 
@@ -90,7 +93,9 @@ class GeminiFunctionalChat(BaseAssembly):
         self.routing_config = routing_config
         self.logprobs = logprobs
         self.response_logprobs = response_logprobs
-        self.response_mime_types = response_mime_type
+        self.stop_sequences = stop_sequences
+        self.n_results = n_results
+        self.tool_choice = tool_choice
 
         self.chat = GeminiChatModule(
             model_name=model_name,
@@ -122,9 +127,12 @@ class GeminiFunctionalChat(BaseAssembly):
             top_p=top_p,
             top_k=top_k,
             seed=seed,
+            n_results=n_results,
             routing_config=routing_config,
             logprobs=logprobs,
             response_logprobs=response_logprobs,
+            stop_sequences=stop_sequences,
+            response_mime_type=response_mime_type,
         )
 
         self.function_calling = GeminiFunctionCallingModule(
@@ -161,6 +169,8 @@ class GeminiFunctionalChat(BaseAssembly):
             routing_config=routing_config,
             logprobs=logprobs,
             response_logprobs=response_logprobs,
+            tool_choice=tool_choice,
+            stop_sequences=stop_sequences,
         )
 
     def _get_generation_kwargs(self, **kwargs) -> dict[str, Any]:
@@ -178,13 +188,13 @@ class GeminiFunctionalChat(BaseAssembly):
         _kwargs["routing_config"] = kwargs.get("routing_config") or self.routing_config
         _kwargs["logprobs"] = kwargs.get("logprobs") or self.logprobs
         _kwargs["response_logprobs"] = kwargs.get("response_logprobs") or self.response_logprobs
-        _kwargs["response_mime_type"] = kwargs.get("response_mime_type") or self.response_mime_types
+        _kwargs["response_mime_type"] = kwargs.get("response_mime_type") or self.response_mime_type
         _kwargs["response_schema"] = kwargs.get("response_schema") or self.response_schema
         _kwargs["json_mode"] = kwargs.get("json_mode") or self.json_mode
-        _kwargs["n_results"] = kwargs.get("n_results")
+        _kwargs["n_results"] = kwargs.get("n_results") or self.n_results
         _kwargs["tools"] = kwargs.get("tools") or self.tools
         _kwargs["tool_configs"] = kwargs.get("tool_configs") or self.tool_configs
-        _kwargs["tool_choice"] = kwargs.get("tool_choice")
+        _kwargs["tool_choice"] = kwargs.get("tool_choice") or self.tool_choice
 
         return _kwargs
 

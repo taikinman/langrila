@@ -20,30 +20,34 @@ class OpenAIFunctionalChat(BaseAssembly):
         self,
         api_key_env_name: str,
         model_name: str | None = None,
-        tools: list[Callable] | None = None,
-        tool_configs: list[ToolConfig] | None = None,
-        organization_id_env_name: str | None = None,
         api_type: str = "openai",
         api_version: str | None = None,
         endpoint_env_name: str | None = None,
         deployment_id_env_name: str | None = None,
+        organization_id_env_name: str | None = None,
         max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
         timeout: int | NotGiven = NOT_GIVEN,
         max_retries: int = 2,
         seed: int | NotGiven = NOT_GIVEN,
+        json_mode: bool = False,
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,
-        system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
+        system_instruction: str | None = None,
         token_counter: TokenCounter | None = None,
-        json_mode: bool = False,
         top_p: float | None | NotGiven = NOT_GIVEN,
-        frequency_penalty: float | NotGiven = NOT_GIVEN,
+        frequency_penalty: float | None | NotGiven = NOT_GIVEN,
         presence_penalty: float | None | NotGiven = NOT_GIVEN,
         temperature: float | None | NotGiven = NOT_GIVEN,
         user: str | NotGiven = NOT_GIVEN,
         response_schema: BaseModel | None = None,
+        stop: str | list[str] | NotGiven = NOT_GIVEN,
+        n_results: int | NotGiven = NOT_GIVEN,
+        tools: list[Callable] | None = None,
+        tool_configs: list[ToolConfig] | None = None,
+        tool_choice: Literal["auto", "required"] | str | None = "auto",
+        stream_options: dict[str, Any] | None = None,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
         azure_ad_token: str | None = None,
@@ -59,6 +63,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         self.model_name = model_name
         self.tools = tools
         self.tool_configs = tool_configs
+        self.tool_choice = tool_choice
         self.organization_id_env_name = organization_id_env_name
         self.api_type = api_type
         self.api_version = api_version
@@ -80,7 +85,10 @@ class OpenAIFunctionalChat(BaseAssembly):
         self.temperature = temperature
         self.user = user
         self.response_schema = response_schema
+        self.stop = stop
+        self.n_results = n_results
         self.json_mode = json_mode
+        self.stream_options = stream_options
         self.project = project
         self.base_url = base_url
         self.azure_ad_token = azure_ad_token
@@ -114,6 +122,9 @@ class OpenAIFunctionalChat(BaseAssembly):
             temperature=temperature,
             user=user,
             response_schema=response_schema,
+            stop=stop,
+            n_results=n_results,
+            stream_options=stream_options,
             project=project,
             base_url=base_url,
             azure_ad_token=azure_ad_token,
@@ -129,6 +140,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             model_name=model_name,
             tools=tools,
             tool_configs=tool_configs,
+            tool_choice=tool_choice,
             organization_id_env_name=organization_id_env_name,
             api_type=api_type,
             api_version=api_version,
@@ -148,6 +160,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             presence_penalty=presence_penalty,
             temperature=temperature,
             user=user,
+            stop=stop,
             project=project,
             base_url=base_url,
             azure_ad_token=azure_ad_token,
@@ -164,7 +177,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         _kwargs["model_name"] = kwargs.get("model_name") or self.model_name
         _kwargs["temperature"] = kwargs.get("temperature") or self.temperature
         _kwargs["top_p"] = kwargs.get("top_p") or self.top_p
-        _kwargs["stop"] = kwargs.get("stop")
+        _kwargs["stop"] = kwargs.get("stop") or self.stop
         _kwargs["frequency_penalty"] = kwargs.get("frequency_penalty ") or self.frequency_penalty
         _kwargs["presence_penalty"] = kwargs.get("presence_penalty") or self.presence_penalty
         _kwargs["user"] = kwargs.get("user") or self.user
@@ -177,11 +190,11 @@ class OpenAIFunctionalChat(BaseAssembly):
         _kwargs["json_mode"] = kwargs.get("json_mode") or self.json_mode
         _kwargs["response_schema"] = kwargs.get("response_schema") or self.response_schema
         _kwargs["parallel_tool_calls"] = kwargs.get("parallel_tool_calls")
-        _kwargs["n_results"] = kwargs.get("n_results")
-        _kwargs["tool_choice"] = kwargs.get("tool_choice")
+        _kwargs["n_results"] = kwargs.get("n_results") or self.n_results
+        _kwargs["tool_choice"] = kwargs.get("tool_choice") or self.tool_choice
         _kwargs["tools"] = kwargs.get("tools") or self.tools
         _kwargs["tool_configs"] = kwargs.get("tool_configs") or self.tool_configs
-        _kwargs["stream_options"] = kwargs.get("stream_options")
+        _kwargs["stream_options"] = kwargs.get("stream_options") or self.stream_options
 
         return _kwargs
 

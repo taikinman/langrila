@@ -227,6 +227,7 @@ class GeminiChatModule(ChatWrapperModule):
         top_p: float | None = None,
         top_k: int | None = None,
         seed: int | None = None,
+        n_results: int | None = None,
         routing_config: Any | None = None,
         logprobs: int | None = None,
         response_logprobs: bool | None = None,
@@ -260,6 +261,7 @@ class GeminiChatModule(ChatWrapperModule):
         self.top_p = top_p
         self.top_k = top_k
         self.seed = seed
+        self.n_results = n_results
         self.routing_config = routing_config
         self.logprobs = logprobs
         self.response_logprobs = response_logprobs
@@ -329,7 +331,7 @@ class GeminiChatModule(ChatWrapperModule):
         _kwargs["routing_config"] = kwargs.get("routing_config") or self.routing_config
         _kwargs["logprobs"] = kwargs.get("logprobs") or self.logprobs
         _kwargs["response_logprobs"] = kwargs.get("response_logprobs") or self.response_logprobs
-        _kwargs["candidate_count"] = kwargs.get("n_results") or 1
+        _kwargs["candidate_count"] = kwargs.get("n_results") or self.n_results
 
         if self.api_type == "genai":
             from google.generativeai.types.helper_types import RequestOptions

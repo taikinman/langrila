@@ -332,7 +332,9 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
             kwargs.get("max_completion_tokens") or self.max_completion_tokens
         )
 
-        _kwargs["tool_choice"] = self._get_tool_choice_dict(kwargs.get("tool_choice"))
+        _kwargs["tool_choice"] = self._get_tool_choice_dict(
+            kwargs.get("tool_choice") or self.tool_choice
+        )
 
         _tools = kwargs.get("tools") or self.tools
         _tool_configs = kwargs.get("tool_configs") or self.tool_configs
