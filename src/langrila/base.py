@@ -352,9 +352,7 @@ class BaseMessage(ABC):
             raise ValueError(f"Invalid message type {type(message)}")
 
     @classmethod
-    def to_universal_message_from_completion_response(
-        cls, response: CompletionResults
-    ) -> dict[str, Any]:
+    def to_universal_message_from_completion_response(cls, response: CompletionResults) -> Message:
         return cls._from_completion_results(response)
 
     @classmethod
