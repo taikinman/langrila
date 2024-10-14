@@ -37,8 +37,8 @@ class ConversationMixin:
 
 
 class FilterMixin:
-    def apply_content_filter(self, message: Message) -> Message:
+    def apply_content_filter(self, message: str) -> str:
         return self.content_filter.apply(message)
 
-    def restore_content_filter(self, message: Message) -> Message:
+    def restore_content_filter(self, message: str) -> str:
         return self.content_filter.restore(message)
