@@ -2,6 +2,8 @@ from typing import Any
 
 import numpy as np
 
+from .message_content import Message
+
 
 class ConversationMixin:
     def load_conversation(self) -> list[dict[str, str]]:
@@ -35,8 +37,8 @@ class ConversationMixin:
 
 
 class FilterMixin:
-    def apply_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.apply(messages)
+    def apply_content_filter(self, message: Message) -> Message:
+        return self.content_filter.apply(message)
 
-    def restore_content_filter(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        return self.content_filter.restore(messages)
+    def restore_content_filter(self, message: Message) -> Message:
+        return self.content_filter.restore(message)

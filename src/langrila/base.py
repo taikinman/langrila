@@ -85,14 +85,14 @@ class BaseConversationLengthAdjuster(ABC):
 
 class BaseFilter(ABC):
     @abstractmethod
-    def apply(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def apply(self, messages: Message) -> Message:
         raise NotImplementedError
 
-    def aapply(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def aapply(self, messages: Message) -> Message:
         raise NotImplementedError
 
     @abstractmethod
-    def restore(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def restore(self, messages: Message) -> Message:
         raise NotImplementedError
 
 
