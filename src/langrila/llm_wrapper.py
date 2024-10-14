@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from .base import (
     BaseChatModule,
+    BaseConversationLengthAdjuster,
     BaseConversationMemory,
     BaseFilter,
     BaseFunctionCallingModule,
@@ -40,12 +41,20 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         **kwargs,
     ) -> CompletionResults:
+        _conversation_memory = conversation_memory or self.conversation_memory
+        _content_filter = content_filter or self.content_filter
+
         ClientMessage = self._get_client_message_type()
 
         # Load conversation memory
-        messages = self.load_conversation()
+        if _conversation_memory is not None:
+            messages = _conversation_memory.load()
+        else:
+            messages = []
 
         # Convert init_conversation to ClientMessage
         if init_conversation:
@@ -61,11 +70,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
 
         # Apply content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, m in enumerate(messages):
                 for j, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        messages[i].content[j].text = self.apply_content_filter(content.text)
+                        messages[i].content[j].text = _content_filter.apply(content.text)
 
         # Convert UniversalMessage to ClientMessage
         _messages = [
@@ -85,23 +94,23 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         )
 
         # Restore content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, content in enumerate(response.message.content):
                 if isinstance(content, TextContent):
-                    response.message.content[i].text = self.restore_content_filter(content.text)
+                    response.message.content[i].text = _content_filter.restore(content.text)
 
             for m in messages:
                 for i, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        m.content[i].text = self.restore_content_filter(content.text)
-            # messages = [self.restore_content_filter(m) for m in messages]
+                        m.content[i].text = _content_filter.restore(content.text)
+            # messages = [_content_filter.restore(m) for m in messages]
 
         messages.append(response.message)
 
         # Save conversation memory
-        if self.conversation_memory is not None:
+        if _conversation_memory is not None:
             serializable = [m.model_dump() for m in messages]
-            self.save_conversation(serializable)
+            _conversation_memory.store(serializable)
 
         return response
 
@@ -109,12 +118,20 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         **kwargs,
     ) -> CompletionResults:
+        _conversation_memory = conversation_memory or self.conversation_memory
+        _content_filter = content_filter or self.content_filter
+
         ClientMessage = self._get_client_message_type()
 
         # Load conversation memory
-        messages = self.load_conversation()
+        if _conversation_memory is not None:
+            messages = _conversation_memory.load()
+        else:
+            messages = []
 
         # Convert init_conversation to ClientMessage
         if init_conversation:
@@ -130,11 +147,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
 
         # Apply content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, m in enumerate(messages):
                 for j, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        messages[i].content[j].text = self.apply_content_filter(content.text)
+                        messages[i].content[j].text = _content_filter.apply(content.text)
 
         # Convert UniversalMessage to ClientMessage
         _messages = [
@@ -154,23 +171,23 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         )
 
         # Restore content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, content in enumerate(response.message.content):
                 if isinstance(content, TextContent):
-                    response.message.content[i].text = self.restore_content_filter(content.text)
+                    response.message.content[i].text = _content_filter.restore(content.text)
 
             for m in messages:
                 for i, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        m.content[i].text = self.restore_content_filter(content.text)
-            # messages = [self.restore_content_filter(m) for m in messages]
+                        m.content[i].text = _content_filter.restore(content.text)
+            # messages = [_content_filter.restore(m) for m in messages]
 
         messages.append(response.message)
 
         # Save conversation memory
-        if self.conversation_memory is not None:
+        if _conversation_memory is not None:
             serializable = [m.model_dump() for m in messages]
-            self.save_conversation(serializable)
+            _conversation_memory.store(serializable)
 
         return response
 
@@ -178,12 +195,20 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         **kwargs,
     ) -> Generator[CompletionResults, None, None]:
+        _conversation_memory = conversation_memory or self.conversation_memory
+        _content_filter = content_filter or self.content_filter
+
         ClientMessage = self._get_client_message_type()
 
         # Load conversation memory
-        messages = self.load_conversation()
+        if _conversation_memory is not None:
+            messages = _conversation_memory.load()
+        else:
+            messages = []
 
         # Convert init_conversation to ClientMessage
         if init_conversation:
@@ -199,11 +224,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
 
         # Apply content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, m in enumerate(messages):
                 for j, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        messages[i].content[j].text = self.apply_content_filter(content.text)
+                        messages[i].content[j].text = _content_filter.apply(content.text)
 
         # Convert UniversalMessage to ClientMessage
         _messages = [
@@ -221,12 +246,10 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
                     response=chunk
                 )
 
-                if self.content_filter is not None:
+                if _content_filter is not None:
                     for i, content in enumerate(chunk.message.content):
                         if isinstance(content, TextContent):
-                            chunk.message.content[i].text = self.restore_content_filter(
-                                content.text
-                            )
+                            chunk.message.content[i].text = _content_filter.restore(content.text)
 
                 yield chunk
             else:
@@ -239,20 +262,28 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(chunk.message)
 
         # Save conversation memory
-        if self.conversation_memory is not None:
+        if _conversation_memory is not None:
             serializable = [m.model_dump() for m in messages]
-            self.save_conversation(serializable)
+            _conversation_memory.store(serializable)
 
     async def astream(
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         **kwargs,
     ) -> AsyncGenerator[CompletionResults, None]:
+        _conversation_memory = conversation_memory or self.conversation_memory
+        _content_filter = content_filter or self.content_filter
+
         ClientMessage = self._get_client_message_type()
 
         # Load conversation memory
-        messages = self.load_conversation()
+        if _conversation_memory is not None:
+            messages = _conversation_memory.load()
+        else:
+            messages = []
 
         # Convert init_conversation to ClientMessage
         if init_conversation:
@@ -268,11 +299,11 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
 
         # Apply content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, m in enumerate(messages):
                 for j, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        messages[i].content[j].text = self.apply_content_filter(content.text)
+                        messages[i].content[j].text = _content_filter.apply(content.text)
 
         # Convert UniversalMessage to ClientMessage
         _messages = [
@@ -290,12 +321,10 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
                     response=chunk
                 )
 
-                if self.content_filter is not None:
+                if _content_filter is not None:
                     for i, content in enumerate(chunk.message.content):
                         if isinstance(content, TextContent):
-                            chunk.message.content[i].text = self.restore_content_filter(
-                                content.text
-                            )
+                            chunk.message.content[i].text = _content_filter.restore(content.text)
 
                 yield chunk
             else:
@@ -308,9 +337,9 @@ class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(chunk.message)
 
         # Save conversation memory
-        if self.conversation_memory is not None:
+        if _conversation_memory is not None:
             serializable = [m.model_dump() for m in messages]
-            self.save_conversation(serializable)
+            _conversation_memory.store(serializable)
 
 
 class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
@@ -338,12 +367,20 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         **kwargs,
     ) -> FunctionCallingResults:
+        _conversation_memory = conversation_memory or self.conversation_memory
+        _content_filter = content_filter or self.content_filter
+
         ClientMessage = self._get_client_message_type()
 
         # Load conversation memory
-        messages = self.load_conversation()
+        if _conversation_memory is not None:
+            messages = _conversation_memory.load()
+        else:
+            messages = []
 
         # Convert init_conversation to ClientMessage
         if init_conversation:
@@ -359,11 +396,11 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
 
         # Apply content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, m in enumerate(messages):
                 for j, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        messages[i].content[j].text = self.apply_content_filter(content.text)
+                        messages[i].content[j].text = _content_filter.apply(content.text)
 
         # Convert UniversalMessage to ClientMessage
         _messages = [
@@ -384,16 +421,14 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         )
 
         # Restore content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, result in enumerate(response.results):
                 for j, content in enumerate(result.content):
                     if isinstance(content.args, str):
-                        response.results[i].content[j].args = self.restore_content_filter(
-                            content.args
-                        )
+                        response.results[i].content[j].args = _content_filter.restore(content.args)
 
                     if isinstance(content.output, str):
-                        response.results[i].content[j].output = self.restore_content_filter(
+                        response.results[i].content[j].output = _content_filter.restore(
                             content.output
                         )
 
@@ -402,19 +437,19 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
                 response=response
             )
 
-            if self.content_filter is not None:
+            if _content_filter is not None:
                 for i, content in enumerate(response.calls.content):
                     if isinstance(content, TextContent):
-                        response.calls.content[i].text = self.restore_content_filter(content.text)
+                        response.calls.content[i].text = _content_filter.restore(content.text)
 
             messages.append(response.calls)
         else:
             messages.extend(response.results)
 
         # Save conversation memory
-        if self.conversation_memory is not None and (response.calls or response.results):
+        if _conversation_memory is not None and (response.calls or response.results):
             serializable = [m.model_dump() for m in messages]
-            self.save_conversation(serializable)
+            _conversation_memory.store(serializable)
 
         return response
 
@@ -422,12 +457,20 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         **kwargs,
     ) -> FunctionCallingResults:
+        _conversation_memory = conversation_memory or self.conversation_memory
+        _content_filter = content_filter or self.content_filter
+
         ClientMessage = self._get_client_message_type()
 
         # Load conversation memory
-        messages = self.load_conversation()
+        if _conversation_memory is not None:
+            messages = _conversation_memory.load()
+        else:
+            messages = []
 
         # Convert init_conversation to ClientMessage
         if init_conversation:
@@ -443,11 +486,11 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         messages.append(ClientMessage.to_universal_message(message=prompt, role="user"))
 
         # Apply content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, m in enumerate(messages):
                 for j, content in enumerate(m.content):
                     if isinstance(content, TextContent):
-                        messages[i].content[j].text = self.apply_content_filter(content.text)
+                        messages[i].content[j].text = _content_filter.apply(content.text)
 
         # Convert UniversalMessage to ClientMessage
         _messages = [
@@ -468,16 +511,14 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
         )
 
         # Restore content filter if available
-        if self.content_filter is not None:
+        if _content_filter is not None:
             for i, result in enumerate(response.results):
                 for j, content in enumerate(result.content):
                     if isinstance(content.args, str):
-                        response.results[i].content[j].args = self.restore_content_filter(
-                            content.args
-                        )
+                        response.results[i].content[j].args = _content_filter.restore(content.args)
 
                     if isinstance(content.output, str):
-                        response.results[i].content[j].output = self.restore_content_filter(
+                        response.results[i].content[j].output = _content_filter.restore(
                             content.output
                         )
 
@@ -486,12 +527,12 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
                 response=response
             )
 
-            if self.content_filter is not None:
+            if _content_filter is not None:
                 for i, content in enumerate(response.calls.content):
                     if isinstance(content, TextContent):
-                        response.calls.content[i].text = self.restore_content_filter(content.text)
+                        response.calls.content[i].text = _content_filter.restore(content.text)
                 # response.calls.content = [
-                #     self.restore_content_filter(_content) for _content in response.calls.content
+                #     _content_filter.restore(_content) for _content in response.calls.content
                 # ]
 
             messages.append(response.calls)
@@ -499,8 +540,8 @@ class FunctionCallingWrapperModule(ABC, ConversationMixin, FilterMixin):
             messages.extend(response.results)
 
         # Save conversation memory
-        if self.conversation_memory is not None and (response.calls or response.results):
+        if _conversation_memory is not None and (response.calls or response.results):
             serializable = [m.model_dump() for m in messages]
-            self.save_conversation(serializable)
+            _conversation_memory.store(serializable)
 
         return response
