@@ -79,7 +79,7 @@ class BaseEmbeddingModule(ABC):
 
 class BaseConversationLengthAdjuster(ABC):
     @abstractmethod
-    def run(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def run(self, messages: Any) -> Any:
         raise NotImplementedError
 
 
