@@ -41,27 +41,25 @@ AUDIO_EXTENSIONS = ["wav", "mp3", "aiff", "ogg", "flac"]
 
 class BaseChatModule(ABC):
     @abstractmethod
-    def run(self, messages: list[dict[str, str]]) -> CompletionResults:
+    def run(self, messages: list[Any]) -> CompletionResults:
         raise NotImplementedError
 
-    async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
+    async def arun(self, messages: list[Any]) -> CompletionResults:
         raise NotImplementedError
 
-    def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
+    def stream(self, messages: list[Any]) -> Generator[CompletionResults, None, None]:
         raise NotImplementedError
 
-    async def astream(
-        self, messages: list[dict[str, str]]
-    ) -> AsyncGenerator[CompletionResults, None]:
+    async def astream(self, messages: list[Any]) -> AsyncGenerator[CompletionResults, None]:
         raise NotImplementedError
 
 
 class BaseFunctionCallingModule(ABC):
     @abstractmethod
-    def run(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+    def run(self, messages: list[Any]) -> FunctionCallingResults:
         raise NotImplementedError
 
-    async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+    async def arun(self, messages: list[Any]) -> FunctionCallingResults:
         raise NotImplementedError
 
     def _set_runnable_tools_dict(self, tools: list[Callable | BaseModel]) -> dict[str, callable]:
@@ -98,11 +96,11 @@ class BaseFilter(ABC):
 
 class BaseConversationMemory(ABC):
     @abstractmethod
-    def store(self, conversation_history: list[dict[str, str]]) -> None:
+    def store(self, conversation_history: list[dict[str, Any]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, path: str) -> list[dict[str, str]]:
+    def load(self, path: str) -> list[dict[str, Any]]:
         raise NotImplementedError
 
 
