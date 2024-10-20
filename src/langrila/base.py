@@ -100,7 +100,7 @@ class BaseConversationMemory(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, path: str) -> list[dict[str, Any]]:
+    def load(self) -> list[dict[str, Any]]:
         raise NotImplementedError
 
 
