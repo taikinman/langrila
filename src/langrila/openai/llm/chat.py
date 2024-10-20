@@ -80,8 +80,12 @@ class OpenAIChatCoreModule(BaseChatModule):
             if kwargs.get("system_instruction")
             else messages
         )
-        if self.conversation_length_adjuster:
-            _messages = self.conversation_length_adjuster.run(_messages)
+
+        _conversation_length_adjuster = (
+            kwargs.pop("conversation_length_adjuster", None) or self.conversation_length_adjuster
+        )
+        if _conversation_length_adjuster:
+            _messages = _conversation_length_adjuster.run(_messages)
 
         response = self._client.generate_message(
             messages=_messages,
@@ -120,6 +124,12 @@ class OpenAIChatCoreModule(BaseChatModule):
             else messages
         )
 
+        _conversation_length_adjuster = (
+            kwargs.pop("conversation_length_adjuster", None) or self.conversation_length_adjuster
+        )
+        if _conversation_length_adjuster:
+            _messages = _conversation_length_adjuster.run(_messages)
+
         response = await self._client.generate_message_async(
             messages=_messages,
             **kwargs,
@@ -156,6 +166,12 @@ class OpenAIChatCoreModule(BaseChatModule):
             if kwargs.get("system_instruction")
             else messages
         )
+
+        _conversation_length_adjuster = (
+            kwargs.pop("conversation_length_adjuster", None) or self.conversation_length_adjuster
+        )
+        if _conversation_length_adjuster:
+            _messages = _conversation_length_adjuster.run(_messages)
 
         response = self._client.generate_message(
             messages=_messages,
@@ -228,6 +244,12 @@ class OpenAIChatCoreModule(BaseChatModule):
             kwargs["stream_options"] = stream_options
         else:
             kwargs["stream_options"] = {"include_usage": True, **kwargs.get("stream_options", {})}
+
+        _conversation_length_adjuster = (
+            kwargs.pop("conversation_length_adjuster", None) or self.conversation_length_adjuster
+        )
+        if _conversation_length_adjuster:
+            _messages = _conversation_length_adjuster.run(_messages)
 
         response = await self._client.generate_message_async(
             messages=_messages,
@@ -434,6 +456,9 @@ class OpenAIChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
@@ -471,6 +496,9 @@ class OpenAIChatModule(ChatWrapperModule):
         return super().run(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
+            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )
 
@@ -478,6 +506,9 @@ class OpenAIChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
@@ -515,6 +546,9 @@ class OpenAIChatModule(ChatWrapperModule):
         return await super().arun(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
+            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )
 
@@ -522,6 +556,9 @@ class OpenAIChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
@@ -569,6 +606,9 @@ class OpenAIChatModule(ChatWrapperModule):
         return super().stream(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
+            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )
 
@@ -576,6 +616,9 @@ class OpenAIChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
@@ -623,5 +666,8 @@ class OpenAIChatModule(ChatWrapperModule):
         return super().astream(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
+            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )

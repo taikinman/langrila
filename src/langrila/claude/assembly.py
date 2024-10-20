@@ -78,9 +78,8 @@ class ClaudeFunctionalChat(BaseAssembly):
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
         tool_choice: Literal["auto", "any"] | str = "auto",
+        tool_only: bool = False,
     ):
-        super().__init__(conversation_memory=conversation_memory)
-
         self.model_name = model_name
         self.api_type = api_type
         self.api_key_env_name = api_key_env_name
@@ -106,6 +105,7 @@ class ClaudeFunctionalChat(BaseAssembly):
         self._strict_response_validation = _strict_response_validation
         self.conversation_length_adjuster = conversation_length_adjuster
         self.system_instruction = system_instruction
+        self.conversation_memory = conversation_memory
         self.content_filter = content_filter
         self.token_counter = token_counter
         self.tools = tools
@@ -119,6 +119,7 @@ class ClaudeFunctionalChat(BaseAssembly):
         self.extra_query = extra_query
         self.extra_body = extra_body
         self.tool_choice = tool_choice
+        self.tool_only = tool_only
 
         self.chat = AnthropicChatModule(
             model_name=model_name,
@@ -146,7 +147,7 @@ class ClaudeFunctionalChat(BaseAssembly):
             _strict_response_validation=_strict_response_validation,
             conversation_length_adjuster=conversation_length_adjuster,
             system_instruction=system_instruction,
-            conversation_memory=self.conversation_memory,
+            conversation_memory=conversation_memory,
             content_filter=content_filter,
             token_counter=token_counter,
             temperature=temperature,
@@ -185,7 +186,7 @@ class ClaudeFunctionalChat(BaseAssembly):
             _strict_response_validation=_strict_response_validation,
             conversation_length_adjuster=conversation_length_adjuster,
             system_instruction=system_instruction,
-            conversation_memory=self.conversation_memory,
+            conversation_memory=conversation_memory,
             content_filter=content_filter,
             token_counter=token_counter,
             tools=tools,
@@ -225,6 +226,8 @@ class ClaudeFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = 2048,
         metadata: message_create_params.Metadata | NotGiven = NOT_GIVEN,
@@ -242,6 +245,8 @@ class ClaudeFunctionalChat(BaseAssembly):
         tool_choice: Literal["auto", "any"] | str = "auto",
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             model_name=model_name,
             max_tokens=max_tokens,
@@ -267,11 +272,13 @@ class ClaudeFunctionalChat(BaseAssembly):
                 response_function_calling: FunctionCallingResults = self.function_calling.run(
                     prompt,
                     init_conversation=init_conversation,
+                    conversation_memory=_conversation_memory,
+                    content_filter=content_filter,
                     **generation_kwargs,
                 )
 
-                if tool_only:
-                    self._clear_memory()
+                if tool_only or self.tool_only:
+                    self._clear_memory(_conversation_memory)
 
                     return response_function_calling
 
@@ -291,12 +298,16 @@ class ClaudeFunctionalChat(BaseAssembly):
                     )
 
                     response_function_calling: FunctionCallingResults = self.function_calling.run(
-                        prompt, init_conversation=init_conversation, **generation_kwargs
+                        prompt,
+                        init_conversation=init_conversation,
+                        conversation_memory=_conversation_memory,
+                        content_filter=content_filter,
+                        **generation_kwargs,
                     )
 
                     total_usage += response_function_calling.usage
 
-                self._clear_memory()
+                self._clear_memory(_conversation_memory)
 
                 return CompletionResults(
                     usage=total_usage,
@@ -315,10 +326,14 @@ class ClaudeFunctionalChat(BaseAssembly):
                 raise ValueError("tool_choice must be provided when the model has tools available")
         else:
             response_chat: CompletionResults = self.chat.run(
-                prompt, init_conversation=init_conversation, **generation_kwargs
+                prompt,
+                init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
+                **generation_kwargs,
             )
 
-            self._clear_memory()
+            self._clear_memory(_conversation_memory)
 
             return response_chat
 
@@ -326,6 +341,8 @@ class ClaudeFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = 2048,
         metadata: message_create_params.Metadata | NotGiven = NOT_GIVEN,
@@ -343,6 +360,8 @@ class ClaudeFunctionalChat(BaseAssembly):
         tool_choice: Literal["auto", "any"] | str = "auto",
         tool_only: bool = False,
     ) -> CompletionResults | FunctionCallingResults:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             model_name=model_name,
             max_tokens=max_tokens,
@@ -367,12 +386,16 @@ class ClaudeFunctionalChat(BaseAssembly):
 
                 response_function_calling: FunctionCallingResults = (
                     await self.function_calling.arun(
-                        prompt, init_conversation=init_conversation, **generation_kwargs
+                        prompt,
+                        init_conversation=init_conversation,
+                        conversation_memory=_conversation_memory,
+                        content_filter=content_filter,
+                        **generation_kwargs,
                     )
                 )
 
-                if tool_only:
-                    self._clear_memory()
+                if tool_only or self.tool_only:
+                    self._clear_memory(_conversation_memory)
 
                     return response_function_calling
 
@@ -393,13 +416,17 @@ class ClaudeFunctionalChat(BaseAssembly):
 
                     response_function_calling: FunctionCallingResults = (
                         await self.function_calling.arun(
-                            prompt, init_conversation=init_conversation, **generation_kwargs
+                            prompt,
+                            init_conversation=init_conversation,
+                            conversation_memory=_conversation_memory,
+                            content_filter=content_filter,
+                            **generation_kwargs,
                         )
                     )
 
                     total_usage += response_function_calling.usage
 
-                self._clear_memory()
+                self._clear_memory(_conversation_memory)
 
                 return CompletionResults(
                     usage=total_usage,
@@ -417,9 +444,13 @@ class ClaudeFunctionalChat(BaseAssembly):
                 raise ValueError("tool_choice must be provided when the model has tools available")
         else:
             response_chat: CompletionResults = await self.chat.arun(
-                prompt, init_conversation=init_conversation, **generation_kwargs
+                prompt,
+                init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
+                **generation_kwargs,
             )
 
-            self._clear_memory()
+            self._clear_memory(_conversation_memory)
 
             return response_chat

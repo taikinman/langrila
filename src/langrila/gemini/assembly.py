@@ -56,14 +56,14 @@ class GeminiFunctionalChat(BaseAssembly):
         tool_configs: list[ToolConfig] | None = None,
         n_results: int | None = None,
         tool_choice: str = "auto",
+        tool_only: bool = False,
     ):
-        super().__init__(conversation_memory=conversation_memory)
-
         self.model_name = model_name
         self.api_key_env_name = api_key_env_name
         self.max_output_tokens = max_output_tokens
         self.json_mode = json_mode
         self.timeout = timeout
+        self.conversation_memory = conversation_memory
         self.content_filter = content_filter
         self.system_instruction = system_instruction
         self.token_counter = token_counter
@@ -96,6 +96,7 @@ class GeminiFunctionalChat(BaseAssembly):
         self.stop_sequences = stop_sequences
         self.n_results = n_results
         self.tool_choice = tool_choice
+        self.tool_only = tool_only
 
         self.chat = GeminiChatModule(
             model_name=model_name,
@@ -104,7 +105,7 @@ class GeminiFunctionalChat(BaseAssembly):
             json_mode=json_mode,
             timeout=timeout,
             content_filter=content_filter,
-            conversation_memory=self.conversation_memory,
+            conversation_memory=conversation_memory,
             system_instruction=system_instruction,
             token_counter=token_counter,
             api_type=api_type,
@@ -142,7 +143,7 @@ class GeminiFunctionalChat(BaseAssembly):
             json_mode=json_mode,
             timeout=timeout,
             content_filter=content_filter,
-            conversation_memory=self.conversation_memory,
+            conversation_memory=conversation_memory,
             system_instruction=system_instruction,
             token_counter=token_counter,
             api_type=api_type,
@@ -202,6 +203,8 @@ class GeminiFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -225,6 +228,8 @@ class GeminiFunctionalChat(BaseAssembly):
         n_results: int | None = None,
         **kwargs,
     ) -> CompletionResults | FunctionCallingResults:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -252,20 +257,19 @@ class GeminiFunctionalChat(BaseAssembly):
         if generation_kwargs.get("model_name") is None:
             raise ValueError("model_name must be provided")
 
-        if tool_only:
-            assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
-
         total_usage = Usage(model_name=generation_kwargs.get("model_name"))
 
         if generation_kwargs.get("tools"):
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
-            if tool_only:
-                self._clear_memory()
+            if tool_only or self.tool_only:
+                self._clear_memory(_conversation_memory)
 
                 return response_function_calling
 
@@ -287,13 +291,15 @@ class GeminiFunctionalChat(BaseAssembly):
         response_chat: CompletionResults = self.chat.run(
             prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
         total_usage += response_chat.usage
         response_chat.usage = total_usage
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)
 
         return response_chat
 
@@ -301,6 +307,8 @@ class GeminiFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -324,6 +332,8 @@ class GeminiFunctionalChat(BaseAssembly):
         n_results: int | None = None,
         **kwargs,
     ) -> CompletionResults | FunctionCallingResults:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -351,20 +361,19 @@ class GeminiFunctionalChat(BaseAssembly):
         if generation_kwargs.get("model_name") is None:
             raise ValueError("model_name must be provided")
 
-        if tool_only:
-            assert tool_choice is not None, "tool_choice must be provided when tool_only is True"
-
         total_usage = Usage(model_name=generation_kwargs.get("model_name"))
 
         if generation_kwargs.get("tools"):
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
-            if tool_only:
-                self._clear_memory()
+            if tool_only or self.tool_only:
+                self._clear_memory(_conversation_memory)
 
                 return response_function_calling
 
@@ -386,13 +395,15 @@ class GeminiFunctionalChat(BaseAssembly):
         response_chat: CompletionResults = await self.chat.arun(
             prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
         total_usage += response_chat.usage
         response_chat.usage = total_usage
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)
 
         return response_chat
 
@@ -400,6 +411,8 @@ class GeminiFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -421,6 +434,8 @@ class GeminiFunctionalChat(BaseAssembly):
         tool_choice: str = "auto",
         **kwargs,
     ) -> Generator[CompletionResults, None, None]:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -453,6 +468,8 @@ class GeminiFunctionalChat(BaseAssembly):
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
@@ -474,6 +491,8 @@ class GeminiFunctionalChat(BaseAssembly):
         response_chat = self.chat.stream(
             prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -483,12 +502,14 @@ class GeminiFunctionalChat(BaseAssembly):
                 result.usage = total_usage
             yield result
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)
 
     async def astream(
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -510,6 +531,8 @@ class GeminiFunctionalChat(BaseAssembly):
         tool_choice: str = "auto",
         **kwargs,
     ) -> AsyncGenerator[CompletionResults, None]:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -542,6 +565,8 @@ class GeminiFunctionalChat(BaseAssembly):
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
@@ -563,6 +588,8 @@ class GeminiFunctionalChat(BaseAssembly):
         response_chat = await self.chat.astream(
             prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -572,4 +599,4 @@ class GeminiFunctionalChat(BaseAssembly):
                 result.usage = total_usage
             yield result
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)

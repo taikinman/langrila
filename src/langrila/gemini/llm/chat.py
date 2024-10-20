@@ -349,6 +349,8 @@ class GeminiChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -391,6 +393,8 @@ class GeminiChatModule(ChatWrapperModule):
         return super().run(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -398,6 +402,8 @@ class GeminiChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -441,6 +447,8 @@ class GeminiChatModule(ChatWrapperModule):
         return await super().arun(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -448,6 +456,8 @@ class GeminiChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -489,6 +499,8 @@ class GeminiChatModule(ChatWrapperModule):
         return super().stream(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -496,6 +508,8 @@ class GeminiChatModule(ChatWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -537,5 +551,7 @@ class GeminiChatModule(ChatWrapperModule):
         return super().astream(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )

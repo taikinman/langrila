@@ -374,6 +374,8 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = 2048,
         metadata: message_create_params.Metadata | NotGiven = NOT_GIVEN,
@@ -413,6 +415,8 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         return super().run(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -420,6 +424,8 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = 2048,
         metadata: message_create_params.Metadata | NotGiven = NOT_GIVEN,
@@ -459,5 +465,7 @@ class AnthropicFunctionCallingModule(FunctionCallingWrapperModule):
         return await super().arun(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )

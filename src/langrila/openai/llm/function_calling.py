@@ -84,8 +84,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             else messages
         )
 
-        if self.conversation_length_adjuster:
-            _messages = self.conversation_length_adjuster.run(_messages)
+        _conversation_length_adjuster = (
+            kwargs.pop("conversation_length_adjuster", None) or self.conversation_length_adjuster
+        )
+        if _conversation_length_adjuster:
+            _messages = _conversation_length_adjuster.run(_messages)
 
         response = self._client.generate_message(
             messages=_messages,
@@ -145,8 +148,11 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
             else messages
         )
 
-        if self.conversation_length_adjuster:
-            _messages = self.conversation_length_adjuster.run(_messages)
+        _conversation_length_adjuster = (
+            kwargs.pop("conversation_length_adjuster", None) or self.conversation_length_adjuster
+        )
+        if _conversation_length_adjuster:
+            _messages = _conversation_length_adjuster.run(_messages)
 
         response = await self._client.generate_message_async(
             messages=_messages,
@@ -199,7 +205,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
         parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
-        tool_choice: str = "auto",
+        tool_choice: str | Literal["auto", "none"] = "auto",
         organization_id_env_name: str | None = None,
         api_type: str = "openai",
         api_version: str | None = None,
@@ -300,12 +306,9 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
     def _get_client_tool_config_type(self) -> ToolConfig:
         return OpenAIToolConfig
 
-    def _get_tool_choice_dict(self, tool_choice: str | None) -> dict[str, Any]:
-        if tool_choice is None:
-            return {"type": "auto"}
-
-        if tool_choice in ["auto", "required"]:
-            return {"type": tool_choice}
+    def _get_tool_choice_dict(self, tool_choice: str | Literal["auto", "none"]) -> dict[str, Any]:
+        if tool_choice in ["auto", "none"]:
+            return tool_choice
         else:
             return {"type": "function", "function": {"name": tool_choice}}
 
@@ -361,6 +364,8 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         model_name: str | None = None,
         max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
@@ -373,7 +378,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         system_instruction: str | None = None,
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
-        tool_choice: str = "auto",
+        tool_choice: str | Literal["auto", "none"] = "auto",
         parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
         seed: int | NotGiven = NOT_GIVEN,
         **kwargs: Any,
@@ -400,6 +405,8 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         return super().run(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -407,6 +414,8 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         model_name: str | None = NOT_GIVEN,
         max_tokens: int | NotGiven = NOT_GIVEN,
         max_completion_tokens: int | NotGiven = NOT_GIVEN,
@@ -419,7 +428,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         system_instruction: str | None = None,
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
-        tool_choice: str = "auto",
+        tool_choice: str | Literal["auto", "none"] = "auto",
         parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
         seed: int | NotGiven = NOT_GIVEN,
         **kwargs: Any,
@@ -446,5 +455,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         return await super().arun(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )

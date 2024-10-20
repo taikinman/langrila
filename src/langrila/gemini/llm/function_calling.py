@@ -325,6 +325,8 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -368,6 +370,8 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         return super().run(
             prompt=prompt,
             init_conversation=init_conversation,
+            content_filter=content_filter,
+            conversation_memory=conversation_memory,
             **generation_kwargs,
         )
 
@@ -375,6 +379,8 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         model_name: str | None = None,
         stop_sequences: Iterable[str] | None = None,
@@ -417,5 +423,7 @@ class GeminiFunctionCallingModule(FunctionCallingWrapperModule):
         return await super().arun(
             prompt=prompt,
             init_conversation=init_conversation,
+            content_filter=content_filter,
+            conversation_memory=conversation_memory,
             **generation_kwargs,
         )

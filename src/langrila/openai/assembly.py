@@ -46,7 +46,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         n_results: int | NotGiven = NOT_GIVEN,
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
-        tool_choice: Literal["auto", "required"] | str | None = "auto",
+        tool_choice: str | Literal["auto", "none"] = "auto",
+        tool_only: bool = False,
         stream_options: dict[str, Any] | None = None,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
@@ -57,13 +58,12 @@ class OpenAIFunctionalChat(BaseAssembly):
         http_client: httpx.Client | None = None,
         _strict_response_validation: bool = False,
     ) -> None:
-        super().__init__(conversation_memory=conversation_memory)
-
         self.api_key_env_name = api_key_env_name
         self.model_name = model_name
         self.tools = tools
         self.tool_configs = tool_configs
         self.tool_choice = tool_choice
+        self.tool_only = tool_only
         self.organization_id_env_name = organization_id_env_name
         self.api_type = api_type
         self.api_version = api_version
@@ -74,6 +74,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         self.timeout = timeout
         self.max_retries = max_retries
         self.seed = seed
+        self.conversation_memory = conversation_memory
         self.content_filter = content_filter
         self.system_instruction = system_instruction
         self.conversation_length_adjuster = conversation_length_adjuster
@@ -110,7 +111,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             timeout=timeout,
             max_retries=max_retries,
             seed=seed,
-            conversation_memory=self.conversation_memory,
+            conversation_memory=conversation_memory,
             content_filter=content_filter,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
@@ -150,7 +151,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             timeout=timeout,
             max_retries=max_retries,
             seed=seed,
-            conversation_memory=self.conversation_memory,
+            conversation_memory=conversation_memory,
             content_filter=content_filter,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
@@ -202,7 +203,9 @@ class OpenAIFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
-        tool_choice: Literal["auto", "required"] | str | None = "auto",
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        tool_choice: str | Literal["auto", "none"] = "auto",
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
         tool_only: bool = False,
@@ -222,6 +225,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
     ) -> CompletionResults | FunctionCallingResults:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -252,11 +257,13 @@ class OpenAIFunctionalChat(BaseAssembly):
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt=prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
-            if tool_only:
-                self._clear_memory()
+            if tool_only or self.tool_only:
+                self._clear_memory(_conversation_memory)
 
                 return response_function_calling
 
@@ -279,13 +286,15 @@ class OpenAIFunctionalChat(BaseAssembly):
         response_chat: CompletionResults = self.chat.run(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
         total_usage += response_chat.usage
         response_chat.usage = total_usage
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)
 
         return response_chat
 
@@ -293,7 +302,9 @@ class OpenAIFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
-        tool_choice: Literal["auto", "required"] | str | None = "auto",
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        tool_choice: str | Literal["auto", "none"] = "auto",
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
         tool_only: bool = False,
@@ -313,6 +324,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
     ) -> CompletionResults | FunctionCallingResults:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -343,11 +356,13 @@ class OpenAIFunctionalChat(BaseAssembly):
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
-            if tool_only:
-                self._clear_memory()
+            if tool_only or self.tool_only:
+                self._clear_memory(_conversation_memory)
 
                 return response_function_calling
 
@@ -370,13 +385,15 @@ class OpenAIFunctionalChat(BaseAssembly):
         response_chat: CompletionResults = await self.chat.arun(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
         total_usage += response_chat.usage
         response_chat.usage = total_usage
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)
 
         return response_chat
 
@@ -384,7 +401,9 @@ class OpenAIFunctionalChat(BaseAssembly):
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
-        tool_choice: Literal["auto", "required"] | str | None = "auto",
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        tool_choice: str | Literal["auto", "none"] = "auto",
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
         model_name: str | None = None,
@@ -403,6 +422,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
     ) -> Generator[CompletionResults, None, None]:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -433,6 +454,8 @@ class OpenAIFunctionalChat(BaseAssembly):
             response_function_calling: FunctionCallingResults = self.function_calling.run(
                 prompt=prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
@@ -455,6 +478,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         response_chat = self.chat.stream(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -464,13 +489,15 @@ class OpenAIFunctionalChat(BaseAssembly):
                 result.usage = total_usage
             yield result
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)
 
     async def astream(
         self,
         prompt: InputType,
         init_conversation: ConversationType | None = None,
-        tool_choice: Literal["auto", "required"] | str | None = "auto",
+        conversation_memory: BaseConversationMemory | None = None,
+        content_filter: BaseFilter | None = None,
+        tool_choice: str | Literal["auto", "none"] = "auto",
         tools: list[Callable] | None = None,
         tool_configs: list[ToolConfig] | None = None,
         model_name: str | None = None,
@@ -489,6 +516,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
     ) -> AsyncGenerator[CompletionResults, None]:
+        _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
+
         generation_kwargs = self._get_generation_kwargs(
             system_instruction=system_instruction,
             model_name=model_name,
@@ -519,6 +548,8 @@ class OpenAIFunctionalChat(BaseAssembly):
             response_function_calling: FunctionCallingResults = await self.function_calling.arun(
                 prompt=prompt,
                 init_conversation=init_conversation,
+                conversation_memory=_conversation_memory,
+                content_filter=content_filter,
                 **generation_kwargs,
             )
 
@@ -541,6 +572,8 @@ class OpenAIFunctionalChat(BaseAssembly):
         response_chat = await self.chat.astream(
             prompt=prompt,
             init_conversation=init_conversation,
+            conversation_memory=_conversation_memory,
+            content_filter=content_filter,
             **generation_kwargs,
         )
 
@@ -550,4 +583,4 @@ class OpenAIFunctionalChat(BaseAssembly):
                 result.usage = total_usage
             yield result
 
-        self._clear_memory()
+        self._clear_memory(_conversation_memory)
