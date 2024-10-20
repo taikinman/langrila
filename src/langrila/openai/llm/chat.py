@@ -449,6 +449,9 @@ class OpenAIChatModule(ChatWrapperModule):
         _kwargs["max_completion_tokens"] = (
             kwargs.get("max_completion_tokens") or self.max_completion_tokens
         )
+        _kwargs["conversation_length_adjuster"] = (
+            kwargs.get("conversation_length_adjuster") or self.conversation_length_adjuster
+        )
 
         return _kwargs
 
@@ -490,6 +493,7 @@ class OpenAIChatModule(ChatWrapperModule):
             response_schema=response_schema,
             n_results=n_results,
             seed=seed,
+            conversation_length_adjuster=conversation_length_adjuster,
             **kwargs,
         )
 
@@ -498,7 +502,6 @@ class OpenAIChatModule(ChatWrapperModule):
             init_conversation=init_conversation,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
-            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )
 
@@ -540,6 +543,7 @@ class OpenAIChatModule(ChatWrapperModule):
             response_schema=response_schema,
             n_results=n_results,
             seed=seed,
+            conversation_length_adjuster=conversation_length_adjuster,
             **kwargs,
         )
 
@@ -548,7 +552,6 @@ class OpenAIChatModule(ChatWrapperModule):
             init_conversation=init_conversation,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
-            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )
 
@@ -589,6 +592,7 @@ class OpenAIChatModule(ChatWrapperModule):
             json_mode=json_mode,
             response_schema=response_schema,
             seed=seed,
+            conversation_length_adjuster=conversation_length_adjuster,
             **kwargs,
         )
 
@@ -608,7 +612,6 @@ class OpenAIChatModule(ChatWrapperModule):
             init_conversation=init_conversation,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
-            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )
 
@@ -649,6 +652,7 @@ class OpenAIChatModule(ChatWrapperModule):
             json_mode=json_mode,
             response_schema=response_schema,
             seed=seed,
+            conversation_length_adjuster=conversation_length_adjuster,
             **kwargs,
         )
 
@@ -668,6 +672,5 @@ class OpenAIChatModule(ChatWrapperModule):
             init_conversation=init_conversation,
             conversation_memory=conversation_memory,
             content_filter=content_filter,
-            conversation_length_adjuster=conversation_length_adjuster,
             **generation_kwargs,
         )

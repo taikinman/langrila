@@ -196,6 +196,9 @@ class OpenAIFunctionalChat(BaseAssembly):
         _kwargs["tools"] = kwargs.get("tools") or self.tools
         _kwargs["tool_configs"] = kwargs.get("tool_configs") or self.tool_configs
         _kwargs["stream_options"] = kwargs.get("stream_options") or self.stream_options
+        _kwargs["conversation_length_adjuster"] = (
+            kwargs.get("conversation_length_adjuster") or self.conversation_length_adjuster
+        )
 
         return _kwargs
 
@@ -224,6 +227,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> CompletionResults | FunctionCallingResults:
         _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
 
@@ -246,6 +250,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             parallel_tool_calls=parallel_tool_calls,
             json_mode=json_mode,
             response_schema=response_schema,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
         if not generation_kwargs.get("model_name"):
@@ -323,6 +328,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> CompletionResults | FunctionCallingResults:
         _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
 
@@ -345,6 +351,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             parallel_tool_calls=parallel_tool_calls,
             json_mode=json_mode,
             response_schema=response_schema,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
         if not generation_kwargs.get("model_name"):
@@ -421,6 +428,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> Generator[CompletionResults, None, None]:
         _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
 
@@ -443,6 +451,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             json_mode=json_mode,
             response_schema=response_schema,
             stream_options=stream_options,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
         if not generation_kwargs.get("model_name"):
@@ -515,6 +524,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         parallel_tool_calls: bool | NotGiven = NOT_GIVEN,
         json_mode: bool = False,
         response_schema: BaseModel | None = None,
+        conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
     ) -> AsyncGenerator[CompletionResults, None]:
         _conversation_memory = self._setup_memory(conversation_memory or self.conversation_memory)
 
@@ -537,6 +547,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             json_mode=json_mode,
             response_schema=response_schema,
             stream_options=stream_options,
+            conversation_length_adjuster=conversation_length_adjuster,
         )
 
         if not generation_kwargs.get("model_name"):
