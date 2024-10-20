@@ -26,7 +26,7 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         deployment_id_env_name: str | None = None,
         max_retries: int = 5,
         timeout: int = 60,
-        batch_size: int = 10,
+        batch_size: int | None = None,
         project: str | None = None,
         base_url: str | httpx.URL | None = None,
         azure_ad_token: str | None = None,
@@ -52,6 +52,8 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         self.max_retries = max_retries
         self.timeout = timeout
         self.batch_size = batch_size
+        self.dimensions = dimensions
+        self.user = user
 
         self.additional_params = {}
         if dimensions is not None:
@@ -79,16 +81,37 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
             _strict_response_validation=_strict_response_validation,
         )
 
-    def run(self, text: str | list[str]) -> EmbeddingResults:
+    def _get_embedding_kwargs(self, **kwargs):
+        _kwargs = {}
+        _kwargs["model"] = kwargs.get("model_name") or self.model_name
+
+        if kwargs.get("dimensions") or self.dimensions:
+            _kwargs["dimensions"] = kwargs.get("dimensions") or self.dimensions
+
+        if kwargs.get("user") or self.user:
+            _kwargs["user"] = kwargs.get("user") or self.user
+
+        return _kwargs
+
+    def run(
+        self,
+        text: str | list[str],
+        model_name: str | None = None,
+        dimensions: int | None = None,
+        user: str | None = None,
+        batch_size: int | None = None,
+    ) -> EmbeddingResults:
         if not isinstance(text, list):
             text = [text]
 
+        embedding_kwargs = self._get_embedding_kwargs(
+            model_name=model_name, dimensions=dimensions, user=user
+        )
+
         embeddings = []
-        total_usage = Usage(model_name=self.model_name)
-        for batch in make_batch(text, batch_size=self.batch_size):
-            response = self._client.embed_text(
-                input=batch, model=self.model_name, **self.additional_params
-            )
+        total_usage = Usage(model_name=embedding_kwargs.get("model"))
+        for batch in make_batch(text, batch_size=batch_size or self.batch_size or 10):
+            response = self._client.embed_text(input=batch, **embedding_kwargs)
             embeddings.extend([e.embedding for e in response.data])
             total_usage += response.usage
 
@@ -99,16 +122,25 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         )
         return results
 
-    async def arun(self, text: str) -> EmbeddingResults:
+    async def arun(
+        self,
+        text: str,
+        model_name: str | None = None,
+        dimensions: int | None = None,
+        user: str | None = None,
+        batch_size: int | None = None,
+    ) -> EmbeddingResults:
         if not isinstance(text, list):
             text = [text]
 
+        embedding_kwargs = self._get_embedding_kwargs(
+            model_name=model_name, dimensions=dimensions, user=user
+        )
+
         embeddings = []
-        total_usage = Usage(model_name=self.model_name)
-        for batch in make_batch(text, batch_size=self.batch_size):
-            response = await self._client.embed_text_async(
-                input=batch, model=self.model_name, **self.additional_params
-            )
+        total_usage = Usage(model_name=embedding_kwargs.get("model"))
+        for batch in make_batch(text, batch_size=batch_size or self.batch_size or 10):
+            response = await self._client.embed_text_async(input=batch, **embedding_kwargs)
             embeddings.extend([e.embedding for e in response.data])
             total_usage += response.usage
 
