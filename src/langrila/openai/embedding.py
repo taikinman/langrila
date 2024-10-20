@@ -9,7 +9,6 @@ from ..base import BaseEmbeddingModule
 from ..result import EmbeddingResults
 from ..usage import Usage
 from ..utils import make_batch
-from .model_config import _NEWER_EMBEDDING_CONFIG, EMBEDDING_CONFIG
 from .openai_utils import get_client
 
 
@@ -18,7 +17,7 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         self,
         api_key_env_name: str,
         organization_id_env_name: str | None = None,
-        model_name: str = "text-embedding-ada-002",
+        model_name: str | None = "text-embedding-3-small",
         dimensions: int | None = None,
         user: str | None = None,
         api_type: str | None = "openai",
@@ -43,10 +42,6 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
                 api_version and endpoint_env_name and deployment_id_env_name
             ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified for Azure API."
 
-        assert (
-            model_name in EMBEDDING_CONFIG.keys()
-        ), f"model_name must be one of {', '.join(sorted(EMBEDDING_CONFIG.keys()))}."
-
         self.api_key_env_name = api_key_env_name
         self.organization_id_env_name = organization_id_env_name
         self.model_name = model_name
@@ -60,10 +55,8 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
 
         self.additional_params = {}
         if dimensions is not None:
-            if model_name in _NEWER_EMBEDDING_CONFIG:
-                self.additional_params["dimensions"] = dimensions
-            else:
-                print(f"Warning: dimensions is not supported for {model_name}. It will be ignored.")
+            self.additional_params["dimensions"] = dimensions
+
         if user is not None:
             self.additional_params["user"] = user
 
