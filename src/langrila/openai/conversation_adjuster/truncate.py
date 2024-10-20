@@ -25,7 +25,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
         total_tool_use_tokens = 0
         for message in messages[::-1]:
             if message.get("role") == "tool":
-                n_tool_use_tokens = self.get_n_tokens(message, self.model_name)["total"]
+                n_tool_use_tokens = get_n_tokens(message, self.model_name)["total"]
                 total_tool_use_tokens += n_tool_use_tokens
                 if total_n_tokens + total_tool_use_tokens <= self.context_length:
                     used_tool_use_message.append(message)
@@ -39,9 +39,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     _tmp_message = {k: v for k, v in message.items() if k != "tool_calls"}
                     _tmp_message["tool_calls"] = tool_calls
 
-                    total_tool_call_tokens = self.get_n_tokens(_tmp_message, self.model_name)[
-                        "total"
-                    ]
+                    total_tool_call_tokens = get_n_tokens(_tmp_message, self.model_name)["total"]
                     if (
                         total_n_tokens + total_tool_use_tokens + total_tool_call_tokens
                         <= self.context_length
@@ -59,7 +57,7 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
                     ]
                     new_message.append(tool_call_message)
                     for m in new_message:
-                        n_tokens = self.get_n_tokens(m, self.model_name)["total"]
+                        n_tokens = get_n_tokens(m, self.model_name)["total"]
                         total_n_tokens += n_tokens
 
                 else:
@@ -144,6 +142,3 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
             return self.encoding.decode(self.encoding.encode(text)[-n_tokens:])
         else:
             return ""
-
-    def _get_n_tokens(self, message: dict[str, dict[str, str]]) -> int:
-        return get_n_tokens(message=message, model_name=self.model_name)["total"]
