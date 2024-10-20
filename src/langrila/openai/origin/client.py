@@ -41,7 +41,9 @@ class OpenAIClient(BaseClient):
             return await self._async_client.chat.completions.create(**completion_params)
 
     def embed_text(self, **kwargs):
-        return self._client.embeddings.create(**kwargs)
+        embed_params = create_parameters(self._client.embeddings.create, **kwargs)
+        return self._client.embeddings.create(**embed_params)
 
     def embed_text_async(self, **kwargs):
-        return self._async_client.embeddings.create(**kwargs)
+        embed_params = create_parameters(self._async_client.embeddings.create, **kwargs)
+        return self._async_client.embeddings.create(**embed_params)
