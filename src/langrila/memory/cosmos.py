@@ -21,12 +21,14 @@ class CosmosConversationMemory(BaseConversationMemory):
         self.dbname = os.getenv(db_env_name)
         self.containername = container_name
         self.partition_key = partition_key
+
         # Create a Cosmos client
         try:
             client = CosmosClient(url=self.endpoint, credential=self.key)
         except:
             logging.error("Could not connect to Cosmos DB")
             raise ConnectionError
+
         # Get a database
         try:
             database = client.get_database_client(database=self.dbname)
