@@ -99,3 +99,21 @@ class GeminiAIStudioClient(BaseClient):
             **kwargs,
         )
         return await model.count_tokens_async(**count_tokens_params)
+
+    def embed_text(self, **kwargs):
+        genai.configure(**self.configure_params)
+
+        embedding_params = create_parameters(
+            genai.embed_content,
+            **kwargs,
+        )
+        return genai.embed_content(**embedding_params)
+
+    def embed_text_async(self, **kwargs):
+        genai.configure(**self.configure_params)
+
+        embedding_params = create_parameters(
+            genai.embed_content_async,
+            **kwargs,
+        )
+        return genai.embed_content_async(**embedding_params)
