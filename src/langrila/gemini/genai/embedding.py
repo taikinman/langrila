@@ -29,7 +29,7 @@ class GeminiEmbeddingModule(BaseEmbeddingModule):
 
         self._client = get_client(api_key_env_name=api_key_env_name, api_type=self.api_type)
 
-    def _get_embedding_kwargs(self, **kwargs):
+    def _get_embedding_kwargs(self, **kwargs) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["model"] = kwargs.get("model_name") or self.model_name
         _kwargs["title"] = kwargs.get("title") or self.title

@@ -53,7 +53,7 @@ class VertexAIEmbeddingModule(BaseEmbeddingModule):
             request_metadata=request_metadata,
         )
 
-    def _get_embedding_kwargs(self, **kwargs):
+    def _get_embedding_kwargs(self, **kwargs) -> dict[str, Any]:
         _kwargs = {}
         _kwargs["model_name"] = kwargs.get("model_name") or self.model_name
         _kwargs["title"] = kwargs.get("title") or self.title
