@@ -214,6 +214,13 @@ class Message(BaseModel):
     content: ContentType | list[ContentType]
     name: str | None = None
 
+    @model_validator(mode="before")
+    def setup(cls, data):
+        if isinstance(data, dict) and "content" in data:
+            if not isinstance(data["content"], list):
+                data["content"] = [data["content"]]
+        return data
+
 
 InputType = Message | list[Message] | ContentType | list[ContentType]
 ConversationType = Message | list[Message]
