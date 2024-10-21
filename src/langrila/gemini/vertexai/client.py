@@ -6,6 +6,7 @@ from google.auth import credentials as auth_credentials
 from google.cloud.aiplatform.tensorboard import tensorboard_resource
 from typing_extensions import override
 from vertexai.generative_models import GenerationConfig, GenerationResponse, GenerativeModel
+from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 
 from ...base import BaseClient
 from ...utils import create_parameters
@@ -92,3 +93,23 @@ class GeminiVertexAIClient(BaseClient):
             **kwargs,
         )
         return await model.count_tokens_async(**count_tokens_params)
+
+    def embed_text(self, **kwargs):
+        vertexai.init(**self.configure_params)
+
+        model = TextEmbeddingModel.from_pretrained(model_name=kwargs.get("model_name"))
+        input_params = create_parameters(TextEmbeddingInput, exclude=["text"], **kwargs)
+        inputs = [TextEmbeddingInput(text=text, **input_params) for text in kwargs.get("texts")]
+
+        embed_params = create_parameters(model.get_embeddings, exclude=["texts"], **kwargs)
+        return model.get_embeddings(inputs, **embed_params)
+
+    def embed_text_async(self, **kwargs):
+        vertexai.init(**self.configure_params)
+
+        model = TextEmbeddingModel.from_pretrained(model_name=kwargs.get("model_name"))
+        input_params = create_parameters(TextEmbeddingInput, exclude=["text"], **kwargs)
+        inputs = [TextEmbeddingInput(text=text, **input_params) for text in kwargs.get("texts")]
+
+        embed_params = create_parameters(model.get_embeddings, exclude=["texts"], **kwargs)
+        return model.get_embeddings_async(inputs, **embed_params)
