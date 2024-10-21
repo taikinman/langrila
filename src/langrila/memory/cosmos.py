@@ -1,7 +1,4 @@
-import hashlib
-import logging
 import os
-import warnings
 from typing import Any
 
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
