@@ -1,47 +1,63 @@
-from azure.cosmos import exceptions, CosmosClient, PartitionKey
-import logging
 import os
-import hashlib
+from typing import Any
+
+from azure.cosmos import CosmosClient, PartitionKey, exceptions
 
 from ..base import BaseConversationMemory
 
+
 class CosmosConversationMemory(BaseConversationMemory):
-    def __init__(self, endpoint_env_name: str, key_env_name: str, db_env_name: str, container_env_name: str):
+    def __init__(
+        self,
+        endpoint_env_name: str,
+        key_env_name: str,
+        db_env_name: str,
+        container_name: str,
+        item_name: str,
+        partition_key: str | None = None,
+    ):
         self.endpoint = os.getenv(endpoint_env_name)
         self.key = os.getenv(key_env_name)
         self.dbname = os.getenv(db_env_name)
-        self.containername = os.getenv(container_env_name)
-        # Create a Cosmos client
-        try:
-            client = CosmosClient(url=self.endpoint, credential=self.key)
-        except:
-            logging.error('Could not connect to Cosmos DB')
-            raise ConnectionError
-        # Get a database
-        try:
-            database = client.get_database_client(database=self.dbname)
-        except exceptions.CosmosResourceNotFoundError:
-            logging.error(f'Could not find database: {self.dbname}')
-        # Get a container
-        try:
-            self.container = database.get_container_client(self.containername)
-        except exceptions.CosmosResourceExistsError:
-            logging.error(f'Could not find container: {self.containername}')
+        self.containername = container_name
+        self.itemname = item_name
+        self.partition_key = partition_key if partition_key else f"{container_name}"
 
-    def store(self, conversation_history: list[dict[str, str]]):
-        for item in conversation_history:
-            item["id"] = hashlib.sha256(str(item).encode()).hexdigest()
-            try:
-                self.container.create_item(item)
-            except exceptions.CosmosResourceExistsError:
-                pass
-    
-    def load(self) -> list[dict[str, str]]:
+        # Create a Cosmos client
+        client = CosmosClient(url=self.endpoint, credential=self.key)
+
+        # Get a database
+        database = client.get_database_client(database=self.dbname)
+
+        # Get or create a container
+        database.create_container_if_not_exists(
+            id=self.containername,
+            partition_key=PartitionKey(path=f"/{self.partition_key}"),
+        )
+        self.container = database.get_container_client(self.containername)
+
+        self.__stored = False
+
+    def store(self, conversation_history: list[dict[str, Any]]):
+        item = {}
+        item["id"] = self.itemname
+        item[self.partition_key] = self.partition_key
+        item["history"] = conversation_history
+        self.container.upsert_item(item)
+
+        self.__stored = True
+
+    def load(self) -> list[dict[str, Any]]:
         result = []
         try:
-            items = self.container.read_all_items()
-            for item in items:
-                result.append({k: v for k, v in item.items() if k in {"role", "content"}})
-            return result
-        except:
-            return result
+            history = self.container.read_item(
+                item=self.itemname, partition_key=self.partition_key
+            )["history"]
+            return history
+        except exceptions.CosmosResourceNotFoundError:
+            if not self.__stored:
+                return result
+
+            raise
+        except Exception as e:
+            raise e
