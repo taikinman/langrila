@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import warnings
 from typing import Any
 
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
@@ -38,12 +39,16 @@ class CosmosConversationMemory(BaseConversationMemory):
         )
         self.container = database.get_container_client(self.containername)
 
+        self.__stored = False
+
     def store(self, conversation_history: list[dict[str, Any]]):
         item = {}
         item["id"] = self.itemname
         item[self.partition_key] = self.partition_key
         item["history"] = conversation_history
         self.container.upsert_item(item)
+
+        self.__stored = True
 
     def load(self) -> list[dict[str, Any]]:
         result = []
@@ -52,5 +57,10 @@ class CosmosConversationMemory(BaseConversationMemory):
                 item=self.itemname, partition_key=self.partition_key
             )["history"]
             return history
-        except:
-            return result
+        except exceptions.CosmosResourceNotFoundError:
+            if not self.__stored:
+                return result
+
+            raise
+        except Exception as e:
+            raise e
