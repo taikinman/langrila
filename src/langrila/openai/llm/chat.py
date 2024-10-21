@@ -17,6 +17,8 @@ from ...llm_wrapper import ChatWrapperModule
 from ...message_content import ConversationType, InputType
 from ...result import CompletionResults
 from ...usage import TokenCounter, Usage
+from ...warnings import deprecated_argument
+from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
 from ..openai_utils import get_client
 
@@ -302,6 +304,14 @@ class OpenAIChatCoreModule(BaseChatModule):
 
 
 class OpenAIChatModule(ChatWrapperModule):
+    @deprecated_argument(
+        arg="context_length",
+        removal="1.0.0",
+        since="0.4.0",
+        alternative="conversation_length_adjuster",
+        module_name="OpenAIChatModule",
+        details="Token management section in langrila/notebooks/01.introduction.ipynb",
+    )
     def __init__(
         self,
         api_key_env_name: str,
@@ -320,6 +330,7 @@ class OpenAIChatModule(ChatWrapperModule):
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
+        context_length: int | None = None,
         system_instruction: str | None = None,
         token_counter: TokenCounter | None = None,
         top_p: float | None | NotGiven = NOT_GIVEN,
@@ -355,7 +366,7 @@ class OpenAIChatModule(ChatWrapperModule):
         self.seed = seed
         self.json_mode = json_mode
         self.system_instruction = system_instruction
-        self.conversation_length_adjuster = conversation_length_adjuster
+        self.context_length = context_length
         self.top_p = top_p
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
@@ -373,6 +384,16 @@ class OpenAIChatModule(ChatWrapperModule):
         self.default_query = default_query
         self.http_client = http_client
         self._strict_response_validation = _strict_response_validation
+
+        if conversation_length_adjuster is None and context_length:
+            if model_name is None:
+                raise ValueError("model_name must be specified if context_length is specified.")
+
+            self.conversation_length_adjuster = OldConversationTruncationModule(
+                context_length=context_length, model_name=model_name
+            )
+        else:
+            self.conversation_length_adjuster = conversation_length_adjuster
 
         # The module to call client API
         chat_model = OpenAIChatCoreModule(

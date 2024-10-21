@@ -16,6 +16,7 @@ from ...llm_wrapper import FunctionCallingWrapperModule
 from ...message_content import ConversationType, InputType
 from ...result import FunctionCallingResults, ToolCallResponse, ToolOutput
 from ...usage import TokenCounter, Usage
+from ...warnings import deprecated_argument
 from ..conversation_adjuster.truncate import OldConversationTruncationModule
 from ..message import OpenAIMessage
 from ..openai_utils import get_client
@@ -198,6 +199,14 @@ class FunctionCallingCoreModule(BaseFunctionCallingModule):
 
 
 class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
+    @deprecated_argument(
+        arg="context_length",
+        removal="1.0.0",
+        since="0.4.0",
+        alternative="conversation_length_adjuster",
+        module_name="OpenAIFunctionCallingModule",
+        details="Token management section in langrila/notebooks/01.introduction.ipynb",
+    )
     def __init__(
         self,
         api_key_env_name: str,
@@ -220,6 +229,7 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         content_filter: BaseFilter | None = None,
         system_instruction: str | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
+        context_length: int | None = None,
         token_counter: TokenCounter | None = None,
         top_p: float | NotGiven = NOT_GIVEN,
         frequency_penalty: float | NotGiven = NOT_GIVEN,
@@ -254,13 +264,22 @@ class OpenAIFunctionCallingModule(FunctionCallingWrapperModule):
         self.max_retries = max_retries
         self.seed = seed
         self.system_instruction = system_instruction
-        self.conversation_length_adjuster = conversation_length_adjuster
         self.top_p = top_p
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
         self.temperature = temperature
         self.user = user
         self.stop = stop
+
+        if conversation_length_adjuster is None and context_length:
+            if model_name is None:
+                raise ValueError("model_name must be specified if context_length is specified.")
+
+            self.conversation_length_adjuster = OldConversationTruncationModule(
+                context_length=context_length, model_name=model_name
+            )
+        else:
+            self.conversation_length_adjuster = conversation_length_adjuster
 
         # The module to call client API
         function_calling_model = FunctionCallingCoreModule(

@@ -34,6 +34,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         conversation_memory: BaseConversationMemory | None = None,
         content_filter: BaseFilter | None = None,
         conversation_length_adjuster: BaseConversationLengthAdjuster | None = None,
+        context_length: int | None = None,
         system_instruction: str | None = None,
         token_counter: TokenCounter | None = None,
         top_p: float | None | NotGiven = NOT_GIVEN,
@@ -78,6 +79,7 @@ class OpenAIFunctionalChat(BaseAssembly):
         self.content_filter = content_filter
         self.system_instruction = system_instruction
         self.conversation_length_adjuster = conversation_length_adjuster
+        self.context_length = context_length
         self.token_counter = token_counter
         self.json_mode = json_mode
         self.top_p = top_p
@@ -115,6 +117,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             content_filter=content_filter,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
+            context_length=context_length,
             token_counter=token_counter,
             json_mode=json_mode,
             top_p=top_p,
@@ -155,6 +158,7 @@ class OpenAIFunctionalChat(BaseAssembly):
             content_filter=content_filter,
             system_instruction=system_instruction,
             conversation_length_adjuster=conversation_length_adjuster,
+            context_length=context_length,
             token_counter=token_counter,
             top_p=top_p,
             frequency_penalty=frequency_penalty,
