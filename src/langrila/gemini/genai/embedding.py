@@ -9,7 +9,7 @@ from ...usage import Usage
 from ..gemini_utils import get_client
 
 
-class GeminiEmbeddingModule(BaseEmbeddingModule):
+class GeminiAIStudioEmbeddingModule(BaseEmbeddingModule):
     def __init__(
         self,
         model_name: model_types.BaseModelNameOptions | None = None,
