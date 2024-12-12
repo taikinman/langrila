@@ -2,7 +2,7 @@ from typing import Any
 
 import chromadb
 from chromadb import DEFAULT_DATABASE, DEFAULT_TENANT, Settings
-from chromadb.api import ClientAPI
+from chromadb.api import ClientAPI, AsyncClientAPI
 from chromadb.api.types import URI, Image, Include, OneOrMany
 from chromadb.types import Where, WhereDocument
 
@@ -43,7 +43,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         return len([c.name for c in client.list_collections() if c.name == collection_name]) > 0
 
     def _create_collection(self, client: ClientAPI, collection_name: str) -> None:
-        self.collection = client.create_collection(name=collection_name, metadata=self.metadata)
+        client.create_collection(name=collection_name, metadata=self.metadata)
 
     def _delete_record(
         self,
@@ -53,9 +53,9 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         filter: Where | None = None,
         where_document: WhereDocument | None = None,
     ) -> None:
-        if not hasattr(self, "collection"):
-            self.collection = client.get_collection(name=collection_name)
-        self.collection.delete(
+        collection = client.get_collection(name=collection_name)
+
+        collection.delete(
             ids=[str(i) for i in ids], where=filter, where_document=where_document
         )
 
@@ -70,10 +70,9 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         images: OneOrMany[Image] | None = None,
         uris: OneOrMany[URI] | None = None,
     ) -> None:
-        if not hasattr(self, "collection"):
-            self.collection = client.get_collection(name=collection_name)
+        collection = client.get_collection(name=collection_name)
 
-        self.collection.upsert(
+        collection.upsert(
             ids=[str(i) for i in ids],
             embeddings=embeddings,
             documents=documents,
@@ -146,7 +145,7 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         return len([c.name for c in client.list_collections() if c.name == collection_name]) > 0
 
     def _create_collection(self, client: ClientAPI, collection_name: str) -> None:
-        self.collection = client.create_collection(name=collection_name, metadata=self.metadata)
+        client.create_collection(name=collection_name, metadata=self.metadata)
 
     def _delete_record(
         self,
@@ -156,9 +155,8 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         filter: Where | None = None,
         where_document: WhereDocument | None = None,
     ) -> None:
-        if not hasattr(self, "collection"):
-            self.collection = client.get_collection(name=collection_name)
-        self.collection.delete(
+        collection = client.get_collection(name=collection_name)
+        collection.delete(
             ids=[str(i) for i in ids], where=filter, where_document=where_document
         )
 
@@ -173,10 +171,9 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         images: OneOrMany[Image] | None = None,
         uris: OneOrMany[URI] | None = None,
     ) -> None:
-        if not hasattr(self, "collection"):
-            self.collection = client.get_collection(name=collection_name)
+        collection = client.get_collection(name=collection_name)
 
-        self.collection.upsert(
+        collection.upsert(
             ids=[str(i) for i in ids],
             embeddings=embeddings,
             documents=documents,
@@ -191,7 +188,10 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         client.delete_collection(name=collection_name)
 
     def get_client(self) -> ClientAPI:
-        return chromadb.HttpClient(
+        if hasattr(self, "client") and isinstance(self.client, ClientAPI):
+            return self.client
+
+        self.client = chromadb.HttpClient(
             host=self.url,
             port=self.port,
             ssl=self.ssl,
@@ -201,8 +201,23 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
             database=self.database,
         )
 
-    def get_async_client(self) -> ClientAPI:
-        return self.get_client()
+        return self.client
+
+    async def get_async_client(self) -> AsyncClientAPI:
+        if hasattr(self, "client") and isinstance(self.client, AsyncClientAPI):
+            return self.client
+
+        self.client = await chromadb.AsyncHttpClient(
+            host=self.url,
+            port=self.port,
+            ssl=self.ssl,
+            headers=self.headers,
+            settings=self.settings,
+            tenant=self.tenant,
+            database=self.database,
+        )
+
+        return self.client
 
     def as_retriever(
         self,
@@ -224,34 +239,32 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
             database=self.database,
         )
 
-    async def _acreate_collection(self, client: ClientAPI, collection_name: str) -> None:
-        self._create_collection(client=client, collection_name=collection_name)
+    async def _acreate_collection(self, client: AsyncClientAPI, collection_name: str) -> None:
+        await client.create_collection(name=collection_name, metadata=self.metadata)
 
-    async def _aexists(self, client: Any, collection_name: str) -> bool:
-        return self._exists(client=client, collection_name=collection_name)
+    async def _aexists(self, client: AsyncClientAPI, collection_name: str) -> bool:
+        return len([c.name for c in await client.list_collections() if c.name == collection_name]) > 0
 
-    async def _adelete_collection(self, client: ClientAPI, collection_name: str) -> None:
-        self._delete_collection(client=client, collection_name=collection_name)
+    async def _adelete_collection(self, client: AsyncClientAPI, collection_name: str) -> None:
+        await client.delete_collection(name=collection_name)
 
     async def _adelete_record(
         self,
-        client: ClientAPI,
+        client: AsyncClientAPI,
         collection_name: str,
         ids: list[str | int],
         filter: Where | None = None,
         where_document: WhereDocument | None = None,
     ) -> None:
-        self._delete_record(
-            client=client,
-            collection_name=collection_name,
-            ids=ids,
-            filter=filter,
-            where_document=where_document,
+        collection = await client.get_collection(name=collection_name)
+
+        await collection.delete(
+            ids=[str(i) for i in ids], where=filter, where_document=where_document
         )
 
     async def _aupsert(
         self,
-        client: ClientAPI,
+        client: AsyncClientAPI,
         collection_name: str,
         ids: list[str | int],
         documents: list[str],
@@ -260,16 +273,18 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         images: OneOrMany[Image] | None = None,
         uris: OneOrMany[URI] | None = None,
     ) -> None:
-        self._upsert(
-            client=client,
-            collection_name=collection_name,
-            ids=ids,
-            documents=documents,
+        collection = await client.get_collection(name=collection_name)
+
+        await collection.upsert(
+            ids=[str(i) for i in ids],
             embeddings=embeddings,
-            metadatas=metadatas,
+            documents=documents,
+            metadatas=[m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)],
             images=images,
             uris=uris,
         )
+
+        return
 
 
 class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
@@ -320,10 +335,9 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
         where_document: WhereDocument | None = None,
         include: Include | None = None,
     ) -> RetrievalResults:
-        if not hasattr(self, "collection"):
-            self.collection = client.get_collection(name=collection_name)
+        collection = client.get_collection(name=collection_name)
 
-        retrieved = self.collection.query(
+        retrieved = collection.query(
             query_embeddings=query_vector,
             where=filter,
             include=include or ["metadatas", "documents", "distances"],
@@ -396,7 +410,10 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
         self.database = database
 
     def get_client(self) -> ClientAPI:
-        return chromadb.HttpClient(
+        if hasattr(self, "client") and isinstance(self.client, ClientAPI):
+            return self.client
+
+        self.client = chromadb.HttpClient(
             host=self.url,
             port=self.port,
             ssl=self.ssl,
@@ -406,8 +423,23 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
             database=self.database,
         )
 
-    def get_async_client(self) -> ClientAPI:
-        return self.get_client()
+        return self.client
+
+    async def get_async_client(self) -> AsyncClientAPI:
+        if hasattr(self, "client") and isinstance(self.client, AsyncClientAPI):
+            return self.client
+
+        self.client = await chromadb.AsyncHttpClient(
+            host=self.url,
+            port=self.port,
+            ssl=self.ssl,
+            headers=self.headers,
+            settings=self.settings,
+            tenant=self.tenant,
+            database=self.database,
+        )
+
+        return self.client
 
     def _retrieve(
         self,
@@ -422,10 +454,9 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
         where_document: WhereDocument | None = None,
         include: Include | None = None,
     ) -> RetrievalResults:
-        if not hasattr(self, "collection"):
-            self.collection = client.get_collection(name=collection_name)
+        collection = client.get_collection(name=collection_name)
 
-        retrieved = self.collection.query(
+        retrieved = collection.query(
             query_embeddings=query_vector,
             where=filter,
             include=include or ["metadatas", "documents", "distances"],
@@ -465,7 +496,7 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
 
     async def _aretrieve(
         self,
-        client: ClientAPI,
+        client: AsyncClientAPI,
         collection_name: str,
         query_vector: list[float],
         n_results: int,
@@ -476,15 +507,42 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
         where_document: WhereDocument | None = None,
         include: Include | None = None,
     ) -> RetrievalResults:
-        return self._retrieve(
-            client=client,
-            collection_name=collection_name,
-            query_vector=query_vector,
+        collection = await client.get_collection(name=collection_name)
+
+        retrieved = await collection.query(
+            query_embeddings=query_vector,
+            where=filter,
+            include=include or ["metadatas", "documents", "distances"],
             n_results=n_results,
-            score_threshold=score_threshold,
-            filter=filter,
             query_images=query_images,
             query_uris=query_uris,
             where_document=where_document,
-            include=include,
+        )
+
+        ids = []
+        scores = []
+        documents = []
+        metadatas = []
+        collections = []
+
+        for _id, dist, document, metadata in zip(
+            retrieved["ids"][0],
+            retrieved["distances"][0],
+            retrieved["documents"][0],
+            retrieved["metadatas"][0],
+            strict=True,
+        ):
+            if dist <= score_threshold:
+                ids.append(int(_id))
+                scores.append(dist)
+                documents.append(document)
+                metadatas.append(metadata)
+                collections.append(collection_name)
+
+        return RetrievalResults(
+            ids=ids,
+            scores=scores,
+            documents=documents,
+            metadatas=metadatas,
+            collections=collections,
         )

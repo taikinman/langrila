@@ -4,7 +4,7 @@ import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Optional
-
+import inspect
 from tqdm import tqdm
 
 from langrila import Usage
@@ -343,11 +343,19 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         self.logger = logger or DefaultLogger()
 
     async def acreate_collection(self) -> None:
-        client = self.get_async_client()
+        if inspect.iscoroutinefunction(self.get_async_client):
+            client = await self.get_async_client()
+        else:
+            client = self.get_async_client()
+
         await self._acreate_collection(client=client, collection_name=self.collection_name)
 
     async def aexists(self) -> bool:
-        client = self.get_async_client()
+        if inspect.iscoroutinefunction(self.get_async_client):
+            client = await self.get_async_client()
+        else:
+            client = self.get_async_client()
+
         return await self._aexists(client=client, collection_name=self.collection_name)
 
     async def aupsert(
@@ -359,7 +367,11 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         **kwargs,
     ) -> None:
         self._verify_metadata(metadatas)
-        client = self.get_async_client()
+        if inspect.iscoroutinefunction(self.get_async_client):
+            client = await self.get_async_client()
+        else:
+            client = self.get_async_client()
+
         await self._aupsert(
             client=client,
             collection_name=self.collection_name,
@@ -371,12 +383,20 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         )
 
     async def adelete_collection(self) -> None:
-        client = self.get_async_client()
+        if inspect.iscoroutinefunction(self.get_async_client):
+            client = await self.get_async_client()
+        else:
+            client = self.get_async_client()
+
         if await self._aexists(client=client, collection_name=self.collection_name):
             await self._adelete_collection(client=client, collection_name=self.collection_name)
 
     async def adelete_record(self, **kwargs) -> None:
-        client = self.get_async_client()
+        if inspect.iscoroutinefunction(self.get_async_client):
+            client = await self.get_async_client()
+        else:
+            client = self.get_async_client()
+
         await self._adelete_record(client=client, collection_name=self.collection_name, **kwargs)
 
     async def arun(
@@ -385,7 +405,10 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         metadatas: Optional[list[dict[str, str]]] = None,
         **kwargs,
     ) -> None:
-        client = self.get_async_client()
+        if inspect.iscoroutinefunction(self.get_async_client):
+            client = await self.get_async_client()
+        else:
+            client = self.get_async_client()
 
         if metadatas is not None and len(documents) != len(metadatas):
             raise ValueError(
@@ -568,7 +591,10 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         self.logger = logger or DefaultLogger()
 
     async def arun(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
-        client = self.get_async_client()
+        if inspect.iscoroutinefunction(self.get_async_client):
+            client = await self.get_async_client()
+        else:
+            client = self.get_async_client()
 
         embed: EmbeddingResults = await self.embedder.arun(query)
 

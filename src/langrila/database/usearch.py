@@ -85,6 +85,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
 
     def _delete_record(self, client: Index, ids: list[int] | np.ndarray, **kwargs) -> None:
         client.remove(ids, **kwargs)
+        self.metadata_store.delete_records(ids=ids)
 
     def _upsert(
         self,
@@ -107,6 +108,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
             # Or use exact search to avoid this issue when search time.
             duplicate_keys = np.where(is_contained)[0]
             client.remove(np.array(ids)[duplicate_keys])
+            self.metadata_store.delete_records(ids=ids)
 
         client.add(
             keys=ids,
@@ -129,6 +131,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
 
     def _delete_collection(self, client: Index, **kwargs) -> None:
         client.reset()
+        self.metadata_store.delete_table()
 
     def as_retriever(
         self,
