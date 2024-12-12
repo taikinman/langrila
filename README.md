@@ -13,55 +13,14 @@ Langrila is an open-source third-party python package that is useful to use API-
 # Prerequisites
 If necessary, set environment variables to use OpenAI API, Azure OpenAI Service, Gemini API, and Claude API; if using VertexAI or Amazon Bedrock, check each platform's user guide and authenticate in advance VertexAI and Amazon Bedrock.
 
-# Supported models for OpenAI
-## Chat models
-- gpt-3.5-turbo-1106
-- gpt-3.5-turbo-0125
-- gpt-4-1106-preview
-- gpt-4-vision-preview
-- gpt-4-0125-preview
-- gpt-4-turbo-2024-04-09
-- gpt-4o-2024-05-13
-- gpt-4o-mini-2024-07-18
-- gpt-4o-2024-08-06
-- chatgpt-4o-latest
-
-## Embedding models
-- text-embedding-ada-002
-- text-embedding-3-small
-- text-embedding-3-large
-
-## Aliases
-```
-{'gpt-4o-mini': 'gpt-4o-mini-2024-07-18',
- 'gpt-4o': 'gpt-4o-2024-08-06',
- 'gpt-4-turbo': 'gpt-4-turbo-2024-04-09',
- 'gpt-3.5-turbo': 'gpt-3.5-turbo-0125'}
-```
-
-## Platform
+# Supported llm client
 - OpenAI
 - Azure OpenAI
-
-# Supported models for Gemini
-## Chat models
-Basically all the models of gemini-1.5 family including experimental models.
-
-## Platform
-- Google AI
-- VertexAI
-
-# Supported models for Claude
-## Chat models
-- claude-3.5-sonnet
-- claude-3-opus
-- claude-3-sonnet
-- claude-3-haiku
-
-## Platform
-- Anthropic
-- Amazon Bedrock
-- VertexAI (not tested)
+- Gemini on Google AI Studio
+- Gemini on VertexAI
+- Claude on Anthropic
+- Claude on Amazon Bedrock
+- Claude on VertexAI (not tested)
 
 # Breaking changes
 <details>
