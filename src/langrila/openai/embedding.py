@@ -1,11 +1,15 @@
+import os
+from typing import Mapping
+
+import httpx
+from openai.lib.azure import AzureADTokenProvider
 from openai.resources.embeddings import Embeddings
 
 from ..base import BaseEmbeddingModule
 from ..result import EmbeddingResults
 from ..usage import Usage
 from ..utils import make_batch
-from .model_config import _NEWER_EMBEDDING_CONFIG, EMBEDDING_CONFIG
-from .openai_utils import get_async_client, get_client
+from .openai_utils import get_client
 
 
 class OpenAIEmbeddingModule(BaseEmbeddingModule):
@@ -13,7 +17,7 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         self,
         api_key_env_name: str,
         organization_id_env_name: str | None = None,
-        model_name: str = "text-embedding-ada-002",
+        model_name: str | None = "text-embedding-3-small",
         dimensions: int | None = None,
         user: str | None = None,
         api_type: str | None = "openai",
@@ -22,17 +26,21 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         deployment_id_env_name: str | None = None,
         max_retries: int = 5,
         timeout: int = 60,
-        batch_size: int = 10,
+        batch_size: int | None = None,
+        project: str | None = None,
+        base_url: str | httpx.URL | None = None,
+        azure_ad_token: str | None = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
+        default_headers: Mapping[str, str] | None = None,
+        default_query: Mapping[str, object] | None = None,
+        http_client: httpx.Client | None = None,
+        _strict_response_validation: bool = False,
     ):
         assert api_type in ["openai", "azure"], "api_type must be 'openai' or 'azure'."
         if api_type == "azure":
             assert (
                 api_version and endpoint_env_name and deployment_id_env_name
             ), "api_version, endpoint_env_name, and deployment_id_env_name must be specified for Azure API."
-
-        assert (
-            model_name in EMBEDDING_CONFIG.keys()
-        ), f"model_name must be one of {', '.join(sorted(EMBEDDING_CONFIG.keys()))}."
 
         self.api_key_env_name = api_key_env_name
         self.organization_id_env_name = organization_id_env_name
@@ -44,18 +52,17 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         self.max_retries = max_retries
         self.timeout = timeout
         self.batch_size = batch_size
+        self.dimensions = dimensions
+        self.user = user
 
         self.additional_params = {}
         if dimensions is not None:
-            if model_name in _NEWER_EMBEDDING_CONFIG:
-                self.additional_params["dimensions"] = dimensions
-            else:
-                print(f"Warning: dimensions is not supported for {model_name}. It will be ignored.")
+            self.additional_params["dimensions"] = dimensions
+
         if user is not None:
             self.additional_params["user"] = user
 
-    def run(self, text: str | list[str]) -> EmbeddingResults:
-        client = get_client(
+        self._client = get_client(
             api_key_env_name=self.api_key_env_name,
             organization_id_env_name=self.organization_id_env_name,
             api_version=self.api_version,
@@ -64,17 +71,47 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
             api_type=self.api_type,
             max_retries=self.max_retries,
             timeout=self.timeout,
+            project=project,
+            base_url=base_url,
+            azure_ad_token=azure_ad_token,
+            azure_ad_token_provider=azure_ad_token_provider,
+            default_headers=default_headers,
+            default_query=default_query,
+            http_client=http_client,
+            _strict_response_validation=_strict_response_validation,
         )
 
-        embedder = Embeddings(client)
+    def _get_embedding_kwargs(self, **kwargs):
+        _kwargs = {}
+        _kwargs["model"] = kwargs.get("model_name") or self.model_name
 
+        if kwargs.get("dimensions") or self.dimensions:
+            _kwargs["dimensions"] = kwargs.get("dimensions") or self.dimensions
+
+        if kwargs.get("user") or self.user:
+            _kwargs["user"] = kwargs.get("user") or self.user
+
+        return _kwargs
+
+    def run(
+        self,
+        text: str | list[str],
+        model_name: str | None = None,
+        dimensions: int | None = None,
+        user: str | None = None,
+        batch_size: int | None = None,
+    ) -> EmbeddingResults:
         if not isinstance(text, list):
             text = [text]
 
+        embedding_kwargs = self._get_embedding_kwargs(
+            model_name=model_name, dimensions=dimensions, user=user
+        )
+
         embeddings = []
-        total_usage = Usage(model_name=self.model_name)
-        for batch in make_batch(text, batch_size=self.batch_size):
-            response = embedder.create(input=batch, model=self.model_name, **self.additional_params)
+        total_usage = Usage(model_name=embedding_kwargs.get("model"))
+        for batch in make_batch(text, batch_size=batch_size or self.batch_size or 10):
+            response = self._client.embed_text(input=batch, **embedding_kwargs)
             embeddings.extend([e.embedding for e in response.data])
             total_usage += response.usage
 
@@ -85,29 +122,25 @@ class OpenAIEmbeddingModule(BaseEmbeddingModule):
         )
         return results
 
-    async def arun(self, text: str) -> EmbeddingResults:
-        client = get_async_client(
-            api_key_env_name=self.api_key_env_name,
-            organization_id_env_name=self.organization_id_env_name,
-            api_version=self.api_version,
-            endpoint_env_name=self.endpoint_env_name,
-            deployment_id_env_name=self.deployment_id_env_name,
-            api_type=self.api_type,
-            max_retries=self.max_retries,
-            timeout=self.timeout,
-        )
-
-        embedder = Embeddings(client)
-
+    async def arun(
+        self,
+        text: str,
+        model_name: str | None = None,
+        dimensions: int | None = None,
+        user: str | None = None,
+        batch_size: int | None = None,
+    ) -> EmbeddingResults:
         if not isinstance(text, list):
             text = [text]
 
+        embedding_kwargs = self._get_embedding_kwargs(
+            model_name=model_name, dimensions=dimensions, user=user
+        )
+
         embeddings = []
-        total_usage = Usage(model_name=self.model_name)
-        for batch in make_batch(text, batch_size=self.batch_size):
-            response = await embedder.create(
-                input=batch, model=self.model_name, **self.additional_params
-            )
+        total_usage = Usage(model_name=embedding_kwargs.get("model"))
+        for batch in make_batch(text, batch_size=batch_size or self.batch_size or 10):
+            response = await self._client.embed_text_async(input=batch, **embedding_kwargs)
             embeddings.extend([e.embedding for e in response.data])
             total_usage += response.usage
 

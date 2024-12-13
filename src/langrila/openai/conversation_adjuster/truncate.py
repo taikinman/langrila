@@ -1,7 +1,6 @@
 from typing import Any
 
 from ...base import BaseConversationLengthAdjuster
-from ..model_config import MODEL_CONFIG, MODEL_POINT
 from ..openai_utils import get_encoding, get_n_tokens
 
 
@@ -13,14 +12,6 @@ class OldConversationTruncationModule(BaseConversationLengthAdjuster):
     """
 
     def __init__(self, model_name: str, context_length: int):
-        if model_name in MODEL_POINT.keys():
-            print(f"{model_name} is automatically converted to {MODEL_POINT[model_name]}")
-            model_name = MODEL_POINT[model_name]
-
-        assert (
-            model_name in MODEL_CONFIG.keys()
-        ), f"model_name must be one of {', '.join(sorted(MODEL_CONFIG.keys()))}."
-
         self.model_name = model_name
         self.context_length = context_length
         self.encoding = get_encoding(self.model_name)

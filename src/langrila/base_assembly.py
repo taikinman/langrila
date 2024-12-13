@@ -8,16 +8,16 @@ from .result import CompletionResults
 
 
 class BaseAssembly(ABC):
-    def __init__(self, conversation_memory: BaseConversationMemory | None = None):
+    def _setup_memory(self, conversation_memory: BaseConversationMemory | None = None):
         if conversation_memory:
-            self.conversation_memory = conversation_memory
             self.__HASMEMORY = True
+            return conversation_memory
         else:
             # conversation memory is useful to bridge chat and function calling
             # so if it is not provided, we will use InMemoryConversationMemory internally,
             # and clear the memory after each run
-            self.conversation_memory = InMemoryConversationMemory()
             self.__HASMEMORY = False
+            return InMemoryConversationMemory()
 
     @abstractmethod
     def run(
@@ -54,7 +54,7 @@ class BaseAssembly(ABC):
     ) -> AsyncGenerator[CompletionResults, None]:
         raise NotImplementedError
 
-    def _clear_memory(self) -> None:
+    def _clear_memory(self, conversation_memory: BaseConversationMemory) -> None:
         if not self.__HASMEMORY:
             # Clear conversation memory if conversation memory is not provided
-            self.conversation_memory.store([])
+            conversation_memory.store([])

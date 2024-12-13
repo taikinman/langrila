@@ -3,7 +3,8 @@ import io
 import random
 import string
 from functools import partial
-from typing import Any, Generator, Iterable
+from inspect import signature
+from typing import Any, Callable, Generator, Iterable
 from urllib.parse import urlparse
 
 import numpy as np
@@ -101,3 +102,44 @@ def is_valid_uri(text: str) -> bool:
         return all([result.scheme, result.netloc])
     except ValueError:
         return False
+
+
+def parse_arguments(
+    obj: Callable,
+    include: set[str] | list[str] | None = None,
+    exclude: set[str] | list[str] | None = None,
+) -> set[str]:
+    params = dict(signature(obj).parameters)
+
+    if "self" in params:
+        params.pop("self")
+
+    if include is None:
+        include = set()
+
+    if exclude is None:
+        exclude = set()
+
+    if not isinstance(include, (set, list)):
+        raise ValueError("include must be a set or list.")
+
+    if not isinstance(exclude, (set, list)):
+        raise ValueError("exclude must be a set or list.")
+
+    if include:
+        params = {k: v for k, v in params.items() if k in include}
+
+    if exclude:
+        params = {k: v for k, v in params.items() if k not in exclude}
+
+    return set(params.keys())
+
+
+def create_parameters(
+    obj: Callable,
+    include: set[str] | list[str] | None = None,
+    exclude: set[str] | list[str] | None = None,
+    **kwargs,
+):
+    params = parse_arguments(obj, include=include, exclude=exclude)
+    return {k: v for k, v in kwargs.items() if k in params}

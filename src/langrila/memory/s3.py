@@ -1,32 +1,33 @@
-import os
-import logging
-import json
 import hashlib
+import json
+import logging
+import os
 import secrets
 from typing import Optional, Union
 
 import boto3
-from botocore.exceptions import ClientError
 from botocore.client import Config as BotoConfig
+from botocore.exceptions import ClientError
 
 from ..base import BaseConversationMemory
 
+
 class S3ConversationMemory(BaseConversationMemory):
     def __init__(
-            self,
-            bucket: str,
-            *,
-            object_key: Optional[str] = None,
-            region_name: Optional[str] = None,
-            api_version: Optional[str] = None,
-            use_ssl: Optional[bool] = True,
-            verify: Union[str, bool, None] = None,
-            endpoint_url_env_name: Optional[str] = None,
-            aws_access_key_id_env_name: Optional[str] = None,
-            aws_secret_access_key_env_name: Optional[str] = None,
-            aws_session_token_env_name: Optional[str] = None,
-            boto_config: Optional[BotoConfig] = None,
-        ):
+        self,
+        bucket: str,
+        *,
+        object_key: Optional[str] = None,
+        region_name: Optional[str] = None,
+        api_version: Optional[str] = None,
+        use_ssl: Optional[bool] = True,
+        verify: Union[str, bool, None] = None,
+        endpoint_url_env_name: Optional[str] = None,
+        aws_access_key_id_env_name: Optional[str] = None,
+        aws_secret_access_key_env_name: Optional[str] = None,
+        aws_session_token_env_name: Optional[str] = None,
+        boto_config: Optional[BotoConfig] = None,
+    ):
         self.bucket = bucket
         self.object_key = object_key
         self.region_name = region_name
@@ -34,13 +35,19 @@ class S3ConversationMemory(BaseConversationMemory):
         self.use_ssl = use_ssl
         self.verify = verify
         self.endpoint_url = os.getenv(endpoint_url_env_name) if endpoint_url_env_name else None
-        self.aws_access_key_id = os.getenv(aws_access_key_id_env_name) if aws_access_key_id_env_name else None
-        self.aws_secret_access_key = os.getenv(aws_secret_access_key_env_name) if aws_secret_access_key_env_name else None
-        self.aws_session_token = os.getenv(aws_session_token_env_name) if aws_session_token_env_name else None
+        self.aws_access_key_id = (
+            os.getenv(aws_access_key_id_env_name) if aws_access_key_id_env_name else None
+        )
+        self.aws_secret_access_key = (
+            os.getenv(aws_secret_access_key_env_name) if aws_secret_access_key_env_name else None
+        )
+        self.aws_session_token = (
+            os.getenv(aws_session_token_env_name) if aws_session_token_env_name else None
+        )
         self.boto_config = boto_config
 
         self.s3_client = boto3.client(
-            's3',
+            "s3",
             region_name=self.region_name,
             api_version=self.api_version,
             use_ssl=self.use_ssl,
@@ -49,7 +56,7 @@ class S3ConversationMemory(BaseConversationMemory):
             aws_access_key_id=self.aws_access_key_id,
             aws_secret_access_key=self.aws_secret_access_key,
             aws_session_token=self.aws_session_token,
-            config=self.boto_config
+            config=self.boto_config,
         )
 
         try:
@@ -75,12 +82,12 @@ class S3ConversationMemory(BaseConversationMemory):
             return []
         try:
             response = self.s3_client.get_object(Bucket=self.bucket, Key=self.object_key)
-            content = response['Body'].read().decode('utf-8')
+            content = response["Body"].read().decode("utf-8")
             conversation_history = json.loads(content)
             return conversation_history
         except ClientError as e:
-            error_code = e.response['Error']['Code']
-            if error_code == 'NoSuchKey':
+            error_code = e.response["Error"]["Code"]
+            if error_code == "NoSuchKey":
                 return []
             else:
                 logging.error(f"s3 load failed: {e}")

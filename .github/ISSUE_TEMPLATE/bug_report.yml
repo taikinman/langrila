@@ -13,7 +13,7 @@ body:
     render: shell
     description: |
       Please share your system info.
-    placeholder: imker version, platform, python version, ...
+    placeholder: langrila version, platform, python version, ...
   validations:
     required: true
 - type: textarea

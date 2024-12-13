@@ -9,6 +9,7 @@ from .base import (
 )
 from .memory.in_memory import InMemoryConversationMemory
 from .memory.json import JSONConversationMemory
+from .memory.pickle import PickleConversationMemory
 from .message_content import (
     AudioContent,
     ContentType,

@@ -1,4 +1,5 @@
 from .assembly import OpenAIFunctionalChat
+from .conversation_adjuster.truncate import OldConversationTruncationModule
 from .embedding import OpenAIEmbeddingModule
 from .llm.chat import OpenAIChatModule
 from .llm.function_calling import (

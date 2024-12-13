@@ -1,3 +1,5 @@
+import logging
+import warnings
 from abc import ABC, abstractmethod
 from inspect import isfunction, ismethod
 from pathlib import Path
@@ -29,6 +31,8 @@ from .result import (
 from .types import RoleType
 from .utils import decode_image, is_valid_uri, model2func
 
+LOGGER = logging.getLogger(__name__)
+
 ROLES = ["system", "user", "assistant", "function", "function_call", "tool"]
 IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "heic", "heif"]
 VIDEO_EXTENSIONS = ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]
@@ -37,27 +41,25 @@ AUDIO_EXTENSIONS = ["wav", "mp3", "aiff", "ogg", "flac"]
 
 class BaseChatModule(ABC):
     @abstractmethod
-    def run(self, messages: list[dict[str, str]]) -> CompletionResults:
+    def run(self, messages: list[Any]) -> CompletionResults:
         raise NotImplementedError
 
-    async def arun(self, messages: list[dict[str, str]]) -> CompletionResults:
+    async def arun(self, messages: list[Any]) -> CompletionResults:
         raise NotImplementedError
 
-    def stream(self, messages: list[dict[str, str]]) -> Generator[CompletionResults, None, None]:
+    def stream(self, messages: list[Any]) -> Generator[CompletionResults, None, None]:
         raise NotImplementedError
 
-    async def astream(
-        self, messages: list[dict[str, str]]
-    ) -> AsyncGenerator[CompletionResults, None]:
+    async def astream(self, messages: list[Any]) -> AsyncGenerator[CompletionResults, None]:
         raise NotImplementedError
 
 
 class BaseFunctionCallingModule(ABC):
     @abstractmethod
-    def run(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+    def run(self, messages: list[Any]) -> FunctionCallingResults:
         raise NotImplementedError
 
-    async def arun(self, messages: list[dict[str, str]]) -> FunctionCallingResults:
+    async def arun(self, messages: list[Any]) -> FunctionCallingResults:
         raise NotImplementedError
 
     def _set_runnable_tools_dict(self, tools: list[Callable | BaseModel]) -> dict[str, callable]:
@@ -75,31 +77,49 @@ class BaseEmbeddingModule(ABC):
 
 class BaseConversationLengthAdjuster(ABC):
     @abstractmethod
-    def run(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def run(self, messages: Any) -> Any:
         raise NotImplementedError
 
 
 class BaseFilter(ABC):
     @abstractmethod
-    def apply(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def apply(self, message: str) -> str:
         raise NotImplementedError
 
-    def aapply(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    async def aapply(self, message: str) -> str:
         raise NotImplementedError
 
     @abstractmethod
-    def restore(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def restore(self, message: str) -> str:
         raise NotImplementedError
 
 
 class BaseConversationMemory(ABC):
     @abstractmethod
-    def store(self, conversation_history: list[dict[str, str]]) -> None:
+    def store(self, conversation_history: list[dict[str, Any]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, path: str) -> list[dict[str, str]]:
+    def load(self) -> list[dict[str, Any]]:
         raise NotImplementedError
+
+
+class BaseClient(ABC):
+    def generate_message(self, **kwargs) -> Any:
+        raise NotImplementedError
+
+    async def generate_message_async(self, **kwargs) -> Any:
+        raise NotImplementedError
+
+    def _warn_ignore_params(
+        self, all_kwargs: dict[str, Any], used_kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
+        _notnull_kwargs_list = [k for k, v in all_kwargs.items() if v]
+        _not_null_used_kwargs_list = [k for k, v in used_kwargs.items() if v]
+        ignored_params = set(_notnull_kwargs_list) - set(_not_null_used_kwargs_list)
+
+        if ignored_params:
+            LOGGER.warning(f"Ignoring unupported parameters: {', '.join(ignored_params)}")
 
 
 class BaseMessage(ABC):
@@ -148,11 +168,6 @@ class BaseMessage(ABC):
 
     @staticmethod
     def _format_audio_content(content: str | Path) -> Any:
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def _from_completion_results(cls, results: CompletionResults) -> list[dict[str, str]]:
         raise NotImplementedError
 
     @classmethod
@@ -335,9 +350,7 @@ class BaseMessage(ABC):
             raise ValueError(f"Invalid message type {type(message)}")
 
     @classmethod
-    def to_universal_message_from_completion_response(
-        cls, response: CompletionResults
-    ) -> dict[str, Any]:
+    def to_universal_message_from_completion_response(cls, response: CompletionResults) -> Message:
         return cls._from_completion_results(response)
 
     @classmethod

@@ -80,3 +80,15 @@ class SQLiteMetadataStore(BaseMetadataStore):
 
         _metadatas = [_metadatas[i] for i in np.argsort(np.argsort(ids))]
         return _metadatas
+
+
+    def delete_records(self, ids: list[int]) -> None:
+        with sqlite_open(self._path) as cursor:
+            cursor.execute(
+                f"DELETE * FROM metadata WHERE {self.p_key} IN ({','.join(['?']*len(ids))})",
+                tuple(ids),
+            )
+
+    def delete_table(self) -> None:
+        with sqlite_open(self._path) as cursor:
+            cursor.execute("DROP TABLE IF EXISTS metadata")
