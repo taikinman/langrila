@@ -7,7 +7,7 @@ from PIL import Image
 
 def sample_frames(
     video_path: str | Path, fps: float = 1.0
-) -> Generator[list[Image.Image], None, None]:
+) -> Generator[Image.Image, None, None]:
     reader = imageio.get_reader(video_path)
     meta_data = reader.get_meta_data()
     original_fps = meta_data.get("fps")
