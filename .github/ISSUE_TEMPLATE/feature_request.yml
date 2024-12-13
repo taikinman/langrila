@@ -7,7 +7,7 @@ body:
   attributes:
     label: Feature proposal/request
     description: |
-      A clear and concise description of the feature you want or of the proposal that makes imker better tool.
+      A clear and concise description of the feature you want or of the proposal that makes langrila better tool.
   validations:
     required: true
 - type: textarea
