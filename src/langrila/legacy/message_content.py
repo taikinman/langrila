@@ -6,8 +6,8 @@ import numpy as np
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
+from ..utils import encode_image
 from .types import PathType
-from .utils import encode_image
 
 
 class TextContent(BaseModel):
@@ -67,7 +67,7 @@ class PDFContent(BaseModel):
     image_resolution: Literal["auto", "low", "high"] = "high"
 
     def as_image_content(self) -> list[ImageContent]:
-        from .file_utils.pdf import read_pdf_asimage
+        from ..file_utils.pdf import read_pdf_asimage
 
         return [
             ImageContent(image=image, resolution=self.image_resolution)
@@ -160,7 +160,7 @@ class VideoContent(BaseModel):
     include_audio: bool = False
 
     def as_image_content(self) -> list[ImageContent]:
-        from .file_utils.video import sample_frames
+        from ..file_utils.video import sample_frames
 
         frames = [
             ImageContent(image=image, resolution=self.image_resolution)

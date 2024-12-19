@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Generator, Literal
 
+from ..memory.in_memory import InMemoryConversationMemory
 from .base import BaseConversationMemory
-from .memory.in_memory import InMemoryConversationMemory
 from .message_content import ConversationType, InputType
 from .result import CompletionResults
 
