@@ -8,6 +8,7 @@ from typing import Any, AsyncGenerator, Callable, Generator
 from PIL import Image
 from pydantic import BaseModel
 
+from ..utils import decode_image, is_valid_uri, model2func
 from .message_content import (
     AudioContent,
     ContentType,
@@ -29,7 +30,6 @@ from .result import (
     ToolOutput,
 )
 from .types import RoleType
-from .utils import decode_image, is_valid_uri, model2func
 
 LOGGER = logging.getLogger(__name__)
 

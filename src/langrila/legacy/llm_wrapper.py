@@ -4,6 +4,7 @@ from typing import Any, AsyncGenerator, Callable, Generator, Optional
 
 from pydantic import BaseModel
 
+from ..utils import model2func
 from .base import (
     BaseChatModule,
     BaseConversationLengthAdjuster,
@@ -16,7 +17,6 @@ from .message_content import ConversationType, InputType, Message, TextContent
 from .mixin import ConversationMixin, FilterMixin
 from .result import CompletionResults, FunctionCallingResults
 from .usage import TokenCounter
-from .utils import model2func
 
 
 class ChatWrapperModule(ABC, ConversationMixin, FilterMixin):
