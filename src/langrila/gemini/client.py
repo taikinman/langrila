@@ -41,7 +41,13 @@ from ..core.response import (
 )
 from ..core.tool import Tool
 from ..core.usage import Usage
-from ..utils import create_parameters, generate_dummy_call_id, snake_to_camel, utf8_to_bytes
+from ..utils import (
+    create_parameters,
+    generate_dummy_call_id,
+    make_batch,
+    snake_to_camel,
+    utf8_to_bytes,
+)
 
 
 class GeminiClient(LLMClient[Content, Part, GeminiTool]):
@@ -298,40 +304,74 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         if not (isinstance(texts, list) or isinstance(texts, str)):
             raise ValueError("Texts must be a string, not a list of strings.")
 
+        if not isinstance(texts, list):
+            texts = [texts]
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         embed_config_params = create_parameters(EmbedContentConfig, None, None, **_kwargs)
         embed_config = EmbedContentConfig(**embed_config_params)
 
-        embedding = self.client.models.embed_content(
-            model=kwargs.get("model"),
-            contents=texts,
-            config=embed_config,
-        )
+        total_usage = Usage(model_name=kwargs.get("model"))
+        batch_size = kwargs.get("batch_size", 10)
+        embeddings = []
+        for batch in make_batch(texts, batch_size=batch_size):
+            embedding = self.client.models.embed_content(
+                model=kwargs.get("model"),
+                contents=batch,
+                config=embed_config,
+            )
+            embeddings.extend([emb.values for emb in embedding.embeddings])
+            if matadata := embedding.metadata:
+                if billable_character_count := matadata.billable_character_count:
+                    total_usage.update(
+                        **{
+                            "prompt_tokens": total_usage.prompt_tokens
+                            + billable_character_count  # correct?
+                            or 0,
+                        }
+                    )
 
         return EmbeddingResults(
-            text=texts if isinstance(texts, list) else [texts],
-            embeddings=[emb.values for emb in embedding.embeddings],
-            usage=Usage(),
+            text=texts,
+            embeddings=embeddings,
+            usage=total_usage,
         )
 
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
         if not (isinstance(texts, list) or isinstance(texts, str)):
             raise ValueError("Texts must be a string, not a list of strings.")
 
+        if not isinstance(texts, list):
+            texts = [texts]
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         embed_config_params = create_parameters(EmbedContentConfig, None, None, **_kwargs)
         embed_config = EmbedContentConfig(**embed_config_params)
 
-        embedding = await self.client.aio.models.embed_content(
-            model=kwargs.get("model"),
-            contents=texts,
-            config=embed_config,
-        )
+        total_usage = Usage(model_name=kwargs.get("model"))
+        batch_size = kwargs.get("batch_size", 10)
+        embeddings = []
+        for batch in make_batch(texts, batch_size=batch_size):
+            embedding = await self.client.aio.models.embed_content(
+                model=kwargs.get("model"),
+                contents=batch,
+                config=embed_config,
+            )
+            embeddings.extend([emb.values for emb in embedding.embeddings])
+            if matadata := embedding.metadata:
+                if billable_character_count := matadata.billable_character_count:
+                    total_usage.update(
+                        **{
+                            "prompt_tokens": total_usage.prompt_tokens
+                            + billable_character_count  # correct?
+                            or 0,
+                        }
+                    )
 
         return EmbeddingResults(
-            text=texts if isinstance(texts, list) else [texts],
-            embeddings=[emb.values for emb in embedding.embeddings],
-            usage=Usage(),
+            text=texts,
+            embeddings=embeddings,
+            usage=total_usage,
         )
 
     def generate_image(self, prompt: str, **kwargs: Any) -> Response:
