@@ -33,6 +33,7 @@ from openai.types.chat.chat_completion_user_message_param import ChatCompletionU
 from openai.types.shared_params.function_definition import FunctionDefinition
 
 from ..core.client import LLMClient
+from ..core.embedding import EmbeddingResults
 from ..core.prompt import (
     AudioPrompt,
     ImagePrompt,
@@ -48,7 +49,7 @@ from ..core.prompt import (
 from ..core.response import Response, ResponseType, TextResponse, ToolCallResponse
 from ..core.tool import Tool
 from ..core.usage import Usage
-from ..utils import create_parameters
+from ..utils import create_parameters, make_batch
 
 OpenAIMessage = (
     ChatCompletionUserMessageParam
@@ -399,29 +400,55 @@ class OpenAIClient(
         chunk_texts = ""
         res = None
 
-    def embed_text(self, messages: Sequence[str], **kwargs: Any) -> Response:
-        raise NotImplementedError
+    def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        embed_params = create_parameters(self._client.embeddings.create, **kwargs)
 
-    async def embed_text_async(self, messages: Sequence[str], **kwargs: Any) -> Response:
-        raise NotImplementedError
+        embeddings = []
+        if not isinstance(texts, list):
+            texts = [texts]
 
-    def generate_image(self, messages: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+        total_usage = Usage(model_name=kwargs.get("model"))
+        batch_size = kwargs.get("batch_size", 10)
+        for batch in make_batch(texts, batch_size=batch_size):
+            response = self._client.embeddings.create(input=batch, **embed_params)
+            embeddings.extend([e.embedding for e in response.data])
+            total_usage.update(
+                **{
+                    "prompt_tokens": response.usage.prompt_tokens,
+                }
+            )
 
-    async def generate_image_async(self, messages: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+        results = EmbeddingResults(
+            text=texts,
+            embeddings=embeddings,
+            usage=total_usage,
+        )
+        return results
 
-    def generate_video(self, messages: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+    async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        embed_params = create_parameters(self._async_client.embeddings.create, **kwargs)
 
-    async def generate_video_async(self, messages: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+        embeddings = []
+        if not isinstance(texts, list):
+            texts = [texts]
 
-    def generate_audio(self, messages: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+        total_usage = Usage(model_name=kwargs.get("model"))
+        batch_size = kwargs.get("batch_size", 10)
+        for batch in make_batch(texts, batch_size=batch_size):
+            response = await self._async_client.embeddings.create(input=batch, **embed_params)
+            embeddings.extend([e.embedding for e in response.data])
+            total_usage.update(
+                **{
+                    "prompt_tokens": response.usage.prompt_tokens,
+                }
+            )
 
-    async def generate_audio_async(self, messages: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+        results = EmbeddingResults(
+            text=texts,
+            embeddings=embeddings,
+            usage=total_usage,
+        )
+        return results
 
     def map_to_client_prompt(self, message: Prompt) -> OpenAIMessage | list[OpenAIMessage]:
         """
