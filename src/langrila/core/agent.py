@@ -47,7 +47,8 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         self,
         client: LLMClient[ClientMessage, ClientMessageContent, ClientTool] | None = None,
         llm: LLMModel[ClientMessage, ClientMessageContent, ClientTool] | None = None,
-        tools: list[Callable[..., Any] | Tool | AgentType] | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
+        subagents: list[AgentType] | None = None,
         agent_config: AgentConfig | None = None,
         conversation_memory: BaseConversationMemory | None = None,
         logger: Logger | None = None,
@@ -66,9 +67,14 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         self.__max_repeat_text_response = 3
         _tools = tools or []
 
-        for i, tool in enumerate(_tools):
-            if isinstance(tool, Agent):
-                _tools[i] = _generate_dynamic_tool_as_agent(agent=tool)
+        for subagent in subagents or []:
+            if isinstance(subagent, Agent):
+                _tools += [_generate_dynamic_tool_as_agent(agent=subagent)]
+            else:
+                raise ValueError(
+                    "Subagent must be an instance of Agent class. "
+                    "Please provide the correct agent instance."
+                )
 
         if response_schema_as_tool:
             _tools += self._prepare_tool_as_response_schema(response_schema_as_tool)
@@ -90,7 +96,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
                 **kwargs,
             )
 
-        if tools is not None:
+        if _tools is not None:
             self._tools = {tool.name: tool for tool in self.llm._prepare_tools(_tools)}
 
     def _prepare_tool_as_response_schema(self, response_schema_as_tool: BaseModel) -> list[Tool]:
@@ -557,6 +563,21 @@ def _get_agent_tools_description(agent: AgentType) -> str:
 
 
 def _run_subagent(agent: AgentType, instruction: str) -> str:
+    """
+    This function is used to run the subagent from the main agent.
+
+    Parameters
+    ----------
+    agent : AgentType
+        The subagent instance.
+    instruction : str
+        The detail and specific instruction to run the subagent.
+
+    Returns
+    ----------
+    str
+        The response from the subagent.
+    """
     return agent.generate_text(instruction).contents[0].text  # type: ignore
 
 

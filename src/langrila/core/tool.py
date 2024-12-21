@@ -301,6 +301,7 @@ class Tool(BaseModel):
         data["schema_dict"] = data.get("schema_dict") or schema
         data["schema_validator"] = data.get("schema_validator") or schema_validator
         data["description"] = data.get("description") or description
+        data["schema_dict"]["description"] = data["description"]
 
         if data["schema_dict"] is not None:
             data["schema_dict"] = JsonSchemaHandler(data["schema_dict"]).simplify()
