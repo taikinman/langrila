@@ -54,6 +54,9 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         The LLMModel instance to interact with the model, by default None.
     tools : list[Callable[..., Any] | Tool], optional
         The list of tools to be used in the conversation, by default None.
+        Schema of the tool is generated based on the function signature and docstring.
+        If you want to inject context to the tool, please specify Tool instance instead of
+        function itself.
     subagents : list[Agent], optional
         The list of subagents to be used in the conversation, by default None.
         Subagents are treated as tools in the parent agent, which is prepared dynamically.
@@ -590,7 +593,7 @@ def _get_agent_tools_description(agent: AgentType) -> str:
 
 def _run_subagent(agent: AgentType, instruction: str) -> str:
     """
-    This function is used to run the subagent from the main agent.
+    This function is used to run the subagent from the parent agent.
 
     Parameters
     ----------
@@ -614,6 +617,9 @@ def _run_subagent(agent: AgentType, instruction: str) -> str:
 
 
 def _duplicate_function(func: Callable[..., Any], name: str) -> Callable[..., Any]:
+    """
+    This function dinamically duplicates the function with a new name.
+    """
     new_function_name = name
     new_function_code = func.__code__
     new_function_globals = func.__globals__

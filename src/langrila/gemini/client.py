@@ -51,6 +51,23 @@ from ..utils import (
 
 
 class GeminiClient(LLMClient[Content, Part, GeminiTool]):
+    """
+    Wrapper client for interacting with the Gemini API.
+
+    Parameters
+    ----------
+    api_key_env_name : str, optional
+        Name of the environment variable containing the API key.
+    api_type : str, optional
+        Type of API to use. Either "aistudio" or "vertexai".
+    project_id_env_name : str, optional
+        Name of the environment variable containing the project ID.
+    location : str, optional
+        Location of the API.
+    credentials : Credentials, optional
+        Google credentials to use.
+    """
+
     def __init__(
         self,
         api_key_env_name: str | None = None,
@@ -73,6 +90,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         )
 
     def generate_text(self, messages: list[Content], **kwargs: Any) -> Response:
+        """
+        Generate text from a list of messages.
+
+        Parameters
+        ----------
+        messages : list[Content]
+            List of messages to generate text from.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Returns
+        ----------
+        Response
+            Response object containing generated text.
+        """
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
@@ -112,6 +146,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         )
 
     async def generate_text_async(self, messages: list[Content], **kwargs: Any) -> Response:
+        """
+        Generate text from a list of messages asynchronously.
+
+        Parameters
+        ----------
+        messages : list[Content]
+            List of messages to generate text from.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Returns
+        ----------
+        Response
+            Response object containing generated text.
+        """
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
@@ -153,6 +204,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
     def stream_text(
         self, messages: list[Content], **kwargs: Any
     ) -> Generator[Response, None, None]:
+        """
+        Stream text from a list of messages.
+
+        Parameters
+        ----------
+        messages : list[Content]
+            List of messages to stream text from.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Yields
+        ----------
+        Response
+            Response object containing combined chunk text or args.
+        """
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
@@ -228,6 +296,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
     async def stream_text_async(
         self, messages: list[Content], **kwargs: Any
     ) -> AsyncGenerator[Response, None]:
+        """
+        Stream text from a list of messages asynchronously.
+
+        Parameters
+        ----------
+        messages : list[Content]
+            List of messages to stream text from.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Yields
+        ----------
+        Response
+            Response object containing combined chunk text or args.
+        """
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
@@ -301,6 +386,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
             )
 
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        """
+        Embed text into a vector space.
+
+        Parameters
+        ----------
+        texts : Sequence[str]
+            Texts to embed.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.EmbedContentConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Returns
+        ----------
+        EmbeddingResults
+            Embedding results.
+        """
         if not (isinstance(texts, list) or isinstance(texts, str)):
             raise ValueError("Texts must be a string, not a list of strings.")
 
@@ -338,6 +440,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         )
 
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        """
+        Embed text into a vector space asynchronously.
+
+        Parameters
+        ----------
+        texts : Sequence[str]
+            Texts to embed.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.EmbedContentConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Returns
+        ----------
+        EmbeddingResults
+            Embedding results.
+        """
         if not (isinstance(texts, list) or isinstance(texts, str)):
             raise ValueError("Texts must be a string, not a list of strings.")
 
@@ -375,6 +494,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         )
 
     def generate_image(self, prompt: str, **kwargs: Any) -> Response:
+        """
+        Generate an image from a prompt.
+
+        Parameters
+        ----------
+        prompt : str
+            Prompt to generate an image from.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.GenerateImageConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Returns
+        ----------
+        Response
+            Response object containing generated image.
+        """
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         embed_config_params = create_parameters(GenerateImageConfig, None, None, **_kwargs)
         embed_config = GenerateImageConfig(**embed_config_params)
@@ -393,6 +529,23 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         )
 
     async def generate_image_async(self, prompt: str, **kwargs: Any) -> Response:
+        """
+        Generate an image from a prompt asynchronously.
+
+        Parameters
+        ----------
+        prompt : str
+            Prompt to generate an image from.
+        **kwargs : Any
+            Additional keyword arguments.
+            Basically the same as the parameters in `google.genai.types.GenerateImageConfig`.
+            For more details, see the document of the `google-genai` package.
+
+        Returns
+        ----------
+        Response
+            Response object containing generated image.
+        """
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         embed_config_params = create_parameters(GenerateImageConfig, None, None, **_kwargs)
         embed_config = GenerateImageConfig(**embed_config_params)
@@ -411,6 +564,19 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         )
 
     def map_to_client_prompt(self, message: Prompt) -> Content:
+        """
+        Map a message to a client-specific representation.
+
+        Parameters
+        ----------
+        message : Prompt
+            Prompt to map.
+
+        Returns
+        ----------
+        Content
+            Client-specific message representation.
+        """
         parts: list[Part] = []
         for content in message.contents:
             if isinstance(content, str):

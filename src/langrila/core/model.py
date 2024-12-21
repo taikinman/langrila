@@ -22,6 +22,22 @@ LLMInput = (
 
 
 class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
+    """
+    A high-level interface to interact with a language model client.
+
+    Parameters
+    ----------
+    client : LLMClient
+        Client to interact with.
+    conversation_memory : BaseConversationMemory, optional
+        Conversation memory to store and load conversation history, by default None.
+    logger : Logger, optional
+        Logger to use, by default None.
+    **kwargs : Any
+        Additional arguments to pass to the client.
+        What arguments are available depends on the client.
+    """
+
     def __init__(
         self,
         client: LLMClient[ClientMessage, ClientMessageContent, ClientTool],
@@ -35,6 +51,22 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         self.init_kwargs = kwargs
 
     def generate_text(self, messages: LLMInput, **kwargs: Any) -> Response:
+        """
+        Generate text based on the given prompt.
+
+        Parameters
+        ----------
+        messages : LLMInput
+            Prompt to generate text from.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        Response
+            Generated text.
+        """
         history = self.load_history()
         messages = self._process_user_prompt(messages)
         history = history + messages
@@ -59,6 +91,22 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         return response
 
     async def generate_text_async(self, messages: LLMInput, **kwargs: Any) -> Response:
+        """
+        Generate text based on the given prompt asynchronously.
+
+        Parameters
+        ----------
+        messages : LLMInput
+            Prompt to generate text from.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        Response
+            Generated text.
+        """
         history = self.load_history()
         messages = self._process_user_prompt(messages)
         history = history + messages
@@ -84,6 +132,22 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         return response
 
     def stream_text(self, messages: LLMInput, **kwargs: Any) -> Generator[Response, None, None]:
+        """
+        Stream text based on the given prompt.
+
+        Parameters
+        ----------
+        messages : LLMInput
+            Prompt to generate text from.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Yields
+        ----------
+        Response
+            Generated text.
+        """
         history = self.load_history()
         messages = self._process_user_prompt(messages)
         history = history + messages
@@ -115,6 +179,22 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
     async def stream_text_async(
         self, messages: LLMInput, **kwargs: Any
     ) -> AsyncGenerator[Response, None]:
+        """
+        Stream text based on the given prompt asynchronously.
+
+        Parameters
+        ----------
+        messages : LLMInput
+            Prompt to generate text from.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Yields
+        ----------
+        Response
+            Generated text.
+        """
         history = self.load_history()
         messages = self._process_user_prompt(messages)
         history = history + messages
@@ -144,6 +224,22 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         self.store_history(history)
 
     def generate_image(self, prompt: str, **kwargs: Any) -> Response:
+        """
+        Generate an image based on the given prompt.
+
+        Parameters
+        ----------
+        prompt : str
+            Prompt to generate the image from.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        Response
+            Generated image.
+        """
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Generating image")
@@ -151,6 +247,22 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         return response
 
     async def generate_image_async(self, prompt: str, **kwargs: Any) -> Response:
+        """
+        Generate an image based on the given prompt asynchronously.
+
+        Parameters
+        ----------
+        prompt : str
+            Prompt to generate the image from.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        Response
+            Generated image.
+        """
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Generating image")
@@ -170,12 +282,44 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         raise NotImplementedError
 
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        """
+        Embed text into a vector representation.
+
+        Parameters
+        ----------
+        texts : Sequence[str]
+            Texts to embed.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        EmbeddingResults
+            Embedding results.
+        """
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Embedding text")
         return self.client.embed_text(texts, **all_kwargs)
 
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        """
+        Embed text into a vector representation asynchronously.
+
+        Parameters
+        ----------
+        texts : Sequence[str]
+            Texts to embed.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        EmbeddingResults
+            Embedding results.
+        """
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Embedding text")

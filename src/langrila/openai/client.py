@@ -72,6 +72,23 @@ class OpenAIClient(
         ChatCompletionToolParam,
     ]
 ):
+    """
+    The wrapper client for OpenAI API.
+
+    Parameters
+    ----------
+    api_key_env_name : str, optional
+        Environment variable name for the API key, by default None
+    api_type : Literal["openai", "azure"], optional
+        API type, by default "openai"
+    organization_id_env_name : str, optional
+        Environment variable name for the organization ID, by default None
+    kwargs : Any
+        Additional keyword arguments to pass to the API client.
+        Basically the same as the parameters in the raw OpenAI API.
+        For more details, see the OpenAI API documentation.
+    """
+
     def __init__(
         self,
         api_key_env_name: str | None = None,
@@ -127,6 +144,23 @@ class OpenAIClient(
             return [client_prompt]
 
     def generate_text(self, messages: list[OpenAIMessage], **kwargs: Any) -> Response:
+        """
+        Generate text based on the given messages.
+
+        Parameters
+        ----------
+        messages : list[OpenAIMessage]
+            List of messages to generate text from.
+        **kwargs : Any
+            Additional keyword arguments to pass to the API client.
+            Basically the same as the parameters in the raw OpenAI API.
+            For more details, see the OpenAI API documentation.
+
+        Returns
+        ----------
+        Response
+            Response object containing the generated text.
+        """
         if system_instruction := kwargs.get("system_instruction"):
             system_messages = self._setup_system_instruction(system_instruction)
             messages = system_messages + messages
@@ -178,6 +212,23 @@ class OpenAIClient(
         )
 
     async def generate_text_async(self, messages: list[OpenAIMessage], **kwargs: Any) -> Response:
+        """
+        Generate text based on the given messages asynchronously.
+
+        Parameters
+        ----------
+        messages : list[OpenAIMessage]
+            List of messages to generate text from.
+        **kwargs : Any
+            Additional keyword arguments to pass to the API client.
+            Basically the same as the parameters in the raw OpenAI API.
+            For more details, see the OpenAI API documentation.
+
+        Returns
+        ----------
+        Response
+            Response object containing the generated text.
+        """
         if system_instruction := kwargs.get("system_instruction"):
             system_messages = self._setup_system_instruction(system_instruction)
             messages = system_messages + messages
@@ -231,6 +282,23 @@ class OpenAIClient(
     def stream_text(
         self, messages: list[OpenAIMessage], **kwargs: Any
     ) -> Generator[Response, None, None]:
+        """
+        Stream text based on the given messages.
+
+        Parameters
+        ----------
+        messages : list[OpenAIMessage]
+            List of messages to generate text from.
+        **kwargs : Any
+            Additional keyword arguments to pass to the API client.
+            Basically the same as the parameters in the raw OpenAI API.
+            For more details, see the OpenAI API documentation.
+
+        Yields
+        ----------
+        Response
+            Response object containing the generated text.
+        """
         if system_instruction := kwargs.get("system_instruction"):
             system_messages = self._setup_system_instruction(system_instruction)
             messages = system_messages + messages
@@ -315,6 +383,24 @@ class OpenAIClient(
     async def stream_text_async(
         self, messages: list[OpenAIMessage], **kwargs: Any
     ) -> AsyncGenerator[Response, None]:
+        """
+        Asynchronously stream text based on the given messages.
+
+        Parameters
+        ----------
+        messages : list[OpenAIMessage]
+            List of messages to generate text from.
+        **kwargs : Any
+            Additional keyword arguments to pass to the API client.
+            Basically the same as the parameters in the raw OpenAI API.
+            For more details, see the OpenAI API documentation.
+
+        Yields
+        ----------
+        Response
+            Response object containing the generated text.
+        """
+
         if system_instruction := kwargs.get("system_instruction"):
             system_messages = self._setup_system_instruction(system_instruction)
             messages = system_messages + messages
@@ -397,6 +483,23 @@ class OpenAIClient(
         res = None
 
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        """
+        Embed text based on the given texts.
+
+        Parameters
+        ----------
+        texts : Sequence[str]
+            List of texts to embed.
+        **kwargs : Any
+            Additional keyword arguments to pass to the API client.
+            Basically the same as the parameters in the raw OpenAI API.
+            For more details, see the OpenAI API documentation.
+
+        Returns
+        ----------
+        EmbeddingResults
+            Embedding results object containing the embeddings.
+        """
         embed_params = create_parameters(self._client.embeddings.create, **kwargs)
 
         embeddings = []
@@ -422,6 +525,23 @@ class OpenAIClient(
         return results
 
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
+        """
+        Embed text based on the given texts asynchronously.
+
+        Parameters
+        ----------
+        texts : Sequence[str]
+            List of texts to embed.
+        **kwargs : Any
+            Additional keyword arguments to pass to the API client.
+            Basically the same as the parameters in the raw OpenAI API.
+            For more details, see the OpenAI API documentation.
+
+        Returns
+        ----------
+        EmbeddingResults
+            Embedding results object containing the embeddings.
+        """
         embed_params = create_parameters(self._async_client.embeddings.create, **kwargs)
 
         embeddings = []
@@ -457,7 +577,7 @@ class OpenAIClient(
 
         Returns
         ----------
-        Any
+        OpenAIMessage | list[OpenAIMessage]
             Client-specific message representation.
         """
         tool_use = False
