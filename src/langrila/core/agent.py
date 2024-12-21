@@ -43,6 +43,35 @@ def format_validation_error_msg(e: ValidationError, tool_name: str) -> str:
 
 
 class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
+    """
+    The Agent class is the main class to interact with the model and tools.
+
+    Parameters
+    ----------
+    client : LLMClient[ClientMessage, ClientMessageContent, ClientTool], optional
+        The client instance to interact with the model, by default None.
+    llm : LLMModel[ClientMessage, ClientMessageContent, ClientTool], optional
+        The LLMModel instance to interact with the model, by default None.
+    tools : list[Callable[..., Any] | Tool], optional
+        The list of tools to be used in the conversation, by default None.
+    subagents : list[Agent], optional
+        The list of subagents to be used in the conversation, by default None.
+        Subagents are treated as tools in the parent agent, which is prepared dynamically.
+        Tool name is generated based on the subagent's variable name, e.g., route_{subagent_variable_name}.
+        Please be careful for the conflict of the tool name in the global namespace.
+    agent_config : AgentConfig, optional
+        The configuration of the agent, by default None.
+    conversation_memory : BaseConversationMemory, optional
+        The conversation memory to store the conversation history, by default None.
+    logger : Logger, optional
+        The logger instance to log the information, by default None.
+    response_schema_as_tool : BaseModel, optional
+        The response schema as a tool to validate the final answer, by default None.
+        If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
+    **kwargs : Any
+        The additional keyword arguments to be passed to the LLMModel instance.
+    """
+
     def __init__(
         self,
         client: LLMClient[ClientMessage, ClientMessageContent, ClientTool] | None = None,
@@ -57,18 +86,26 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
     ):
         self._client = client
         self.agent_config = agent_config or AgentConfig()
-        self.retry_prompt = self.agent_config.retry_prompt
+        self.retry_prompt = self.agent_config.internal_prompt.validation_error_retry
         self.conversation_memory = conversation_memory
         self.n_validation_retries = self.agent_config.n_validation_retries
         self.logger = logger or default_logger
         self.response_schema_as_tool = response_schema_as_tool
+        self._store_conversation = self.agent_config.store_conversation
         self.__response_schema_name = "final_answer"
-        self.__final_response_prompt = "Final answer please."
+        self.__review_prompt = self.agent_config.internal_prompt.review
         self.__max_repeat_text_response = 3
         _tools = tools or []
 
         for subagent in subagents or []:
             if isinstance(subagent, Agent):
+                # If conversation_memory is provided to the subagent, then it's overridden by the,
+                # conversation_memory of the main agent.
+                subagent.conversation_memory = conversation_memory
+
+                # Internal conversaion history of the subagent isn't stored.
+                subagent._store_conversation = False
+
                 _tools += [_generate_dynamic_tool_as_agent(agent=subagent)]
             else:
                 raise ValueError(
@@ -173,15 +210,12 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
                         else:
                             break
                     else:
-                        if self._is_all_text_response(response):
-                            n_repeat_text_response += 1
-                            messages.append(
-                                Prompt(contents=self.__final_response_prompt, role="user")
-                            )
-                        else:
+                        if self._include_tool_call_response(response):
                             n_repeat_text_response = 0
+                        else:
+                            n_repeat_text_response += 1
+                            messages.append(Prompt(contents=self.__review_prompt, role="user"))
 
-        self._tmp = messages
         self.store_history(messages)
 
         if final_result:
@@ -234,13 +268,11 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
                         else:
                             break
                     else:
-                        if self._is_all_text_response(response):
-                            n_repeat_text_response += 1
-                            messages.append(
-                                Prompt(contents=self.__final_response_prompt, role="user")
-                            )
-                        else:
+                        if self._include_tool_call_response(response):
                             n_repeat_text_response = 0
+                        else:
+                            n_repeat_text_response += 1
+                            messages.append(Prompt(contents=self.__review_prompt, role="user"))
 
         self.store_history(messages)
 
@@ -281,7 +313,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
 
             if final_result:
                 messages.append(final_result)
-                self.store_history(messages)
+                # self.store_history(messages)
                 final_result.usage = total_usage
                 yield final_result
                 break
@@ -293,23 +325,18 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
 
                     total_usage = self._update_usage(total_usage, chunk)
                     if self.response_schema_as_tool is None:
-                        # chunk.usage = total_usage
-                        # messages.append(chunk)
-                        self.store_history(messages)
-                        # yield chunk
-
                         if self._include_tool_call_response(chunk):
                             continue
                         else:
                             break
                     else:
-                        if self._is_all_text_response(chunk):
-                            n_repeat_text_response += 1
-                            messages.append(
-                                Prompt(contents=self.__final_response_prompt, role="user")
-                            )
-                        else:
+                        if self._include_tool_call_response(chunk):
                             n_repeat_text_response = 0
+                        else:
+                            n_repeat_text_response += 1
+                            messages.append(Prompt(contents=self.__review_prompt, role="user"))
+
+        self.store_history(messages)
 
     async def stream_text_async(
         self, prompt: AgentInput, **kwargs: Any
@@ -344,7 +371,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
 
             if final_result:
                 messages.append(final_result)
-                self.store_history(messages)
+                # self.store_history(messages)
                 final_result.usage = total_usage
                 yield final_result
                 break
@@ -356,23 +383,18 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
 
                     total_usage = self._update_usage(total_usage, chunk)
                     if self.response_schema_as_tool is None:
-                        # chunk.usage = total_usage
-                        # messages.append(chunk)
-                        self.store_history(messages)
-                        # yield chunk
-
                         if self._include_tool_call_response(chunk):
                             continue
                         else:
                             break
                     else:
-                        if self._is_all_text_response(chunk):
-                            n_repeat_text_response += 1
-                            messages.append(
-                                Prompt(contents=self.__final_response_prompt, role="user")
-                            )
-                        else:
+                        if self._include_tool_call_response(chunk):
                             n_repeat_text_response = 0
+                        else:
+                            n_repeat_text_response += 1
+                            messages.append(Prompt(contents=self.__review_prompt, role="user"))
+
+        self.store_history(messages)
 
     def _process_user_prompt(self, prompt: AgentInput) -> list[Prompt | Response]:
         if isinstance(prompt, (Prompt, Response)):
@@ -514,7 +536,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         return next_turn_message, is_error, final_result
 
     def store_history(self, messages: list[Prompt | Response]) -> None:
-        if self.conversation_memory is not None:
+        if self.conversation_memory is not None and self._store_conversation:
             self.conversation_memory.store(
                 [
                     m.model_dump(
@@ -538,7 +560,11 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         return [
             Tool(
                 name=self.__response_schema_name,
-                description="The final answer which ends this conversation. Must run at the end of the conversation.",
+                description=(
+                    "The final answer which ends this conversation."
+                    "Must run at the end of the conversation and "
+                    "arguments of the tool must bases on the conversation history, not be made up."
+                ),
                 schema_dict=response_schema_as_tool,
             )
         ]
@@ -571,13 +597,19 @@ def _run_subagent(agent: AgentType, instruction: str) -> str:
     agent : AgentType
         The subagent instance.
     instruction : str
-        The detail and specific instruction to run the subagent.
+        The detail and specific instruction to run the subagent, based on the entire conversation history or tool's result.
 
     Returns
     ----------
     str
         The response from the subagent.
     """
+    if not isinstance(agent, Agent):
+        raise ValueError(
+            "Subagent must be an instance of Agent class. "
+            "Please provide the correct agent instance."
+        )
+
     return agent.generate_text(instruction).contents[0].text  # type: ignore
 
 
