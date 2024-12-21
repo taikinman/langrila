@@ -1,4 +1,5 @@
 import base64
+import inspect
 import io
 import random
 import string
@@ -10,6 +11,17 @@ from urllib.parse import urlparse
 import numpy as np
 from PIL import Image
 from pydantic import BaseModel
+
+
+def get_variable_name_inspect(obj: object) -> str:
+    if current_frame := inspect.currentframe():
+        frame = current_frame.f_back
+        while frame:
+            for name, _obj in frame.f_globals.items():
+                if _obj is obj:
+                    return name
+            frame = frame.f_back
+    return ""
 
 
 def make_batch(

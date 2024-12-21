@@ -206,7 +206,6 @@ class ToolUsePrompt(BaseModel):
     call_id: str | None = None
     args: str | None = None
     name: str | None = None
-    tag: str | None = None
 
     @model_validator(mode="before")
     @classmethod

@@ -1,9 +1,11 @@
 import json
+import types
 from logging import Logger
-from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, cast
+from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, TypeVar, cast
 
 from pydantic_core import ValidationError
 
+from ..utils import get_variable_name_inspect
 from .client import LLMClient
 from .config import AgentConfig
 from .embedding import EmbeddingResults
@@ -27,6 +29,9 @@ AgentInput = (
 )
 
 
+AgentType = TypeVar("AgentType")  # self-referential type hint
+
+
 def format_validation_error_msg(e: ValidationError, tool_name: str) -> str:
     error_txt = ""
     for error in e.errors():
@@ -42,11 +47,11 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         self,
         client: LLMClient[ClientMessage, ClientMessageContent, ClientTool] | None = None,
         llm: LLMModel[ClientMessage, ClientMessageContent, ClientTool] | None = None,
-        tools: list[Callable[..., Any] | Tool] | None = None,
+        tools: list[Callable[..., Any] | Tool | AgentType] | None = None,
         agent_config: AgentConfig | None = None,
         conversation_memory: BaseConversationMemory | None = None,
         logger: Logger | None = None,
-        response_schema: BaseModel | None = None,
+        response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ):
         self._client = client
@@ -55,14 +60,18 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         self.conversation_memory = conversation_memory
         self.n_validation_retries = self.agent_config.n_validation_retries
         self.logger = logger or default_logger
-        self.response_schema = response_schema
+        self.response_schema_as_tool = response_schema_as_tool
         self.__response_schema_name = "final_answer"
         self.__final_response_prompt = "Final answer please."
         self.__max_repeat_text_response = 3
         _tools = tools or []
 
-        if response_schema:
-            _tools += self._prepare_tool_as_response_schema(response_schema)
+        for i, tool in enumerate(_tools):
+            if isinstance(tool, Agent):
+                _tools[i] = _generate_dynamic_tool_as_agent(agent=tool)
+
+        if response_schema_as_tool:
+            _tools += self._prepare_tool_as_response_schema(response_schema_as_tool)
 
         if llm is not None:
             self.llm = llm
@@ -84,8 +93,8 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         if tools is not None:
             self._tools = {tool.name: tool for tool in self.llm._prepare_tools(_tools)}
 
-    def _prepare_tool_as_response_schema(self, response_schema: BaseModel) -> list[Tool]:
-        _response_schema_json = response_schema.model_json_schema()
+    def _prepare_tool_as_response_schema(self, response_schema_as_tool: BaseModel) -> list[Tool]:
+        _response_schema_json = response_schema_as_tool.model_json_schema()
         return self._prepare_response_schema_tool(_response_schema_json)
 
     def _update_usage(self, usage: Usage, response: Response) -> Usage:
@@ -152,7 +161,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
                 else:
                     n_validation_retries = 0
 
-                    if self.response_schema is None:
+                    if self.response_schema_as_tool is None:
                         if self._include_tool_call_response(response):
                             continue
                         else:
@@ -213,7 +222,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
                 else:
                     n_validation_retries = 0
 
-                    if self.response_schema is None:
+                    if self.response_schema_as_tool is None:
                         if self._include_tool_call_response(response):
                             continue
                         else:
@@ -277,7 +286,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
                     n_validation_retries = 0
 
                     total_usage = self._update_usage(total_usage, chunk)
-                    if self.response_schema is None:
+                    if self.response_schema_as_tool is None:
                         # chunk.usage = total_usage
                         # messages.append(chunk)
                         self.store_history(messages)
@@ -340,7 +349,7 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
                     n_validation_retries = 0
 
                     total_usage = self._update_usage(total_usage, chunk)
-                    if self.response_schema is None:
+                    if self.response_schema_as_tool is None:
                         # chunk.usage = total_usage
                         # messages.append(chunk)
                         self.store_history(messages)
@@ -432,9 +441,9 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
 
                     else:
                         assert (
-                            self.response_schema is not None
-                        ), "Please provide response_schema in the agent."
-                        self.response_schema.model_validate(args)
+                            self.response_schema_as_tool is not None
+                        ), "Please provide response_schema_as_tool in the agent."
+                        self.response_schema_as_tool.model_validate(args)
                         next_turn_contents.append(
                             ToolUsePrompt(
                                 output=json.dumps(args),
@@ -519,12 +528,12 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
             ]
         return []
 
-    def _prepare_response_schema_tool(self, response_schema: dict[str, Any]) -> list[Tool]:
+    def _prepare_response_schema_tool(self, response_schema_as_tool: dict[str, Any]) -> list[Tool]:
         return [
             Tool(
                 name=self.__response_schema_name,
                 description="The final answer which ends this conversation. Must run at the end of the conversation.",
-                schema_dict=response_schema,
+                schema_dict=response_schema_as_tool,
             )
         ]
 
@@ -539,3 +548,48 @@ class Agent(Generic[ClientMessage, ClientMessageContent, ClientTool]):
 
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
         return await self.llm.embed_text_async(texts, **kwargs)
+
+
+def _get_agent_tools_description(agent: AgentType) -> str:
+    return "\n".join(
+        [f"- {funcname}: {tool.description}" for funcname, tool in agent._tools.items()]
+    )
+
+
+def _run_subagent(agent: AgentType, instruction: str) -> str:
+    return agent.generate_text(instruction).contents[0].text  # type: ignore
+
+
+def _duplicate_function(func: Callable[..., Any], name: str) -> Callable[..., Any]:
+    new_function_name = name
+    new_function_code = func.__code__
+    new_function_globals = func.__globals__
+    new_function_defaults = func.__defaults__
+    new_function_closure = func.__closure__
+
+    new_func = types.FunctionType(
+        new_function_code,
+        new_function_globals,
+        new_function_name,
+        new_function_defaults,
+        new_function_closure,
+    )
+    new_func.__annotations__ = func.__annotations__
+    globals()[new_function_name] = new_func
+    return new_func
+
+
+def _generate_dynamic_tool_as_agent(agent: AgentType) -> Tool:
+    agent_name = get_variable_name_inspect(agent)
+    duplicated_tool = _duplicate_function(_run_subagent, f"route_{agent_name}")
+    agent_description = _get_agent_tools_description(agent)
+
+    return Tool(
+        tool=duplicated_tool,
+        name=f"route_{agent_name}",
+        description=(
+            f"This function invokes the agent capable to run the following tools:\n"
+            f"{agent_description}"
+        ),
+        context={"agent": agent},
+    )

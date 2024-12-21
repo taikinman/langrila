@@ -1,13 +1,11 @@
 import json
 import os
-from typing import Any, AsyncGenerator, Generator, Literal, Sequence, cast, overload
+from typing import Any, AsyncGenerator, Generator, Literal, Sequence, cast
 
 from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
-from openai._streaming import AsyncStream, Stream
 from openai._types import NOT_GIVEN, NotGiven
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
-    ChatCompletionFunctionMessageParam,
     ChatCompletionMessage,
     ChatCompletionMessageToolCall,
     ChatCompletionSystemMessageParam,
@@ -15,8 +13,7 @@ from openai.types.chat import (
     ChatCompletionToolParam,
     ChatCompletionUserMessageParam,
 )
-from openai.types.chat.chat_completion import ChatCompletion
-from openai.types.chat.chat_completion_chunk import ChatCompletionChunk, Choice
+from openai.types.chat.chat_completion_chunk import Choice
 from openai.types.chat.chat_completion_content_part_image_param import (
     ChatCompletionContentPartImageParam,
     ImageURL,
@@ -29,7 +26,6 @@ from openai.types.chat.chat_completion_content_part_text_param import (
     ChatCompletionContentPartTextParam,
 )
 from openai.types.chat.chat_completion_message_tool_call import Function
-from openai.types.chat.chat_completion_user_message_param import ChatCompletionUserMessageParam
 from openai.types.shared_params.function_definition import FunctionDefinition
 
 from ..core.client import LLMClient

@@ -233,7 +233,7 @@ def function_schema(function: ToolType) -> tuple[str, dict[str, Any], SchemaVali
 
     # instead of passing `description` through in core_schema, we just add it here
     if description:
-        json_schema = {"description": description} | json_schema
+        json_schema = {"description": description, **json_schema}
 
     json_schema = check_object_json_schema(json_schema)
 
