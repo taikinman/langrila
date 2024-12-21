@@ -9,7 +9,7 @@ import boto3
 from botocore.client import Config as BotoConfig
 from botocore.exceptions import ClientError
 
-from ..base import BaseConversationMemory
+from ..core.memory import BaseConversationMemory
 
 
 class S3ConversationMemory(BaseConversationMemory):

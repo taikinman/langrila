@@ -7,8 +7,8 @@ from typing import Any
 import numpy as np
 from usearch.index import DTypeLike, Index, Matches, MetricLike, ProgressCallback
 
-from ..base import BaseMetadataFilter
-from ..result import RetrievalResults
+from ..legacy.base import BaseMetadataFilter
+from ..legacy.result import RetrievalResults
 from .base import (
     BaseEmbeddingModule,
     BaseLocalCollectionModule,

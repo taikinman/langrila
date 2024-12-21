@@ -4,10 +4,10 @@ from typing import Generator
 import imageio
 from PIL import Image
 
+from ..core.typing import PathType
 
-def sample_frames(
-    video_path: str | Path, fps: float = 1.0
-) -> Generator[Image.Image, None, None]:
+
+def sample_frames(video_path: PathType, fps: float = 1.0) -> Generator[Image.Image, None, None]:
     reader = imageio.get_reader(video_path)
     meta_data = reader.get_meta_data()
     original_fps = meta_data.get("fps")

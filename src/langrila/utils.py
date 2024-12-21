@@ -1,4 +1,5 @@
 import base64
+import inspect
 import io
 import random
 import string
@@ -10,6 +11,17 @@ from urllib.parse import urlparse
 import numpy as np
 from PIL import Image
 from pydantic import BaseModel
+
+
+def get_variable_name_inspect(obj: object) -> str:
+    if current_frame := inspect.currentframe():
+        frame = current_frame.f_back
+        while frame:
+            for name, _obj in frame.f_globals.items():
+                if _obj is obj:
+                    return name
+            frame = frame.f_back
+    return ""
 
 
 def make_batch(
@@ -56,22 +68,22 @@ def base64_encode(data: Any):
     return base64.b64encode(data)
 
 
-def encode_image(image: Image.Image | np.ndarray | bytes, as_utf8: bool = False) -> str:
+def base64_decode(data: Any):
+    return base64.b64decode(data)
+
+
+def utf8_to_bytes(text: str) -> bytes:
+    return base64_decode(text.encode("utf-8"))
+
+
+def encode_image(image: Image.Image | np.ndarray | bytes) -> str:
     image_bytes = image2bytes(image)
     encoded = base64_encode(image_bytes)
-
-    if as_utf8:
-        return encoded.decode("utf-8")
-    else:
-        return encoded
+    return encoded.decode("utf-8")
 
 
-def decode_image(image_encoded: str, as_utf8: bool = False) -> Image.Image:
-    if not as_utf8:
-        image_encoded_utf = image_encoded
-    else:
-        image_encoded_utf = image_encoded.encode("utf-8")
-
+def decode_image(image_encoded: str) -> Image.Image:
+    image_encoded_utf = image_encoded.encode("utf-8")
     image_bytes = base64.b64decode(image_encoded_utf)
     byteio = io.BytesIO(image_bytes)
     return Image.open(byteio)
@@ -105,7 +117,7 @@ def is_valid_uri(text: str) -> bool:
 
 
 def parse_arguments(
-    obj: Callable,
+    obj: Callable[..., Any],
     include: set[str] | list[str] | None = None,
     exclude: set[str] | list[str] | None = None,
 ) -> set[str]:
@@ -136,10 +148,19 @@ def parse_arguments(
 
 
 def create_parameters(
-    obj: Callable,
+    obj: Callable[..., Any],
     include: set[str] | list[str] | None = None,
     exclude: set[str] | list[str] | None = None,
-    **kwargs,
-):
+    **kwargs: dict[str, Any],
+) -> dict[str, Any]:
     params = parse_arguments(obj, include=include, exclude=exclude)
+    # ignored = set(kwargs.keys()) - params
     return {k: v for k, v in kwargs.items() if k in params}
+
+
+def snake_to_camel(snake_str: str) -> str:
+    if not snake_str:
+        return ""
+
+    components = snake_str.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])

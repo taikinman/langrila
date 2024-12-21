@@ -1,7 +1,7 @@
 import os
 import pickle
 
-from ..base import BaseConversationMemory
+from ..core.memory import BaseConversationMemory
 
 
 class PickleConversationMemory(BaseConversationMemory):

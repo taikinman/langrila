@@ -3,7 +3,7 @@ from typing import Any
 
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
 
-from ..base import BaseConversationMemory
+from ..core.memory import BaseConversationMemory
 
 
 class CosmosConversationMemory(BaseConversationMemory):

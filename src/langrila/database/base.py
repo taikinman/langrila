@@ -1,17 +1,16 @@
 import asyncio
+import inspect
 import math
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Optional
-import inspect
+
 from tqdm import tqdm
 
-from langrila import Usage
-
-from ..base import BaseEmbeddingModule
-from ..logger import DefaultLogger
-from ..result import EmbeddingResults, RetrievalResults
+from ..core.embedding import BaseEmbeddingModule
+from ..legacy.logger import DefaultLogger
+from ..legacy.result import EmbeddingResults, RetrievalResults
 from ..utils import make_batch
 
 
