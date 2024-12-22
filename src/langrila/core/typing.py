@@ -12,3 +12,4 @@ ArrayType = np.ndarray[tuple[int, ...], np.dtype[np.float32 | np.float64]]
 ClientMessage = TypeVar("ClientMessage")
 ClientMessageContent = TypeVar("ClientMessageContent")
 ClientTool = TypeVar("ClientTool")
+ClientSystemMessage = TypeVar("ClientSystemMessage")

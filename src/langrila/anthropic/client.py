@@ -31,6 +31,7 @@ from anthropic.types import (
     ToolUseBlockParam,
 )
 from anthropic.types.image_block_param import Source
+from typing_extensions import override
 
 from ..core.client import LLMClient
 from ..core.embedding import EmbeddingResults
@@ -39,6 +40,7 @@ from ..core.prompt import (
     ImagePrompt,
     PDFPrompt,
     Prompt,
+    SystemPrompt,
     TextPrompt,
     ToolCallPrompt,
     ToolUsePrompt,
@@ -64,7 +66,7 @@ AnthropicContentType = (
 )
 
 
-class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
+class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolParam]):
     """
     Wrapper client for the Anthropic API.
 
@@ -74,7 +76,7 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         Environment variable name for the API key, by default None
     api_type : Literal["anthropic", "bedrock", "vertexai"], optional
         API type, by default "anthropic"
-    kwargs : Any
+    **kwargs : Any
         Additional parameters to pass to the client.
         Basically, any parameter that the client accepts can be passed here.
         For more details, see the documentation of the anthropic api.
@@ -105,7 +107,25 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
                 **create_parameters(AsyncAnthropicVertex, **kwargs)
             )
 
-    def generate_text(self, messages: list[MessageParam], **kwargs: Any) -> Response:
+    def setup_system_instruction(self, system_instruction: SystemPrompt) -> str:
+        """
+        Setup the system instruction.
+
+        Parameters
+        ----------
+        system_instruction : SystemPrompt
+            System instruction.
+
+        Returns
+        ----------
+        str
+            List of messages with the system instruction.
+        """
+        return system_instruction.contents
+
+    def generate_text(
+        self, messages: list[MessageParam], system_instruction: str | None = None, **kwargs: Any
+    ) -> Response:
         """
         Generate text from a list of messages.
 
@@ -113,6 +133,8 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         ----------
         messages : list[MessageParam]
             List of messages to generate text from.
+        system_instruction : str, optional
+            System instruction, by default None.
         **kwargs : Any
             Additional parameters to pass to the client.
             Same as the parameters accepted by the client.
@@ -123,6 +145,9 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         Response
             Generated text response.
         """
+        if system_instruction:
+            kwargs["system"] = system_instruction
+
         assert not kwargs.get("stream"), "Use stream_text or stream_text_async for streaming."
         completion_params = create_parameters(self._client.messages.create, **kwargs)
         response: Message = self._client.messages.create(
@@ -152,7 +177,9 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
             prompt=messages,
         )
 
-    async def generate_text_async(self, messages: list[MessageParam], **kwargs: Any) -> Response:
+    async def generate_text_async(
+        self, messages: list[MessageParam], system_instruction: str | None = None, **kwargs: Any
+    ) -> Response:
         """
         Generate text from a list of messages asynchronously.
 
@@ -160,6 +187,8 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         ----------
         messages : list[MessageParam]
             List of messages to generate text from.
+        system_instruction : str, optional
+            System instruction, by default None.
         **kwargs : Any
             Additional parameters to pass to the client.
             Same as the parameters accepted by the client.
@@ -170,6 +199,9 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         Response
             Generated text response.
         """
+        if system_instruction:
+            kwargs["system"] = system_instruction
+
         assert not kwargs.get("stream"), "Use stream_text or stream_text_async for streaming."
         completion_params = create_parameters(self._client.messages.create, **kwargs)
         response: Message = await self._async_client.messages.create(
@@ -200,7 +232,7 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         )
 
     def stream_text(
-        self, messages: list[MessageParam], **kwargs: Any
+        self, messages: list[MessageParam], system_instruction: str | None = None, **kwargs: Any
     ) -> Generator[Response, None, None]:
         """
         Stream text from a list of messages.
@@ -209,6 +241,8 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         ----------
         messages : list[MessageParam]
             List of messages to stream text from.
+        system_instruction : str, optional
+            System instruction, by default None.
         **kwargs : Any
             Additional parameters to pass to the client.
             Same as the parameters accepted by the client.
@@ -219,6 +253,9 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         Response
             Streamed text response.
         """
+        if system_instruction:
+            kwargs["system"] = system_instruction
+
         completion_params = create_parameters(self._client.messages.create, **kwargs)
         streamed_response: Message = self._client.messages.create(
             messages=messages, stream=True, **completion_params
@@ -287,7 +324,7 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         yield Response(contents=contents, usage=usage)
 
     async def stream_text_async(
-        self, messages: list[MessageParam], **kwargs: Any
+        self, messages: list[MessageParam], system_instruction: str | None = None, **kwargs: Any
     ) -> AsyncGenerator[Response, None]:
         """
         Stream text from a list of messages asynchronously.
@@ -296,6 +333,8 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         ----------
         messages : list[MessageParam]
             List of messages to stream text from.
+        system_instruction : str, optional
+            System instruction, by default None.
         **kwargs : Any
             Additional parameters to pass to the client.
             Same as the parameters accepted by the client.
@@ -306,6 +345,9 @@ class AnthropicClient(LLMClient[MessageParam, AnthropicContentType, ToolParam]):
         Response
             Streamed text response.
         """
+        if system_instruction:
+            kwargs["system"] = system_instruction
+
         completion_params = create_parameters(self._client.messages.create, **kwargs)
         streamed_response: Message = await self._async_client.messages.create(
             messages=messages, stream=True, **completion_params

@@ -26,6 +26,7 @@ from ..core.prompt import (
     ImagePrompt,
     PDFPrompt,
     Prompt,
+    SystemPrompt,
     TextPrompt,
     ToolCallPrompt,
     ToolUsePrompt,
@@ -49,8 +50,10 @@ from ..utils import (
     utf8_to_bytes,
 )
 
+GeminiMessage = Content | str
 
-class GeminiClient(LLMClient[Content, Part, GeminiTool]):
+
+class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
     """
     Wrapper client for interacting with the Gemini API.
 
@@ -89,7 +92,25 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
             credentials=self.credentials,
         )
 
-    def generate_text(self, messages: list[Content], **kwargs: Any) -> Response:
+    def setup_system_instruction(self, system_instruction: SystemPrompt) -> str:
+        """
+        Setup the system instruction.
+
+        Parameters
+        ----------
+        system_instruction : SystemPrompt
+            System instruction.
+
+        Returns
+        ----------
+        str
+            List of messages with the system instruction.
+        """
+        return system_instruction.contents
+
+    def generate_text(
+        self, messages: list[Content], system_instruction: str | None = None, **kwargs: Any
+    ) -> Response:
         """
         Generate text from a list of messages.
 
@@ -97,6 +118,8 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         ----------
         messages : list[Content]
             List of messages to generate text from.
+        system_instruction : str, optional
+            System instruction to include in the messages.
         **kwargs : Any
             Additional keyword arguments.
             Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
@@ -107,6 +130,9 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         Response
             Response object containing generated text.
         """
+        if system_instruction:
+            kwargs["system_instruction"] = system_instruction
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
@@ -145,7 +171,9 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
             name=cast(str | None, kwargs.get("name")),
         )
 
-    async def generate_text_async(self, messages: list[Content], **kwargs: Any) -> Response:
+    async def generate_text_async(
+        self, messages: list[Content], system_instruction: str | None = None, **kwargs: Any
+    ) -> Response:
         """
         Generate text from a list of messages asynchronously.
 
@@ -153,6 +181,8 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         ----------
         messages : list[Content]
             List of messages to generate text from.
+        system_instruction : str, optional
+            System instruction.
         **kwargs : Any
             Additional keyword arguments.
             Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
@@ -163,6 +193,9 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         Response
             Response object containing generated text.
         """
+        if system_instruction:
+            kwargs["system_instruction"] = system_instruction
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
@@ -202,7 +235,7 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         )
 
     def stream_text(
-        self, messages: list[Content], **kwargs: Any
+        self, messages: list[Content], system_instruction: str | None = None, **kwargs: Any
     ) -> Generator[Response, None, None]:
         """
         Stream text from a list of messages.
@@ -211,6 +244,8 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         ----------
         messages : list[Content]
             List of messages to stream text from.
+        system_instruction : str, optional
+            System instruction.
         **kwargs : Any
             Additional keyword arguments.
             Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
@@ -221,6 +256,9 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         Response
             Response object containing combined chunk text or args.
         """
+        if system_instruction:
+            kwargs["system_instruction"] = system_instruction
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
@@ -294,7 +332,7 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
             )
 
     async def stream_text_async(
-        self, messages: list[Content], **kwargs: Any
+        self, messages: list[Content], system_instruction: str | None = None, **kwargs: Any
     ) -> AsyncGenerator[Response, None]:
         """
         Stream text from a list of messages asynchronously.
@@ -303,6 +341,8 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         ----------
         messages : list[Content]
             List of messages to stream text from.
+        system_instruction : str, optional
+            System instruction.
         **kwargs : Any
             Additional keyword arguments.
             Basically the same as the parameters in `google.genai.types.GenerateContentConfig`.
@@ -313,6 +353,9 @@ class GeminiClient(LLMClient[Content, Part, GeminiTool]):
         Response
             Response object containing combined chunk text or args.
         """
+        if system_instruction:
+            kwargs["system_instruction"] = system_instruction
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)

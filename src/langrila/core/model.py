@@ -7,10 +7,10 @@ from .embedding import EmbeddingResults
 from .logger import DEFAULT_LOGGER as default_logger
 from .memory import BaseConversationMemory
 from .message import Message
-from .prompt import ImagePrompt, Prompt, PromptType, TextPrompt, ToolCallPrompt
+from .prompt import ImagePrompt, Prompt, PromptType, SystemPrompt, TextPrompt, ToolCallPrompt
 from .response import ImageResponse, Response, ResponseType, TextResponse, ToolCallResponse
 from .tool import Tool
-from .typing import ClientMessage, ClientMessageContent, ClientTool
+from .typing import ClientMessage, ClientMessageContent, ClientSystemMessage, ClientTool
 
 LLMInput = (
     Prompt
@@ -21,7 +21,7 @@ LLMInput = (
 )
 
 
-class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
+class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool]):
     """
     A high-level interface to interact with a language model client.
 
@@ -31,6 +31,8 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         Client to interact with.
     conversation_memory : BaseConversationMemory, optional
         Conversation memory to store and load conversation history, by default None.
+    system_instruction : SystemPrompt, optional
+        System instruction to generate text, by default None.
     logger : Logger, optional
         Logger to use, by default None.
     **kwargs : Any
@@ -40,17 +42,27 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
 
     def __init__(
         self,
-        client: LLMClient[ClientMessage, ClientMessageContent, ClientTool],
+        client: LLMClient[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool],
         conversation_memory: BaseConversationMemory | None = None,
+        system_instruction: SystemPrompt | None = None,
         logger: Logger | None = None,
         **kwargs: Any,
     ):
         self.client = client
         self.logger = logger or default_logger
         self.conversation_memory = conversation_memory
+        self.system_instruction = system_instruction
         self.init_kwargs = kwargs
 
-    def generate_text(self, messages: LLMInput, **kwargs: Any) -> Response:
+        if system_instruction:
+            self.init_kwargs["system_instruction"] = system_instruction
+
+    def generate_text(
+        self,
+        messages: LLMInput,
+        system_instruction: SystemPrompt | None = None,
+        **kwargs: Any,
+    ) -> Response:
         """
         Generate text based on the given prompt.
 
@@ -58,6 +70,8 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         ----------
         messages : LLMInput
             Prompt to generate text from.
+        system_instruction : SystemPrompt | None, optional
+            System instruction to generate text, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -80,17 +94,29 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug("Mapping Prompt to client-specific representation")
+        self.logger.debug(f"Prompt: {mapped_messages}")
+
+        # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
+        _system_instruction = self.client._setup_system_instruction(
+            system_instruction or self.system_instruction
+        )
 
         self.logger.info("Generating text")
-        response = self.client.generate_text(prompt, **all_kwargs)
+        response = self.client.generate_text(prompt, _system_instruction, **all_kwargs)
+
+        self.logger.debug(f"Response: {response}")
 
         history.append(response)
         self.store_history(history)
         return response
 
-    async def generate_text_async(self, messages: LLMInput, **kwargs: Any) -> Response:
+    async def generate_text_async(
+        self,
+        messages: LLMInput,
+        system_instruction: SystemPrompt | None = None,
+        **kwargs: Any,
+    ) -> Response:
         """
         Generate text based on the given prompt asynchronously.
 
@@ -98,6 +124,8 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         ----------
         messages : LLMInput
             Prompt to generate text from.
+        system_instruction : SystemPrompt | None, optional
+            System instruction to generate text, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -120,18 +148,30 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug("Mapping Prompt to client-specific representation")
+        self.logger.debug(f"Prompt: {mapped_messages}")
+
+        # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
+        _system_instruction = self.client._setup_system_instruction(
+            system_instruction or self.system_instruction
+        )
 
         self.logger.info("Generating text")
-        response = await self.client.generate_text_async(prompt, **all_kwargs)
+        response = await self.client.generate_text_async(prompt, _system_instruction, **all_kwargs)
+
+        self.logger.debug(f"Response: {response}")
 
         history.append(response)
         self.store_history(history)
 
         return response
 
-    def stream_text(self, messages: LLMInput, **kwargs: Any) -> Generator[Response, None, None]:
+    def stream_text(
+        self,
+        messages: LLMInput,
+        system_instruction: SystemPrompt | None = None,
+        **kwargs: Any,
+    ) -> Generator[Response, None, None]:
         """
         Stream text based on the given prompt.
 
@@ -139,6 +179,8 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         ----------
         messages : LLMInput
             Prompt to generate text from.
+        system_instruction : SystemPrompt | None, optional
+            System instruction to generate text, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -161,11 +203,14 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug("Mapping Prompt to client-specific representation")
+        # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
+        _system_instruction = self.client._setup_system_instruction(
+            system_instruction or self.system_instruction
+        )
 
         self.logger.info("Generating text")
-        streamed_response = self.client.stream_text(prompt, **all_kwargs)
+        streamed_response = self.client.stream_text(prompt, _system_instruction, **all_kwargs)
 
         if inspect.isgenerator(streamed_response):
             for chunk in streamed_response:
@@ -177,7 +222,10 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         self.store_history(history)
 
     async def stream_text_async(
-        self, messages: LLMInput, **kwargs: Any
+        self,
+        messages: LLMInput,
+        system_instruction: SystemPrompt | None = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[Response, None]:
         """
         Stream text based on the given prompt asynchronously.
@@ -186,6 +234,8 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         ----------
         messages : LLMInput
             Prompt to generate text from.
+        system_instruction : SystemPrompt | None, optional
+            System instruction to generate text, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -208,11 +258,14 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug("Mapping Prompt to client-specific representation")
+        # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
+        _system_instruction = self.client._setup_system_instruction(
+            system_instruction or self.system_instruction
+        )
 
         self.logger.info("Generating text")
-        streamed_response = self.client.stream_text_async(prompt, **all_kwargs)
+        streamed_response = self.client.stream_text_async(prompt, _system_instruction, **all_kwargs)
 
         if inspect.isasyncgen(streamed_response):
             async for chunk in streamed_response:
@@ -376,7 +429,7 @@ class LLMModel(Generic[ClientMessage, ClientMessageContent, ClientTool]):
             if isinstance(tool, Tool):
                 outputs.append(tool)
             elif callable(tool):
-                self.logger.debug(f"Preparing tools: {tool.__name__}")
+                # self.logger.debug(f"Preparing tools: {tool.__name__}")
                 outputs.append(Tool(tool=tool))
             else:
                 raise ValueError(f"Invalid tool type: {type(tool)}")

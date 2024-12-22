@@ -247,9 +247,15 @@ Prompts = (
 )
 
 
+class SystemPrompt(BaseModel):
+    role: Literal["system", "developer"] = "system"
+    contents: str
+    name: str | None = None
+
+
 class Prompt(BaseModel):
     type: Literal["Prompt"] = "Prompt"
-    role: Literal["system", "user", "assistant", "tool", "developer"]
+    role: Literal["user", "assistant", "tool"]
     contents: PromptType | list[PromptType]
     name: str | None = None
 

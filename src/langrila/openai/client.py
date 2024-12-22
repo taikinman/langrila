@@ -36,6 +36,7 @@ from ..core.prompt import (
     PDFPrompt,
     Prompt,
     PromptType,
+    SystemPrompt,
     TextPrompt,
     ToolCallPrompt,
     ToolUsePrompt,
@@ -53,6 +54,7 @@ OpenAIMessage = (
     | ChatCompletionAssistantMessageParam
     | ChatCompletionToolMessageParam
     | ChatCompletionMessage
+    | dict[str, Any]
 )
 
 OpenAIMessageContentType = (
@@ -68,6 +70,7 @@ OpenAIMessageContentType = (
 class OpenAIClient(
     LLMClient[
         OpenAIMessage,
+        dict[str, str],
         ChatCompletionContentPartParam,
         ChatCompletionToolParam,
     ]
@@ -83,7 +86,7 @@ class OpenAIClient(
         API type, by default "openai"
     organization_id_env_name : str, optional
         Environment variable name for the organization ID, by default None
-    kwargs : Any
+    **kwargs : Any
         Additional keyword arguments to pass to the API client.
         Basically the same as the parameters in the raw OpenAI API.
         For more details, see the OpenAI API documentation.
@@ -127,23 +130,32 @@ class OpenAIClient(
         else:
             raise ValueError(f"Invalid API type: {self.api_type}")
 
-    def _setup_system_instruction(
-        self, system_instruction: str | Prompt | list[str | PromptType]
-    ) -> list[OpenAIMessage]:
-        if isinstance(system_instruction, list):
-            prompt = Prompt(contents=system_instruction, role="system")
-        elif isinstance(system_instruction, str):
-            prompt = Prompt(contents=[system_instruction], role="system")
-        else:
-            prompt = system_instruction
+    def setup_system_instruction(self, system_instruction: SystemPrompt) -> dict[str, str]:
+        """
+        Setup the system instruction.
 
-        client_prompt = self.map_to_client_prompt(prompt)
-        if isinstance(client_prompt, list):
-            return client_prompt
-        else:
-            return [client_prompt]
+        Parameters
+        ----------
+        system_instruction : SystemPrompt
+            System instruction to include in the messages.
 
-    def generate_text(self, messages: list[OpenAIMessage], **kwargs: Any) -> Response:
+        Returns
+        ----------
+        OpenAIMessage
+            List of messages with the system instruction.
+        """
+        return {
+            "role": system_instruction.role,
+            "content": system_instruction.contents,
+            **({"name": system_instruction.name} if system_instruction.name else {}),
+        }
+
+    def generate_text(
+        self,
+        messages: list[OpenAIMessage],
+        system_instruction: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> Response:
         """
         Generate text based on the given messages.
 
@@ -151,6 +163,8 @@ class OpenAIClient(
         ----------
         messages : list[OpenAIMessage]
             List of messages to generate text from.
+        system_instruction : dict[str, str] | None, optional
+            System instruction to include in the messages, by default None
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw OpenAI API.
@@ -161,22 +175,23 @@ class OpenAIClient(
         Response
             Response object containing the generated text.
         """
-        if system_instruction := kwargs.get("system_instruction"):
-            system_messages = self._setup_system_instruction(system_instruction)
-            messages = system_messages + messages
+        if system_instruction:
+            _messages = [system_instruction] + messages
+        else:
+            _messages = messages
 
         if not isinstance(kwargs.get("response_format", NOT_GIVEN), (NotGiven, dict)):
             completion_params = create_parameters(
                 self._client.beta.chat.completions.parse, **kwargs
             )
             response = self._client.beta.chat.completions.parse(
-                messages=messages,  # type: ignore
+                messages=_messages,  # type: ignore
                 **completion_params,
             )
         else:
             completion_params = create_parameters(self._client.chat.completions.create, **kwargs)
             response = self._client.chat.completions.create(
-                messages=messages,  # type: ignore
+                messages=_messages,  # type: ignore
                 **completion_params,
             )
 
@@ -208,10 +223,15 @@ class OpenAIClient(
             usage=usage,
             raw=response,
             name=cast(str, kwargs.get("name")),
-            prompt=messages,
+            prompt=_messages,
         )
 
-    async def generate_text_async(self, messages: list[OpenAIMessage], **kwargs: Any) -> Response:
+    async def generate_text_async(
+        self,
+        messages: list[OpenAIMessage],
+        system_instruction: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> Response:
         """
         Generate text based on the given messages asynchronously.
 
@@ -219,6 +239,8 @@ class OpenAIClient(
         ----------
         messages : list[OpenAIMessage]
             List of messages to generate text from.
+        system_instruction : dict[str, str] | None, optional
+            System instruction to include in the messages, by default None
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw OpenAI API.
@@ -229,22 +251,23 @@ class OpenAIClient(
         Response
             Response object containing the generated text.
         """
-        if system_instruction := kwargs.get("system_instruction"):
-            system_messages = self._setup_system_instruction(system_instruction)
-            messages = system_messages + messages
+        if system_instruction:
+            _messages = [system_instruction] + messages
+        else:
+            _messages = messages
 
         if not isinstance(kwargs.get("response_format", NOT_GIVEN), (NotGiven, dict)):
             completion_params = create_parameters(
                 self._client.beta.chat.completions.parse, **kwargs
             )
             response = self._client.beta.chat.completions.parse(
-                messages=messages,  # type: ignore
+                messages=_messages,  # type: ignore
                 **completion_params,
             )
         else:
             completion_params = create_parameters(self._client.chat.completions.create, **kwargs)
             response = await self._async_client.chat.completions.create(
-                messages=messages,  # type: ignore
+                messages=_messages,  # type: ignore
                 **completion_params,
             )
 
@@ -276,11 +299,14 @@ class OpenAIClient(
             usage=usage,
             raw=response,
             name=cast(str, kwargs.get("name")),
-            prompt=messages,
+            prompt=_messages,
         )
 
     def stream_text(
-        self, messages: list[OpenAIMessage], **kwargs: Any
+        self,
+        messages: list[OpenAIMessage],
+        system_instruction: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> Generator[Response, None, None]:
         """
         Stream text based on the given messages.
@@ -289,6 +315,8 @@ class OpenAIClient(
         ----------
         messages : list[OpenAIMessage]
             List of messages to generate text from.
+        system_instruction : dict[str, str] | None, optional
+            System instruction to include in the messages, by default None
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw OpenAI API.
@@ -299,16 +327,17 @@ class OpenAIClient(
         Response
             Response object containing the generated text.
         """
-        if system_instruction := kwargs.get("system_instruction"):
-            system_messages = self._setup_system_instruction(system_instruction)
-            messages = system_messages + messages
+        if system_instruction:
+            _messages = [system_instruction] + messages
+        else:
+            _messages = messages
 
         if not isinstance(kwargs.get("response_format", NOT_GIVEN), (NotGiven, dict)):
             raise ValueError("Streaming is not supported for OpenAI.")
         else:
             completion_params = create_parameters(self._client.chat.completions.create, **kwargs)
             response = self._client.chat.completions.create(
-                messages=messages,  # type: ignore
+                messages=_messages,  # type: ignore
                 stream=True,
                 stream_options={"include_usage": True},
                 **completion_params,
@@ -381,7 +410,10 @@ class OpenAIClient(
         res = None
 
     async def stream_text_async(
-        self, messages: list[OpenAIMessage], **kwargs: Any
+        self,
+        messages: list[OpenAIMessage],
+        system_instruction: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[Response, None]:
         """
         Asynchronously stream text based on the given messages.
@@ -390,6 +422,8 @@ class OpenAIClient(
         ----------
         messages : list[OpenAIMessage]
             List of messages to generate text from.
+        system_instruction : dict[str, str] | None, optional
+            System instruction to include in the messages, by default None
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw OpenAI API.
@@ -401,16 +435,17 @@ class OpenAIClient(
             Response object containing the generated text.
         """
 
-        if system_instruction := kwargs.get("system_instruction"):
-            system_messages = self._setup_system_instruction(system_instruction)
-            messages = system_messages + messages
+        if system_instruction:
+            _messages = [system_instruction] + messages
+        else:
+            _messages = messages
 
         if not isinstance(kwargs.get("response_format", NOT_GIVEN), (NotGiven, dict)):
             raise ValueError("Streaming is not supported for OpenAI.")
         else:
             completion_params = create_parameters(self._client.chat.completions.create, **kwargs)
             response = await self._async_client.chat.completions.create(
-                messages=messages,  # type: ignore
+                messages=_messages,  # type: ignore
                 stream=True,
                 stream_options={"include_usage": True},
                 **completion_params,
@@ -668,18 +703,6 @@ class OpenAIClient(
                 content=contents,  # type: ignore
                 name=cast(str, message.name),
             )
-        elif message.role == "system":
-            return ChatCompletionSystemMessageParam(
-                role="system",
-                content=contents,  # type: ignore
-                name=cast(str, message.name),
-            )
-        elif message.role == "developer":
-            return {
-                "role": "developer",
-                "content": contents,  # type: ignore
-                "name": cast(str, message.name),
-            }
         else:
             return ChatCompletionUserMessageParam(
                 role="user",

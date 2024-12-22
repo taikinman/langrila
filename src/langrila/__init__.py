@@ -9,6 +9,7 @@ from .core.prompt import (
     PDFPrompt,
     Prompt,
     PromptType,
+    SystemPrompt,
     TextPrompt,
     ToolCallPrompt,
     ToolUsePrompt,

@@ -2,27 +2,43 @@ from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Generator, Generic, Sequence
 
 from .embedding import EmbeddingResults
-from .prompt import Prompt
+from .prompt import Prompt, SystemPrompt
 from .response import Response
 from .tool import Tool
-from .typing import ClientMessage, ClientMessageContent, ClientTool
+from .typing import ClientMessage, ClientMessageContent, ClientSystemMessage, ClientTool
 
 
-class LLMClient(ABC, Generic[ClientMessage, ClientMessageContent, ClientTool]):
+class LLMClient(ABC, Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool]):
     @abstractmethod
-    def generate_text(self, messages: list[ClientMessage], **kwargs: Any) -> Response:
+    def generate_text(
+        self,
+        messages: list[ClientMessage],
+        system_instruction: ClientSystemMessage | None = None,
+        **kwargs: Any,
+    ) -> Response:
         raise NotImplementedError
 
-    async def generate_text_async(self, messages: list[ClientMessage], **kwargs: Any) -> Response:
+    async def generate_text_async(
+        self,
+        messages: list[ClientMessage],
+        system_instruction: ClientSystemMessage | None = None,
+        **kwargs: Any,
+    ) -> Response:
         raise NotImplementedError
 
     def stream_text(
-        self, messages: list[ClientMessage], **kwargs: Any
+        self,
+        messages: list[ClientMessage],
+        system_instruction: ClientSystemMessage | None = None,
+        **kwargs: Any,
     ) -> Generator[Response, None, None]:
         raise NotImplementedError
 
     def stream_text_async(
-        self, messages: list[ClientMessage], **kwargs: Any
+        self,
+        messages: list[ClientMessage],
+        system_instruction: ClientSystemMessage | None = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[Response, None]:
         raise NotImplementedError
 
@@ -78,6 +94,7 @@ class LLMClient(ABC, Generic[ClientMessage, ClientMessageContent, ClientTool]):
                     mapped_messages.append(client_prompt)
         return mapped_messages
 
+    @abstractmethod
     def map_to_client_tools(self, tools: list[Tool]) -> list[ClientTool]:
         """
         Map tools to client-specific representations.
@@ -91,5 +108,32 @@ class LLMClient(ABC, Generic[ClientMessage, ClientMessageContent, ClientTool]):
         ----------
         list[Any]
             List of client-specific tool representations.
+        """
+        raise NotImplementedError
+
+    def _setup_system_instruction(
+        self, system_instruction: SystemPrompt | None
+    ) -> ClientSystemMessage | None:
+        if isinstance(system_instruction, SystemPrompt):
+            return self.setup_system_instruction(system_instruction)
+        elif system_instruction is None:
+            return None
+        else:
+            raise ValueError(f"Invalid system instruction: {system_instruction}")
+
+    @abstractmethod
+    def setup_system_instruction(self, system_instruction: SystemPrompt) -> ClientSystemMessage:
+        """
+        Setup the system instruction.
+
+        Parameters
+        ----------
+        system_instruction : SystemPrompt
+            System instruction.
+
+        Returns
+        ----------
+        ClientMessage
+            List of messages with the system instruction.
         """
         raise NotImplementedError
