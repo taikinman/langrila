@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from typing import Any, AsyncGenerator, Generator, Literal, Sequence, cast
@@ -13,6 +14,7 @@ from openai.types.chat import (
     ChatCompletionToolParam,
     ChatCompletionUserMessageParam,
 )
+from openai.types.chat.chat_completion_assistant_message_param import Audio
 from openai.types.chat.chat_completion_chunk import Choice
 from openai.types.chat.chat_completion_content_part_image_param import (
     ChatCompletionContentPartImageParam,
@@ -20,6 +22,7 @@ from openai.types.chat.chat_completion_content_part_image_param import (
 )
 from openai.types.chat.chat_completion_content_part_input_audio_param import (
     ChatCompletionContentPartInputAudioParam,
+    InputAudio,
 )
 from openai.types.chat.chat_completion_content_part_param import ChatCompletionContentPartParam
 from openai.types.chat.chat_completion_content_part_text_param import (
@@ -43,7 +46,7 @@ from ..core.prompt import (
     URIPrompt,
     VideoPrompt,
 )
-from ..core.response import Response, ResponseType, TextResponse, ToolCallResponse
+from ..core.response import AudioResponse, Response, ResponseType, TextResponse, ToolCallResponse
 from ..core.tool import Tool
 from ..core.usage import Usage
 from ..utils import create_parameters, make_batch
@@ -97,12 +100,22 @@ class OpenAIClient(
         api_key_env_name: str | None = None,
         api_type: Literal["openai", "azure"] = "openai",
         organization_id_env_name: str | None = None,
+        azure_endpoint_env_name: str | None = None,
+        azure_deployment_env_name: str | None = None,
+        azure_api_version: str | None = None,
         **kwargs: Any,
     ):
         self.api_key = os.getenv(api_key_env_name) if api_key_env_name else None
         self.organization = (
             os.getenv(organization_id_env_name) if organization_id_env_name else None
         )
+        self.azure_endpoint = (
+            os.getenv(azure_endpoint_env_name) if azure_endpoint_env_name else None
+        )
+        self.azure_deployment = (
+            os.getenv(azure_deployment_env_name) if azure_deployment_env_name else None
+        )
+        self.azure_api_version = azure_api_version
         self.api_type = api_type
 
         if self.api_type == "openai":
@@ -120,11 +133,17 @@ class OpenAIClient(
             self._client = AzureOpenAI(
                 api_key=self.api_key,
                 organization=self.organization,
+                azure_endpoint=self.azure_endpoint,
+                azure_deployment=self.azure_deployment,
+                api_version=self.azure_api_version,
                 **create_parameters(AzureOpenAI, **kwargs),
             )
             self._async_client = AsyncAzureOpenAI(
                 api_key=self.api_key,
                 organization=self.organization,
+                azure_endpoint=self.azure_endpoint,
+                azure_deployment=self.azure_deployment,
+                api_version=self.azure_api_version,
                 **create_parameters(AsyncAzureOpenAI, **kwargs),
             )
         else:
@@ -206,8 +225,9 @@ class OpenAIClient(
         contents: list[TextResponse | ToolCallResponse] = []
         for choice in choices:
             if content := choice.message.content:
-                response_message = content.strip("\n")
-                contents.append(TextResponse(text=response_message))
+                response_message = content.strip()
+                if response_message:
+                    contents.append(TextResponse(text=response_message))
             elif tool_calls := choice.message.tool_calls:
                 for tool_call in tool_calls:
                     contents.append(
@@ -217,6 +237,10 @@ class OpenAIClient(
                             args=tool_call.function.arguments,
                         )
                     )
+            elif transcript := choice.message.audio.transcript:
+                response_message = transcript.strip()
+                if response_message:
+                    contents.append(TextResponse(text=response_message))
 
         return Response(
             contents=cast(list[ResponseType], contents),
@@ -282,8 +306,9 @@ class OpenAIClient(
         contents: list[TextResponse | ToolCallResponse] = []
         for choice in choices:
             if content := choice.message.content:
-                response_message = content.strip("\n")
-                contents.append(TextResponse(text=response_message))
+                response_message = content.strip()
+                if response_message:
+                    contents.append(TextResponse(text=response_message))
             elif tool_calls := choice.message.tool_calls:
                 for tool_call in tool_calls:
                     contents.append(
@@ -293,6 +318,10 @@ class OpenAIClient(
                             args=tool_call.function.arguments,
                         )
                     )
+            elif transcript := choice.message.audio.transcript:
+                response_message = transcript.strip()
+                if response_message:
+                    contents.append(TextResponse(text=response_message))
 
         return Response(
             contents=cast(list[ResponseType], contents),
@@ -354,16 +383,17 @@ class OpenAIClient(
             if choices := cast(list[Choice], chunk.choices):
                 delta = choices[0].delta
                 if content := delta.content:
-                    chunk_texts += content.strip("\n")
-                    res = TextResponse(text=chunk_texts)
+                    chunk_texts += content
+                    if chunk_texts.strip():
+                        res = TextResponse(text=chunk_texts)
 
-                    yield Response(
-                        contents=[res],
-                        usage=usage,
-                        raw=chunk,
-                        name=cast(str | None, kwargs.get("name")),
-                    )
-                    continue
+                        yield Response(
+                            contents=[res],
+                            usage=usage,
+                            raw=chunk,
+                            name=cast(str | None, kwargs.get("name")),
+                        )
+                        continue
                 elif tool_calls := delta.tool_calls:
                     for tool_call in tool_calls:
                         if tool_call.id:
@@ -391,6 +421,13 @@ class OpenAIClient(
                                 name=cast(str | None, kwargs.get("name")),
                             )
                     continue
+            else:
+                if chunk.usage:
+                    usage += Usage(
+                        model_name=kwargs.get("model"),
+                        prompt_tokens=chunk.usage.prompt_tokens,
+                        output_tokens=chunk.usage.completion_tokens,
+                    )
 
         if res:
             contents.append(res)
@@ -462,15 +499,16 @@ class OpenAIClient(
             if choices := cast(list[Choice], chunk.choices):
                 delta = choices[0].delta
                 if content := delta.content:
-                    chunk_texts += content.strip("\n")
-                    res = TextResponse(text=chunk_texts)
+                    chunk_texts += content
+                    if chunk_texts.strip():
+                        res = TextResponse(text=chunk_texts)
 
-                    yield Response(
-                        contents=[res],
-                        usage=usage,
-                        raw=chunk,
-                        name=cast(str | None, kwargs.get("name")),
-                    )
+                        yield Response(
+                            contents=[res],
+                            usage=usage,
+                            raw=chunk,
+                            name=cast(str | None, kwargs.get("name")),
+                        )
                     continue
                 elif tool_calls := delta.tool_calls:
                     for tool_call in tool_calls:
@@ -499,6 +537,14 @@ class OpenAIClient(
                                 name=cast(str | None, kwargs.get("name")),
                             )
                     continue
+
+            else:
+                if chunk.usage:
+                    usage += Usage(
+                        model_name=kwargs.get("model"),
+                        prompt_tokens=chunk.usage.prompt_tokens,
+                        output_tokens=chunk.usage.completion_tokens,
+                    )
 
         if res:
             contents.append(res)
@@ -601,6 +647,48 @@ class OpenAIClient(
         )
         return results
 
+    def generate_audio(
+        self,
+        messages: list[OpenAIMessage],
+        system_instruction: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> Response:
+        if system_instruction:
+            _messages = [system_instruction] + messages
+        else:
+            _messages = messages
+
+        completion_params = create_parameters(self._client.chat.completions.create, **kwargs)
+        response = self._client.chat.completions.create(
+            messages=_messages,  # type: ignore
+            **completion_params,
+        )
+
+        choices = response.choices
+
+        contents: list[AudioResponse | TextResponse] = []
+        for choice in choices:
+            if content := choice.message.audio:
+                # wav_bytes = base64.b64decode(content.data)
+                contents.append(
+                    AudioResponse(
+                        audio=content.data,
+                        audio_id=content.id,
+                        mime_type=f"audio/{kwargs.get('audio', {}).get('format', 'wav')}",
+                    )
+                )
+            elif content := choice.message.content:
+                response_message = content.strip()
+                contents.append(TextResponse(text=response_message))
+
+        return Response(
+            contents=cast(list[ResponseType], contents),
+            usage=Usage(),
+            raw=response,
+            name=cast(str, kwargs.get("name")),
+            prompt=_messages,
+        )
+
     def map_to_client_prompt(self, message: Prompt) -> OpenAIMessage | list[OpenAIMessage]:
         """
         Map a message to a client-specific representation.
@@ -619,6 +707,7 @@ class OpenAIClient(
         contents: list[OpenAIMessageContentType] = []
         tool_use_messages: list[OpenAIMessage] = []
         tool_call_messages: list[ChatCompletionMessageToolCall] = []
+        audio_response: Audio | None = None
         for content in message.contents:
             if isinstance(content, str):
                 contents.append(ChatCompletionContentPartTextParam(text=content, type="text"))
@@ -663,7 +752,18 @@ class OpenAIClient(
                     ]
                 )
             elif isinstance(content, AudioPrompt):
-                raise NotImplementedError
+                if content.audio_id:
+                    audio_response = Audio(id=content.audio_id)
+                else:
+                    contents.append(
+                        ChatCompletionContentPartInputAudioParam(
+                            type="input_audio",
+                            input_audio=InputAudio(
+                                data=content.audio,
+                                format=content.mime_type.split("/")[-1],
+                            ),
+                        )
+                    )
             elif isinstance(content, ToolCallPrompt):
                 content_args = content.args
                 tool_call_messages.append(
@@ -697,6 +797,12 @@ class OpenAIClient(
             )
         elif tool_use:
             return tool_use_messages
+        elif audio_response:
+            return ChatCompletionAssistantMessageParam(
+                role="assistant",
+                audio=audio_response,
+                name=cast(str, message.name),
+            )
         elif message.role == "assistant":
             return ChatCompletionAssistantMessageParam(
                 role="assistant",

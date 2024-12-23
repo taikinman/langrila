@@ -7,8 +7,23 @@ from .embedding import EmbeddingResults
 from .logger import DEFAULT_LOGGER as default_logger
 from .memory import BaseConversationMemory
 from .message import Message
-from .prompt import ImagePrompt, Prompt, PromptType, SystemPrompt, TextPrompt, ToolCallPrompt
-from .response import ImageResponse, Response, ResponseType, TextResponse, ToolCallResponse
+from .prompt import (
+    AudioPrompt,
+    ImagePrompt,
+    Prompt,
+    PromptType,
+    SystemPrompt,
+    TextPrompt,
+    ToolCallPrompt,
+)
+from .response import (
+    AudioResponse,
+    ImageResponse,
+    Response,
+    ResponseType,
+    TextResponse,
+    ToolCallResponse,
+)
 from .tool import Tool
 from .typing import ClientMessage, ClientMessageContent, ClientSystemMessage, ClientTool
 
@@ -33,6 +48,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Conversation memory to store and load conversation history, by default None.
     system_instruction : SystemPrompt, optional
         System instruction to generate text, by default None.
+    tools : list[Callable[..., Any] | Tool], optional
+        Tools that agent can use, by default None.
     logger : Logger, optional
         Logger to use, by default None.
     **kwargs : Any
@@ -45,6 +62,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         client: LLMClient[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool],
         conversation_memory: BaseConversationMemory | None = None,
         system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
         logger: Logger | None = None,
         **kwargs: Any,
     ):
@@ -52,6 +70,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self.logger = logger or default_logger
         self.conversation_memory = conversation_memory
         self.system_instruction = system_instruction
+        self.tools = tools
         self.init_kwargs = kwargs
 
         if system_instruction:
@@ -61,6 +80,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self,
         messages: LLMInput,
         system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
         **kwargs: Any,
     ) -> Response:
         """
@@ -72,6 +92,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Prompt to generate text from.
         system_instruction : SystemPrompt | None, optional
             System instruction to generate text, by default None.
+        tools : list[Callable[..., Any] | Tool] | None, optional
+            Tools that agent can use, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -87,14 +109,14 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
-        if tools := all_kwargs.pop("tools", None):
-            _tools = self._prepare_tools(cast(list[Callable[..., Any] | Tool], tools))
+        if __tools := tools or self.tools:
+            _tools = self._prepare_tools(__tools)
             all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {mapped_messages}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -105,7 +127,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self.logger.info("Generating text")
         response = self.client.generate_text(prompt, _system_instruction, **all_kwargs)
 
-        self.logger.debug(f"Response: {response}")
+        self.logger.debug(f"Response: {response.contents}")
 
         history.append(response)
         self.store_history(history)
@@ -115,6 +137,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self,
         messages: LLMInput,
         system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
         **kwargs: Any,
     ) -> Response:
         """
@@ -126,6 +149,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Prompt to generate text from.
         system_instruction : SystemPrompt | None, optional
             System instruction to generate text, by default None.
+        tools : list[Callable[..., Any] | Tool] | None, optional
+            Tools that agent can use, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -141,14 +166,14 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
-        if tools := all_kwargs.pop("tools", None):
-            tools = self._prepare_tools(cast(list[Callable[..., Any] | Tool], tools))
-            all_kwargs["tools"] = self.client.map_to_client_tools(tools=tools)
+        if __tools := tools or self.tools:
+            _tools = self._prepare_tools(__tools)
+            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {mapped_messages}")
+        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -159,7 +184,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self.logger.info("Generating text")
         response = await self.client.generate_text_async(prompt, _system_instruction, **all_kwargs)
 
-        self.logger.debug(f"Response: {response}")
+        self.logger.debug(f"Response: {response.contents}")
 
         history.append(response)
         self.store_history(history)
@@ -170,6 +195,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self,
         messages: LLMInput,
         system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
         **kwargs: Any,
     ) -> Generator[Response, None, None]:
         """
@@ -181,6 +207,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Prompt to generate text from.
         system_instruction : SystemPrompt | None, optional
             System instruction to generate text, by default None.
+        tools : list[Callable[..., Any] | Tool] | None, optional
+            Tools that agent can use, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -196,9 +224,9 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
-        if tools := all_kwargs.pop("tools", None):
-            tools = self._prepare_tools(cast(list[Callable[..., Any] | Tool], tools))
-            all_kwargs["tools"] = self.client.map_to_client_tools(tools=tools)
+        if __tools := tools or self.tools:
+            _tools = self._prepare_tools(__tools)
+            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
@@ -225,6 +253,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self,
         messages: LLMInput,
         system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
         **kwargs: Any,
     ) -> AsyncGenerator[Response, None]:
         """
@@ -236,6 +265,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Prompt to generate text from.
         system_instruction : SystemPrompt | None, optional
             System instruction to generate text, by default None.
+        tools : list[Callable[..., Any] | Tool] | None, optional
+            Tools that agent can use, by default None.
         **kwargs : Any
             Additional arguments to pass to the client.
             What arguments are available depends on the client.
@@ -251,9 +282,9 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
-        if tools := all_kwargs.pop("tools", None):
-            tools = self._prepare_tools(cast(list[Callable[..., Any] | Tool], tools))
-            all_kwargs["tools"] = self.client.map_to_client_tools(tools=tools)
+        if __tools := tools or self.tools:
+            _tools = self._prepare_tools(__tools)
+            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
@@ -293,10 +324,15 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated image.
         """
+        history = self.load_history()
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Generating image")
         response = self.client.generate_image(prompt, **all_kwargs)
+
+        history.append(response)
+        self.store_history(history)
+
         return response
 
     async def generate_image_async(self, prompt: str, **kwargs: Any) -> Response:
@@ -316,10 +352,15 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated image.
         """
+        history = self.load_history()
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Generating image")
         response = await self.client.generate_image_async(prompt, **all_kwargs)
+
+        history.append(response)
+        self.store_history(history)
+
         return response
 
     def generate_video(self, prompt: str, **kwargs: Any) -> Response:
@@ -328,11 +369,103 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
     async def generate_video_async(self, prompt: str, **kwargs: Any) -> Response:
         raise NotImplementedError
 
-    def generate_audio(self, prompt: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+    def generate_audio(
+        self,
+        messages: LLMInput,
+        system_instruction: SystemPrompt | None = None,
+        **kwargs: Any,
+    ) -> Response:
+        """
+        Generate audio based on the given prompt.
 
-    async def generate_audio_async(self, prompt: str, **kwargs: Any) -> Response:
-        raise NotImplementedError
+        Parameters
+        ----------
+        messages : LLMInput
+            Prompt to generate audio from.
+        system_instruction : SystemPrompt | None, optional
+            System instruction to generate audio, by default None.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        Response
+            Generated audio.
+        """
+        history = self.load_history()
+        messages = self._process_user_prompt(messages)
+        history = history + messages
+
+        all_kwargs: Any = {**self.init_kwargs, **kwargs}
+
+        history = self._convert_message_to_list(history)
+        mapped_messages = self._response_to_prompt(history)
+
+        self.logger.debug(f"Prompt: {mapped_messages.contents}")
+
+        # self.logger.debug("Mapping Prompt to client-specific representation")
+        prompt = self.client.map_to_client_prompts(mapped_messages)
+        _system_instruction = self.client._setup_system_instruction(
+            system_instruction or self.system_instruction
+        )
+
+        self.logger.info("Generating audio")
+        response = self.client.generate_audio(prompt, _system_instruction, **all_kwargs)
+
+        history.append(response)
+        self.store_history(history)
+
+        return response
+
+    async def generate_audio_async(
+        self,
+        messages: LLMInput,
+        system_instruction: SystemPrompt | None = None,
+        **kwargs: Any,
+    ) -> Response:
+        """
+        Generate audio based on the given prompt asynchronously.
+
+        Parameters
+        ----------
+        messages : LLMInput
+            Prompt to generate audio from.
+        system_instruction : SystemPrompt | None, optional
+            System instruction to generate audio, by default None.
+        **kwargs : Any
+            Additional arguments to pass to the client.
+            What arguments are available depends on the client.
+
+        Returns
+        ----------
+        Response
+            Generated audio.
+        """
+        history = self.load_history()
+        messages = self._process_user_prompt(messages)
+        history = history + messages
+
+        all_kwargs: Any = {**self.init_kwargs, **kwargs}
+
+        history = self._convert_message_to_list(history)
+        mapped_messages = self._response_to_prompt(history)
+
+        self.logger.debug(f"Prompt: {mapped_messages.contents}")
+
+        # self.logger.debug("Mapping Prompt to client-specific representation")
+        prompt = self.client.map_to_client_prompts(mapped_messages)
+        _system_instruction = self.client._setup_system_instruction(
+            system_instruction or self.system_instruction
+        )
+
+        self.logger.info("Generating audio")
+        response = await self.client.generate_audio_async(prompt, _system_instruction, **all_kwargs)
+
+        history.append(response)
+        self.store_history(history)
+
+        return response
 
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
         """
@@ -400,6 +533,15 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
                     contents.append(TextPrompt(text=content.text))
                 elif isinstance(content, ImageResponse):
                     contents.append(ImagePrompt(image=content.image))
+                elif isinstance(content, AudioResponse):
+                    contents.append(
+                        AudioPrompt(
+                            audio=content.audio,
+                            mime_type=content.mime_type,
+                            audio_id=content.audio_id,
+                        )
+                    )
+
                 elif isinstance(content, ToolCallResponse):
                     contents.append(
                         ToolCallPrompt(

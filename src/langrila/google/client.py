@@ -53,7 +53,7 @@ from ..utils import (
 GeminiMessage = Content | str
 
 
-class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
+class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
     """
     Wrapper client for interacting with the Gemini API.
 
@@ -148,7 +148,8 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
             if candidate.content:
                 for part in candidate.content.parts:
                     if part.text:
-                        contents.append(TextResponse(text=part.text))
+                        if text := part.text.strip():
+                            contents.append(TextResponse(text=text))
                     elif part.function_call:
                         call_id = part.function_call.id or generate_dummy_call_id(n=24)
                         contents.append(
@@ -211,7 +212,8 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
             if candidate.content:
                 for part in candidate.content.parts:
                     if part.text:
-                        contents.append(TextResponse(text=part.text))
+                        if text := part.text.strip():
+                            contents.append(TextResponse(text=text))
                     elif part.function_call:
                         call_id = part.function_call.id or generate_dummy_call_id(n=24)
                         contents.append(
@@ -274,6 +276,14 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
         for chunk in streamed_response:
+            if usage_metadata := chunk.usage_metadata:
+                usage = Usage(
+                    model_name=cast(str | None, kwargs.get("model")),
+                    prompt_tokens=usage_metadata.prompt_token_count or 0,
+                    output_tokens=usage_metadata.candidates_token_count or 0,
+                    raw=usage_metadata,
+                )
+
             for candidate in chunk.candidates:
                 for part in candidate.content.parts:
                     if part.text and part.text.strip():
@@ -320,12 +330,7 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
         if contents:
             yield Response(
                 contents=cast(list[ResponseType], contents),
-                usage=Usage(
-                    model_name=cast(str | None, kwargs.get("model")),
-                    prompt_tokens=chunk.usage_metadata.prompt_token_count or 0,
-                    output_tokens=chunk.usage_metadata.candidates_token_count or 0,
-                    raw=chunk.usage_metadata,
-                ),
+                usage=usage,
                 raw=chunk,
                 name=cast(str | None, kwargs.get("name")),
                 is_last_chunk=True,
@@ -371,6 +376,14 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
         async for chunk in streamed_response:
+            if usage_metadata := chunk.usage_metadata:
+                usage = Usage(
+                    model_name=cast(str | None, kwargs.get("model")),
+                    prompt_tokens=usage_metadata.prompt_token_count or 0,
+                    output_tokens=usage_metadata.candidates_token_count or 0,
+                    raw=usage_metadata,
+                )
+
             for candidate in chunk.candidates:
                 for part in candidate.content.parts:
                     if part.text and part.text.strip():
@@ -417,12 +430,7 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
         if contents:
             yield Response(
                 contents=cast(list[ResponseType], contents),
-                usage=Usage(
-                    model_name=cast(str | None, kwargs.get("model")),
-                    prompt_tokens=chunk.usage_metadata.prompt_token_count or 0,
-                    output_tokens=chunk.usage_metadata.candidates_token_count or 0,
-                    raw=chunk.usage_metadata,
-                ),
+                usage=usage,
                 raw=chunk,
                 name=cast(str | None, kwargs.get("name")),
                 is_last_chunk=True,
@@ -671,7 +679,9 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
                 parts.append(
                     Part(
                         function_call=FunctionCall(
-                            id=content.call_id,
+                            id=content.call_id
+                            if not self.vertexai
+                            else None,  # VertexAI does not support id
                             args=content_args,
                             name=content.name,
                         )
@@ -682,7 +692,9 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
                     parts.append(
                         Part(
                             function_response=FunctionResponse(
-                                id=content.call_id,
+                                id=content.call_id
+                                if not self.vertexai
+                                else None,  # VertexAI does not support id
                                 name=content.name,
                                 response={"output": content.output},
                             )
@@ -692,7 +704,9 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
                     parts.append(
                         Part(
                             function_response=FunctionResponse(
-                                id=content.call_id,
+                                id=content.call_id
+                                if not self.vertexai
+                                else None,  # VertexAI does not support id
                                 name=content.name,
                                 response={"error": content.error},
                             )
@@ -734,7 +748,9 @@ class GeminiClient(LLMClient[Content, str, Part, GeminiTool]):
         schema = self._recurse_transform_type_to_upper(tool.schema_dict)
         return FunctionDeclaration(
             description=tool.description,
-            parameters=schema,
+            parameters=schema
+            if schema.get("properties")
+            else None,  # Google Developer API does not support empty properties
             response=kwargs.get("response"),
             name=tool.name,
         )

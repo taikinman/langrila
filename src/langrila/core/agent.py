@@ -1,7 +1,7 @@
 import json
 import types
 from logging import Logger
-from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, TypeVar, cast
+from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, TypeVar
 
 from pydantic_core import ValidationError
 
@@ -18,7 +18,7 @@ from .pydantic import BaseModel
 from .response import Response, ResponseType, TextResponse, ToolCallResponse
 from .tool import Tool
 from .typing import ClientMessage, ClientMessageContent, ClientSystemMessage, ClientTool
-from .usage import Usage
+from .usage import NamedUsage, Usage
 
 AgentInput = (
     Prompt
@@ -93,31 +93,32 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         **kwargs: Any,
     ):
         self._client = client
+        self._subagents = subagents
         self.agent_config = agent_config or AgentConfig()
-        self.retry_prompt = self.agent_config.internal_prompt.validation_error_retry
+        self.retry_prompt = self.agent_config.internal_prompt.error_retry
         self.conversation_memory = conversation_memory
         self.n_validation_retries = self.agent_config.n_validation_retries
         self.logger = logger or default_logger
         self.response_schema_as_tool = response_schema_as_tool
-        self.system_instruction = system_instruction
+        self.system_instruction = (
+            self._setup_system_instruction(system_instruction, self.agent_config)
+            if system_instruction
+            else self.agent_config.internal_prompt.system_instruction
+        )
+
         self._store_conversation = self.agent_config.store_conversation
         self.__response_schema_name = "final_answer"
-        self.__review_prompt = self.agent_config.internal_prompt.review
-        self.__max_repeat_text_response = 2
+        self.__no_tool_use_retry_prompt = self.agent_config.internal_prompt.no_tool_use_retry
+        self.__max_repeat_text_response = 3
         _tools = tools or []
+        self._name = "root"
 
         for subagent in subagents or []:
             if isinstance(subagent, Agent):
-                # If conversation_memory is provided to the subagent, then it's overridden by the,
-                # conversation_memory of the main agent.
-                subagent.conversation_memory = conversation_memory
-
-                # Internal conversaion history of the subagent isn't stored.
-                subagent._store_conversation = False
-
-                # override logger of the subagent
-                subagent.logger = subagent.llm.logger = self.logger
-                _tools += [_generate_dynamic_tool_as_agent(agent=subagent)]
+                self._recurse_setup_subagent(subagent)
+                agent_name = get_variable_name_inspect(subagent)
+                subagent._name = agent_name
+                _tools += [_generate_dynamic_tool_as_agent(agent=subagent, agent_name=agent_name)]
             else:
                 raise ValueError(
                     "Subagent must be an instance of Agent class. "
@@ -134,6 +135,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 # If both conversation_memory and llm.conversation_memory are provided,
                 # then llm.conversation_memory will be ignored.
                 self.llm.conversation_memory = None
+
+            self.llm.tools = _tools
         else:
             assert client is not None, "Either client or llm must be provided"
 
@@ -145,23 +148,66 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 **kwargs,
             )
 
-        if _tools is not None:
-            self._tools = {tool.name: tool for tool in self.llm._prepare_tools(_tools)}
+        self.tools = _tools
+        self.__max_tool_call_retry = len(_tools) + 2
+
+    def _gather_subagent_usage(self) -> NamedUsage:
+        all_usages = NamedUsage()
+        for subagent in self._subagents or []:
+            if isinstance(subagent, Agent):
+                all_usages += subagent._gather_subagent_usage()
+
+                if hasattr(subagent, "_usage"):
+                    all_usages += subagent._usage
+                    subagent._usage = NamedUsage()  # reset to avoid duplication
+            else:
+                raise ValueError(
+                    "Subagent must be an instance of Agent class. "
+                    "Please provide the correct agent instance."
+                )
+
+        return all_usages
+
+    def _recurse_setup_subagent(self, subagent: "Agent") -> None:
+        def _setup_subagent(subagent: "Agent") -> None:
+            # If conversation_memory is provided to the subagent, then it's overridden by the,
+            # conversation_memory of the orchestrator agent.
+            subagent.conversation_memory = self.conversation_memory
+
+            # Internal conversaion history of the subagent isn't stored but input.
+            subagent._store_conversation = False
+
+            # override logger of the subagent
+            subagent.logger = subagent.llm.logger = self.logger
+
+        _setup_subagent(subagent)
+
+        for _subagent in subagent._subagents or []:
+            if isinstance(_subagent, Agent):
+                self._recurse_setup_subagent(_subagent)
+            else:
+                raise ValueError(
+                    "Subagent must be an instance of Agent class. "
+                    "Please provide the correct agent instance."
+                )
+
+    def _setup_system_instruction(
+        self,
+        system_instruction: SystemPrompt,
+        agent_config: AgentConfig,
+    ) -> SystemPrompt:
+        _system_instruction = (
+            agent_config.internal_prompt.system_instruction + "\n\n" + system_instruction.contents
+        )
+        return SystemPrompt(
+            role=system_instruction.role,
+            contents=_system_instruction.strip(),
+            name=system_instruction.name,
+        )
 
     def _prepare_tool_as_response_schema(self, response_schema_as_tool: BaseModel) -> list[Tool]:
         _response_schema_json = response_schema_as_tool.model_json_schema()
         return self._prepare_response_schema_tool(_response_schema_json)
-
-    def _update_usage(self, usage: Usage, response: Response) -> Usage:
-        return cast(
-            Usage,
-            usage.update(
-                **{
-                    "prompt_tokens": usage.prompt_tokens + (response.usage.prompt_tokens or 0),
-                    "output_tokens": usage.output_tokens + (response.usage.output_tokens or 0),
-                }
-            ),
-        )
 
     def _is_any_text_response(self, response: Response) -> bool:
         if response.contents is None:
@@ -178,25 +224,69 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             return False
         return any([isinstance(content, ToolCallResponse) for content in response.contents])
 
-    def generate_text(
-        self, prompt: AgentInput, system_instruction: SystemPrompt | None = None, **kwargs: Any
-    ) -> Response:
-        messages = self.load_history()
+    def _get_tools_dict(
+        self,
+        tools: list[Callable[..., Any] | Tool],
+    ) -> dict[str, Tool]:
+        outputs = {}
+        for tool in self.llm._prepare_tools(tools):
+            if tool.name:
+                outputs[tool.name] = tool
+            else:
+                raise ValueError("Tool name is required.")
+        return outputs
 
+    def _update_usage(self, base_usage: NamedUsage, response: Response) -> NamedUsage:
+        if isinstance(response.usage, NamedUsage):
+            base_usage += response.usage
+        elif isinstance(response.usage, Usage):
+            if response.name:
+                if response.name in base_usage:
+                    base_usage[response.name] += response.usage
+                else:
+                    base_usage[response.name] = response.usage
+            else:
+                if "root" in base_usage:
+                    base_usage["root"] += response.usage
+                else:
+                    base_usage["root"] = response.usage
+        else:
+            raise ValueError("Usage must be either NamedUsage or Usage.")
+
+        return base_usage
+
+    def generate_text(
+        self,
+        prompt: AgentInput,
+        system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
+        **kwargs: Any,
+    ) -> Response:
+        self._usage = NamedUsage()
+        _tools = tools or self.tools
+        _tools_dict = self._get_tools_dict(_tools)
+
+        messages = self.load_history()
         messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
+        n_repeat_tool_call = 0
         final_result = None
-        total_usage = Usage()
         while (
             n_validation_retries < self.n_validation_retries
             and n_repeat_text_response < self.__max_repeat_text_response
+            and n_repeat_tool_call < self.__max_tool_call_retry
         ):
             response = self.llm.generate_text(
-                messages=messages, system_instruction=system_instruction, **kwargs
+                messages=messages,
+                system_instruction=system_instruction,
+                tools=_tools,
+                **kwargs,
             )
-            total_usage = self._update_usage(total_usage, response)
+
+            self._usage = self._update_usage(self._usage, response)
+            self._usage += self._gather_subagent_usage()
 
             if not response.contents:
                 self.logger.error("No response received from the model. Retrying.")
@@ -205,64 +295,87 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.append(response)
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(response)
+                self._validate_tools_and_prepare_next_message(response, _tools_dict)
             )
 
             if message_next_turn:
                 messages.append(message_next_turn)
 
             if final_result:
-                self.logger.debug(f"Final result: {final_result}")
+                self.logger.debug(f"Final result: {final_result.contents}")
                 messages.append(final_result)
                 break
             else:
                 if is_error:
                     n_validation_retries += 1
+                    n_repeat_tool_call += 1
+                    messages.append(
+                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
+                    )
                 else:
                     n_validation_retries = 0
 
                     if self.response_schema_as_tool is None:
                         if self._include_tool_call_response(response):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                             continue
                         else:
                             break
                     else:
                         if self._include_tool_call_response(response):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                         else:
                             n_repeat_text_response += 1
+                            n_repeat_tool_call = 0
 
-                            if n_repeat_text_response == 1:
-                                messages.append(Prompt(contents=self.__review_prompt, role="user"))
+                            if n_repeat_text_response != self.__max_repeat_text_response:
+                                messages.append(
+                                    Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
+                                )
 
         self.store_history(messages)
 
         if final_result:
+            final_result.usage = self._usage
             return final_result
-
-        response.usage = total_usage
-        return response
+        else:
+            response.usage = self._usage
+            return response
 
     async def generate_text_async(
-        self, prompt: AgentInput, system_instruction: SystemPrompt | None = None, **kwargs: Any
+        self,
+        prompt: AgentInput,
+        system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
+        **kwargs: Any,
     ) -> Response:
-        messages = self.load_history()
+        self._usage = NamedUsage()
+        _tools = tools or self.tools
+        _tools_dict = self._get_tools_dict(_tools)
 
+        messages = self.load_history()
         messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
+        n_repeat_tool_call = 0
         final_result = None
-        total_usage = Usage()
         while (
             n_validation_retries < self.n_validation_retries
             and n_repeat_text_response < self.__max_repeat_text_response
+            and n_repeat_tool_call < self.__max_tool_call_retry
         ):
             response = await self.llm.generate_text_async(
-                messages=messages, system_instruction=system_instruction, **kwargs
+                messages=messages,
+                system_instruction=system_instruction,
+                tools=_tools,
+                **kwargs,
             )
-            total_usage = self._update_usage(total_usage, response)
+
+            self._usage = self._update_usage(self._usage, response)
+            self._usage += self._gather_subagent_usage()
 
             if not response.contents:
                 self.logger.error("No response received from the model. Retrying.")
@@ -271,62 +384,83 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.append(response)
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(response)
+                self._validate_tools_and_prepare_next_message(response, _tools_dict)
             )
 
             if message_next_turn:
                 messages.append(message_next_turn)
 
             if final_result:
-                self.logger.debug(f"Final result: {final_result}")
+                self.logger.debug(f"Final result: {final_result.contents}")
                 messages.append(final_result)
                 break
             else:
                 if is_error:
                     n_validation_retries += 1
+                    n_repeat_tool_call += 1
+                    messages.append(
+                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
+                    )
                 else:
                     n_validation_retries = 0
 
                     if self.response_schema_as_tool is None:
                         if self._include_tool_call_response(response):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                             continue
                         else:
                             break
                     else:
                         if self._include_tool_call_response(response):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                         else:
                             n_repeat_text_response += 1
+                            n_repeat_tool_call = 0
 
-                            if n_repeat_text_response == 1:
-                                messages.append(Prompt(contents=self.__review_prompt, role="user"))
+                            if n_repeat_text_response != self.__max_repeat_text_response:
+                                messages.append(
+                                    Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
+                                )
 
         self.store_history(messages)
 
         if final_result:
+            final_result.usage = self._usage
             return final_result
-
-        response.usage = total_usage
-        return response
+        else:
+            response.usage = self._usage
+            return response
 
     def stream_text(
-        self, prompt: AgentInput, system_instruction: SystemPrompt | None = None, **kwargs: Any
+        self,
+        prompt: AgentInput,
+        system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
+        **kwargs: Any,
     ) -> Generator[Response, None, None]:
-        messages = self.load_history()
+        self._usage = NamedUsage()
+        _tools = tools or self.tools
+        _tools_dict = self._get_tools_dict(_tools)
 
+        messages = self.load_history()
         messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
+        n_repeat_tool_call = 0
         final_result = None
-        total_usage = Usage()
         while (
             n_validation_retries < self.n_validation_retries
             and n_repeat_text_response < self.__max_repeat_text_response
+            and n_repeat_tool_call < self.__max_tool_call_retry
         ):
             streamed_response = self.llm.stream_text(
-                messages=messages, system_instruction=system_instruction, **kwargs
+                messages=messages,
+                system_instruction=system_instruction,
+                tools=_tools,
+                **kwargs,
             )
             for chunk in streamed_response:
                 if not chunk.is_last_chunk:
@@ -334,63 +468,86 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
             messages.append(chunk)
 
-            total_usage = self._update_usage(total_usage, chunk)
+            self._usage = self._update_usage(self._usage, chunk)
+            self._usage += self._gather_subagent_usage()
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(chunk)
+                self._validate_tools_and_prepare_next_message(chunk, _tools_dict)
             )
 
             if message_next_turn:
                 messages.append(message_next_turn)
 
             if final_result:
-                self.logger.debug(f"Final result: {final_result}")
+                self.logger.debug(f"Final result: {final_result.contents}")
                 messages.append(final_result)
                 # self.store_history(messages)
-                final_result.usage = total_usage
+                final_result.usage = self._usage
                 yield final_result
                 break
             else:
                 if is_error:
                     n_validation_retries += 1
+                    n_repeat_tool_call += 1
+                    messages.append(
+                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
+                    )
                 else:
                     n_validation_retries = 0
 
-                    total_usage = self._update_usage(total_usage, chunk)
                     if self.response_schema_as_tool is None:
                         if self._include_tool_call_response(chunk):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                             continue
                         else:
                             break
                     else:
                         if self._include_tool_call_response(chunk):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                         else:
                             n_repeat_text_response += 1
+                            n_repeat_tool_call = 0
 
-                            if n_repeat_text_response == 1:
-                                messages.append(Prompt(contents=self.__review_prompt, role="user"))
+                            if n_repeat_text_response != self.__max_repeat_text_response:
+                                messages.append(
+                                    Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
+                                )
 
         self.store_history(messages)
 
-    async def stream_text_async(
-        self, prompt: AgentInput, system_instruction: SystemPrompt | None = None, **kwargs: Any
-    ) -> AsyncGenerator[Response, None]:
-        messages = self.load_history()
+        chunk.usage = self._usage
+        yield chunk
 
+    async def stream_text_async(
+        self,
+        prompt: AgentInput,
+        system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
+        **kwargs: Any,
+    ) -> AsyncGenerator[Response, None]:
+        self._usage = NamedUsage()
+        _tools = tools or self.tools
+        _tools_dict = self._get_tools_dict(_tools)
+
+        messages = self.load_history()
         messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
+        n_repeat_tool_call = 0
         final_result = None
-        total_usage = Usage()
         while (
             n_validation_retries < self.n_validation_retries
             and n_repeat_text_response < self.__max_repeat_text_response
+            and n_repeat_tool_call < self.__max_tool_call_retry
         ):
             streamed_response = self.llm.stream_text_async(
-                messages=messages, system_instruction=system_instruction, **kwargs
+                messages=messages,
+                system_instruction=system_instruction,
+                tools=_tools,
+                **kwargs,
             )
             async for chunk in streamed_response:
                 if not chunk.is_last_chunk:
@@ -398,45 +555,57 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
             messages.append(chunk)
 
-            total_usage = self._update_usage(total_usage, chunk)
+            self._usage = self._update_usage(self._usage, chunk)
+            self._usage += self._gather_subagent_usage()
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(chunk)
+                self._validate_tools_and_prepare_next_message(chunk, _tools_dict)
             )
 
             if message_next_turn:
                 messages.append(message_next_turn)
 
             if final_result:
-                self.logger.debug(f"Final result: {final_result}")
+                self.logger.debug(f"Final result: {final_result.contents}")
                 messages.append(final_result)
                 # self.store_history(messages)
-                final_result.usage = total_usage
+                final_result.usage = self._usage
                 yield final_result
                 break
             else:
                 if is_error:
                     n_validation_retries += 1
+                    n_repeat_tool_call += 1
+                    messages.append(
+                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
+                    )
                 else:
                     n_validation_retries = 0
 
-                    total_usage = self._update_usage(total_usage, chunk)
                     if self.response_schema_as_tool is None:
                         if self._include_tool_call_response(chunk):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                             continue
                         else:
                             break
                     else:
                         if self._include_tool_call_response(chunk):
                             n_repeat_text_response = 0
+                            n_repeat_tool_call += 1
                         else:
                             n_repeat_text_response += 1
+                            n_repeat_tool_call = 0
 
-                            if n_repeat_text_response == 1:
-                                messages.append(Prompt(contents=self.__review_prompt, role="user"))
+                            if n_repeat_text_response != self.__max_repeat_text_response:
+                                messages.append(
+                                    Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
+                                )
 
         self.store_history(messages)
+
+        chunk.usage = self._usage
+        yield chunk
 
     def _process_user_prompt(self, prompt: AgentInput) -> list[Prompt | Response]:
         if isinstance(prompt, (Prompt, Response)):
@@ -462,7 +631,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         return False
 
     def _validate_tools_and_prepare_next_message(
-        self, response: Response
+        self, response: Response, tools_dict: dict[str, Tool]
     ) -> tuple[Prompt | None, bool, Response | None]:
         next_turn_contents: list[PromptType] = []
         is_error = False
@@ -470,8 +639,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         for content in response.contents or []:
             if isinstance(content, ToolCallResponse):
                 tool_name = content.name
+                if not tool_name:
+                    raise ValueError("Tool name is required.")
+
                 try:
-                    tool = self._tools[tool_name]
+                    tool = tools_dict[tool_name]
                 except KeyError:
                     self.logger.error(f"Tool: {tool_name} is not found in the agent. Retrying...")
                     next_turn_contents.append(
@@ -513,7 +685,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                         assert (
                             self.response_schema_as_tool is not None
                         ), "Please provide response_schema_as_tool in the agent."
+
+                        # validate response schema
                         self.response_schema_as_tool.model_validate(args)
+
                         next_turn_contents.append(
                             ToolUsePrompt(
                                 output=json.dumps(args),
@@ -567,9 +742,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
                     is_error = True
 
-        if is_error:
-            next_turn_contents.append(TextPrompt(text=self.retry_prompt))
-
         if len(next_turn_contents) != 0:
             next_turn_message = Prompt(contents=next_turn_contents, role="user")
         else:
@@ -605,7 +777,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 description=(
                     "The final answer which ends this conversation."
                     "Must run at the end of the conversation and "
-                    "arguments of the tool must bases on the conversation history, not be made up."
+                    "arguments of the tool must be picked from the conversation history, not be made up."
                 ),
                 schema_dict=response_schema_as_tool,
             )
@@ -617,6 +789,25 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
     async def generate_image_async(self, prompt: str, **kwargs: Any) -> Response:
         return await self.llm.generate_image_async(prompt, **kwargs)
 
+    def generate_audio(self, prompt: AgentInput, **kwargs: Any) -> Response:
+        messages = self.load_history()
+        messages.extend(self._process_user_prompt(prompt))
+        response = self.llm.generate_audio(messages, **kwargs)
+
+        messages.append(response)
+        self.store_history(messages)
+        return response
+
+    async def generate_audio_async(self, prompt: AgentInput, **kwargs: Any) -> Response:
+        messages = self.load_history()
+
+        messages.extend(self._process_user_prompt(prompt))
+        response = await self.llm.generate_audio_async(messages, **kwargs)
+
+        messages.append(response)
+        self.store_history(messages)
+        return response
+
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
         return self.llm.embed_text(texts, **kwargs)
 
@@ -625,12 +816,18 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
 
 def _get_agent_tools_description(agent: AgentType) -> str:
+    if not isinstance(agent, Agent):
+        raise ValueError(
+            "Subagent must be an instance of Agent class. "
+            "Please provide the correct agent instance."
+        )
+
     return "\n".join(
-        [f"- {funcname}: {tool.description}" for funcname, tool in agent._tools.items()]
+        [f"- {tool.name}: {tool.description}" for tool in agent.llm._prepare_tools(agent.tools)]
     )
 
 
-def _run_subagent(agent: AgentType, instruction: str) -> str:
+def _run_subagent(agent: AgentType, agent_name: str, instruction: str) -> str:
     """
     This function is used to run the subagent from the parent agent.
 
@@ -638,6 +835,8 @@ def _run_subagent(agent: AgentType, instruction: str) -> str:
     ----------
     agent : AgentType
         The subagent instance.
+    agent_name : str
+        The name of the subagent.
     instruction : str
         The detail and specific instruction to run the subagent, based on the entire conversation history or tool's result.
 
@@ -652,13 +851,16 @@ def _run_subagent(agent: AgentType, instruction: str) -> str:
             "Please provide the correct agent instance."
         )
 
-    return agent.generate_text(instruction).contents[0].text  # type: ignore
+    return agent.generate_text(instruction, name=agent_name).contents[0].text  # type: ignore
 
 
 def _duplicate_function(func: Callable[..., Any], name: str) -> Callable[..., Any]:
     """
     This function dinamically duplicates the function with a new name.
     """
+    if name in globals():
+        return globals()[name]
+
     new_function_name = name
     new_function_code = func.__code__
     new_function_globals = func.__globals__
@@ -677,8 +879,7 @@ def _duplicate_function(func: Callable[..., Any], name: str) -> Callable[..., An
     return new_func
 
 
-def _generate_dynamic_tool_as_agent(agent: AgentType) -> Tool:
-    agent_name = get_variable_name_inspect(agent)
+def _generate_dynamic_tool_as_agent(agent: AgentType, agent_name: str) -> Tool:
     duplicated_tool = _duplicate_function(_run_subagent, f"route_{agent_name}")
     agent_description = _get_agent_tools_description(agent)
 
@@ -689,5 +890,5 @@ def _generate_dynamic_tool_as_agent(agent: AgentType) -> Tool:
             f"This function invokes the agent capable to run the following tools:\n"
             f"{agent_description}"
         ),
-        context={"agent": agent},
+        context={"agent": agent, "agent_name": agent_name},
     )

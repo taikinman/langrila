@@ -1,10 +1,11 @@
+import base64
 import io
 from pathlib import Path
 from typing import Any, Literal, cast
 
 import numpy as np
 from PIL import Image
-from pydantic import field_serializer, model_validator
+from pydantic import model_validator
 
 from ..utils import decode_image, encode_image, is_valid_uri
 from .pydantic import BaseModel
@@ -77,23 +78,47 @@ class PDFPrompt(BaseModel):
 
 
 class AudioPrompt(BaseModel):
-    audio: PathType | bytes | ArrayType
+    audio: PathType | bytes | ArrayType | str
     sr: int | None = None
     mime_type: str | None = None
+    audio_id: str | None = None
 
-    def as_bytes(self) -> bytes:
+    def asarray(self) -> ArrayType:
+        import soundfile as sf
+
+        if isinstance(self.audio, np.ndarray):
+            return self.audio
+        elif isinstance(self.audio, bytes):
+            return cast(ArrayType, sf.read(io.BytesIO(self.audio))[0])
+        elif isinstance(self.audio, str):
+            return cast(ArrayType, sf.read(io.BytesIO(base64.b64decode(self.audio)))[0])
+        elif isinstance(self.audio, Path):
+            return cast(ArrayType, sf.read(self.audio)[0])
+        else:
+            raise ValueError("Invalid audio type")
+
+    def asbytes(self) -> bytes:
+        if isinstance(self.audio, bytes):
+            return self.audio
+        elif isinstance(self.audio, str):
+            return base64.b64decode(self.audio)
+        else:
+            raise ValueError("Invalid audio type")
+
+    @staticmethod
+    def to_bytes(audio: ArrayType, sr: int, mime_type: str) -> bytes:
         import soundfile as sf
 
         buffer = io.BytesIO()
         sf.write(
             file=buffer,
-            data=self.audio,
-            samplerate=self.sr,
-            format=self.mime_type.split("/")[-1].upper() if self.mime_type else None,
+            data=audio,
+            samplerate=sr,
+            format=mime_type.split("/")[-1].upper() if mime_type else None,
         )
 
         buffer.seek(0)
-        return buffer.getvalue()
+        return buffer.read()
 
     @model_validator(mode="before")
     @classmethod
@@ -103,41 +128,52 @@ class AudioPrompt(BaseModel):
         except ModuleNotFoundError:
             return data
 
-        if isinstance(data, dict) and "data" in data:
+        if isinstance(data, dict) and "audio" in data:
             try:
-                assert Path(data["data"]).is_file()
-                file_format = Path(data["data"]).suffix.lstrip(".").lower()
+                assert Path(data["audio"]).is_file()
+                file_format = Path(data["audio"]).suffix.lstrip(".").lower()
                 if file_format in ["wav", "mp3", "aiff", "ogg", "flac"]:
                     data["mime_type"] = f"audio/{file_format}"
                 elif file_format in ["mp4", "mpeg", "mov", "avi", "wmv", "mpg"]:
-                    data["data"], data["sr"] = cls._from_video(data["data"])
+                    data["audio"], data["sr"] = cls._from_video(data["audio"])
                     data["mime_type"] = "audio/wav"
                 else:
                     raise ValueError(f"Invalid audio file format: {file_format}")
-            except Exception:
+            except OSError:
+                data["mime_type"] = "audio/wav"
+            else:
                 pass
 
-            if isinstance(data["data"], bytes):
-                data["data"], data["sr"] = sf.read(io.BytesIO(data["data"]))
-            elif isinstance(data["data"], io.BytesIO):
-                data["data"], data["sr"] = sf.read(data["data"])
-            elif isinstance(data["data"], (str | Path)):
-                assert Path(data["data"]).is_file()
-                data["data"], data["sr"] = sf.read(data["data"])
-            elif isinstance(data["data"], np.ndarray):
+            if isinstance(data["audio"], (str, Path)):
+                try:
+                    assert Path(data["audio"]).is_file()
+                    data["audio"], data["sr"] = sf.read(data["audio"])
+                except OSError:
+                    data["audio"], data["sr"] = sf.read(io.BytesIO(base64.b64decode(data["audio"])))
+                else:
+                    pass
+
+            if isinstance(data["audio"], bytes):
+                data["audio"], data["sr"] = sf.read(io.BytesIO(data["audio"]))
+            elif isinstance(data["audio"], io.BytesIO):
+                data["audio"], data["sr"] = sf.read(data["audio"])
+            elif isinstance(data["audio"], np.ndarray):
                 pass
-            elif isinstance(data["data"], list):
-                data["data"] = np.array(data["data"])
+            elif isinstance(data["audio"], list):
+                data["audio"] = np.array(data["audio"])
             else:
                 raise ValueError("Invalid audio data type")
 
-            data["data"] = cls._convert_stereo_to_mono(cast(ArrayType, data["data"]))
-
+            if isinstance(data["audio"], np.ndarray):
+                assert data.get("sr") is not None, "Sample rate must be provided"
+                data["audio"] = cls._convert_stereo_to_mono(cast(ArrayType, data["audio"]))
+                audio_bytes = cls.to_bytes(
+                    data["audio"],
+                    data["sr"],
+                    data["mime_type"],
+                )
+                data["audio"] = base64.b64encode(audio_bytes).decode("utf-8")
         return data
-
-    @field_serializer("audio")
-    def serialize_data(self, data: ArrayType) -> list[float]:
-        return cast(list[float], data.tolist())
 
     @staticmethod
     def _convert_stereo_to_mono(data: ArrayType) -> ArrayType:

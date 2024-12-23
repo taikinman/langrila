@@ -60,10 +60,20 @@ class LLMClient(ABC, Generic[ClientMessage, ClientSystemMessage, ClientMessageCo
     async def generate_video_async(self, prompt: str, **kwargs: Any) -> Response:
         raise NotImplementedError
 
-    def generate_audio(self, prompt: str, **kwargs: Any) -> Response:
+    def generate_audio(
+        self,
+        messages: list[ClientMessage],
+        system_instruction: ClientSystemMessage | None = None,
+        **kwargs: Any,
+    ) -> Response:
         raise NotImplementedError
 
-    async def generate_audio_async(self, prompt: str, **kwargs: Any) -> Response:
+    async def generate_audio_async(
+        self,
+        messages: list[ClientMessage],
+        system_instruction: ClientSystemMessage | None = None,
+        **kwargs: Any,
+    ) -> Response:
         raise NotImplementedError
 
     @abstractmethod

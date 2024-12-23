@@ -10,6 +10,7 @@ from anthropic import (
     AsyncAnthropicBedrock,
     AsyncAnthropicVertex,
 )
+from anthropic._types import NOT_GIVEN, NotGiven
 from anthropic.types import (
     ContentBlock,
     ImageBlockParam,
@@ -31,10 +32,8 @@ from anthropic.types import (
     ToolUseBlockParam,
 )
 from anthropic.types.image_block_param import Source
-from typing_extensions import override
 
 from ..core.client import LLMClient
-from ..core.embedding import EmbeddingResults
 from ..core.prompt import (
     AudioPrompt,
     ImagePrompt,
@@ -86,25 +85,63 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         self,
         api_key_env_name: str | None = None,
         api_type: Literal["anthropic", "bedrock", "vertexai"] = "anthropic",
+        aws_access_key_env_name: str | None = None,
+        aws_secret_key_env_name: str | None = None,
+        aws_region: str | None = None,
+        google_cloud_project_env_name: str | NotGiven = NOT_GIVEN,
+        google_cloud_region_env_name: str | NotGiven = NOT_GIVEN,
         **kwargs: Any,
     ):
         self.api_key = os.getenv(api_key_env_name) if api_key_env_name else None
         self.api_type = api_type
+        self.aws_access_key = (
+            os.getenv(aws_access_key_env_name) if aws_access_key_env_name else None
+        )
+        self.aws_secret_key = (
+            os.getenv(aws_secret_key_env_name) if aws_secret_key_env_name else None
+        )
+        self.aws_region = aws_region
+        self.google_cloud_project = (
+            os.getenv(google_cloud_project_env_name) if google_cloud_project_env_name else NOT_GIVEN
+        )
+        self.google_cloud_region = (
+            os.getenv(google_cloud_region_env_name) if google_cloud_region_env_name else NOT_GIVEN
+        )
 
         self._client: ClientType
         self._async_client: ClientType
         if self.api_type == "anthropic":
-            self._client = Anthropic(api_key=self.api_key, **create_parameters(Anthropic, **kwargs))
-            self._async_client = AsyncAnthropic(**create_parameters(AsyncAnthropic, **kwargs))
+            self._client = Anthropic(
+                api_key=self.api_key,
+                **create_parameters(Anthropic, **kwargs),
+            )
+            self._async_client = AsyncAnthropic(
+                api_key=self.api_key,
+                **create_parameters(AsyncAnthropic, **kwargs),
+            )
         elif self.api_type == "bedrock":
-            self._client = AnthropicBedrock(**create_parameters(AnthropicBedrock, **kwargs))
+            self._client = AnthropicBedrock(
+                aws_access_key=self.aws_access_key,
+                aws_secret_key=self.aws_secret_key,
+                aws_region=self.aws_region,
+                **create_parameters(AnthropicBedrock, **kwargs),
+            )
             self._async_client = AsyncAnthropicBedrock(
-                **create_parameters(AsyncAnthropicBedrock, **kwargs)
+                aws_access_key=self.aws_access_key,
+                aws_secret_key=self.aws_secret_key,
+                aws_region=self.aws_region,
+                **create_parameters(AsyncAnthropicBedrock, **kwargs),
             )
         elif self.api_type == "vertexai":
-            self._client = AnthropicVertex(**create_parameters(AnthropicVertex, **kwargs))
+            self._client = AnthropicVertex(
+                region=self.google_cloud_region,
+                project_id=self.google_cloud_project,
+                **create_parameters(AnthropicVertex, **kwargs),
+            )
             self._async_client = AsyncAnthropicVertex(
-                **create_parameters(AsyncAnthropicVertex, **kwargs)
+                region=self.google_cloud_region,
+                project_id=self.google_cloud_project,
+                **create_parameters(AsyncAnthropicVertex, **kwargs),
             )
 
     def setup_system_instruction(self, system_instruction: SystemPrompt) -> str:
@@ -157,7 +194,9 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         contents: list[TextResponse | ToolCallResponse] = []
         for content in response.content:
             if isinstance(content, TextBlock):
-                contents.append(TextResponse(text=content.text))
+                if content.text:
+                    if text := content.text.strip():
+                        contents.append(TextResponse(text=text))
             elif isinstance(content, ToolUseBlock):
                 contents.append(
                     ToolCallResponse(
@@ -211,7 +250,9 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         contents: list[TextResponse | ToolCallResponse] = []
         for content in response.content:
             if isinstance(content, TextBlock):
-                contents.append(TextResponse(text=content.text))
+                if content.text:
+                    if text := content.text.strip():
+                        contents.append(TextResponse(text=text))
             elif isinstance(content, ToolUseBlock):
                 contents.append(
                     ToolCallResponse(
@@ -276,39 +317,46 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                 elif isinstance(response, RawContentBlockStartEvent):
                     if isinstance(response.content_block, TextBlock):
                         chunk_texts += response.content_block.text
-                        res = TextResponse(text=chunk_texts)
-                        yield Response(
-                            contents=[res],
-                            usage=usage,
-                        )
+                        if chunk_texts and response.content_block.text:
+                            res = TextResponse(text=chunk_texts.strip())
+                            yield Response(
+                                contents=[res],
+                                usage=usage,
+                            )
                         continue
 
                     elif isinstance(response.content_block, ToolUseBlock):
                         funcname = response.content_block.name
                         call_id = response.content_block.id
                         chunk_args = ""
-                        res = ToolCallResponse(name=funcname, call_id=call_id, args=chunk_args)
-                        yield Response(contents=[res], usage=usage)
+                        res = ToolCallResponse(
+                            name=funcname, call_id=call_id, args=chunk_args.strip()
+                        )
+                        # yield Response(contents=[res], usage=usage)
                         continue
 
                 elif isinstance(response, RawContentBlockDeltaEvent):
                     if isinstance(response.delta, TextDelta):
                         chunk_texts += response.delta.text
-                        res = TextResponse(text=chunk_texts)
-                        yield Response(
-                            contents=[res],
-                            usage=usage,
-                        )
+                        if chunk_texts and response.delta.text:
+                            res = TextResponse(text=chunk_texts.strip())
+                            yield Response(
+                                contents=[res],
+                                usage=usage,
+                            )
                         continue
 
                     elif isinstance(response.delta, InputJSONDelta):
                         chunk_args += response.delta.partial_json
 
-                        res = ToolCallResponse(name=funcname, call_id=call_id, args=chunk_args)
-                        yield Response(
-                            contents=[res],
-                            usage=usage,
-                        )
+                        if chunk_args and response.delta.partial_json:
+                            res = ToolCallResponse(
+                                name=funcname, call_id=call_id, args=chunk_args.strip()
+                            )
+                            yield Response(
+                                contents=[res],
+                                usage=usage,
+                            )
                         continue
                 elif isinstance(response, RawContentBlockStopEvent):
                     if res:
@@ -317,11 +365,13 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                 elif isinstance(response, RawMessageStopEvent):
                     pass
                 elif isinstance(response, RawMessageDeltaEvent):
-                    usage.update(
-                        **{"output_tokens": usage.output_tokens + response.usage.output_tokens},
+                    usage = Usage(
+                        model_name=kwargs.get("model"),
+                        prompt_tokens=usage.prompt_tokens,
+                        output_tokens=usage.output_tokens + response.usage.output_tokens,
                     )
 
-        yield Response(contents=contents, usage=usage)
+        yield Response(contents=contents, usage=usage, is_last_chunk=True)
 
     async def stream_text_async(
         self, messages: list[MessageParam], system_instruction: str | None = None, **kwargs: Any
@@ -368,39 +418,46 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                 elif isinstance(response, RawContentBlockStartEvent):
                     if isinstance(response.content_block, TextBlock):
                         chunk_texts += response.content_block.text
-                        res = TextResponse(text=chunk_texts)
-                        yield Response(
-                            contents=[res],
-                            usage=usage,
-                        )
+                        if chunk_texts and response.content_block.text:
+                            res = TextResponse(text=chunk_texts.strip())
+                            yield Response(
+                                contents=[res],
+                                usage=usage,
+                            )
                         continue
 
                     elif isinstance(response.content_block, ToolUseBlock):
                         funcname = response.content_block.name
                         call_id = response.content_block.id
                         chunk_args = ""
-                        res = ToolCallResponse(name=funcname, call_id=call_id, args=chunk_args)
-                        yield Response(contents=[res], usage=usage)
+                        res = ToolCallResponse(
+                            name=funcname, call_id=call_id, args=chunk_args.strip()
+                        )
+                        # yield Response(contents=[res], usage=usage)
                         continue
 
                 elif isinstance(response, RawContentBlockDeltaEvent):
                     if isinstance(response.delta, TextDelta):
                         chunk_texts += response.delta.text
-                        res = TextResponse(text=chunk_texts)
-                        yield Response(
-                            contents=[res],
-                            usage=usage,
-                        )
+                        if chunk_texts and response.delta.text:
+                            res = TextResponse(text=chunk_texts.strip())
+                            yield Response(
+                                contents=[res],
+                                usage=usage,
+                            )
                         continue
 
                     elif isinstance(response.delta, InputJSONDelta):
                         chunk_args += response.delta.partial_json
 
-                        res = ToolCallResponse(name=funcname, call_id=call_id, args=chunk_args)
-                        yield Response(
-                            contents=[res],
-                            usage=usage,
-                        )
+                        if chunk_args and response.delta.partial_json:
+                            res = ToolCallResponse(
+                                name=funcname, call_id=call_id, args=chunk_args.strip()
+                            )
+                            yield Response(
+                                contents=[res],
+                                usage=usage,
+                            )
                         continue
                 elif isinstance(response, RawContentBlockStopEvent):
                     if res:
@@ -409,11 +466,13 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                 elif isinstance(response, RawMessageStopEvent):
                     pass
                 elif isinstance(response, RawMessageDeltaEvent):
-                    usage.update(
-                        **{"output_tokens": usage.output_tokens + response.usage.output_tokens},
+                    usage = Usage(
+                        model_name=kwargs.get("model"),
+                        prompt_tokens=usage.prompt_tokens,
+                        output_tokens=usage.output_tokens + response.usage.output_tokens,
                     )
 
-        yield Response(contents=contents, usage=usage)
+        yield Response(contents=contents, usage=usage, is_last_chunk=True)
 
     def map_to_client_prompt(self, message: Prompt) -> MessageParam | list[MessageParam]:
         """

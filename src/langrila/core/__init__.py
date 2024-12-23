@@ -27,4 +27,4 @@ from .response import (
     VideoResponse,
 )
 from .tool import Tool
-from .usage import Usage
+from .usage import NamedUsage, Usage
