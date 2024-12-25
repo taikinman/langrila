@@ -11,9 +11,9 @@ from typing import (
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
 from qdrant_client.conversions import common_types as types
 
-from ..legacy.result import RetrievalResults
+from ..core.embedding import BaseEmbeddingModule
+from ..core.retrieval import RetrievalResults
 from .base import (
-    BaseEmbeddingModule,
     BaseLocalCollectionModule,
     BaseLocalRetrievalModule,
     BaseRemoteCollectionModule,

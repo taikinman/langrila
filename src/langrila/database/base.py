@@ -8,9 +8,9 @@ from typing import Any, Optional
 
 from tqdm import tqdm
 
-from ..core.embedding import BaseEmbeddingModule
-from ..legacy.logger import DefaultLogger
-from ..legacy.result import EmbeddingResults, RetrievalResults
+from ..core.embedding import BaseEmbeddingModule, EmbeddingResults
+from ..core.logger import DEFAULT_LOGGER as default_logger
+from ..core.retrieval import RetrievalResults
 from ..utils import make_batch
 
 
@@ -212,7 +212,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         self.persistence_directory = Path(persistence_directory)
         self.embedder = embedder
         self.collection_name = collection_name
-        self.logger = logger or DefaultLogger()
+        self.logger = logger or default_logger
 
     def create_collection(self) -> None:
         client = self.get_client()
@@ -339,7 +339,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         self.port = port
         self.embedder = embedder
         self.collection_name = collection_name
-        self.logger = logger or DefaultLogger()
+        self.logger = logger or default_logger
 
     async def acreate_collection(self) -> None:
         if inspect.iscoroutinefunction(self.get_async_client):
@@ -544,7 +544,7 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
         self.collection_name = collection_name
         self.n_results = n_results
         self.score_threshold = score_threshold
-        self.logger = logger or DefaultLogger()
+        self.logger = logger or default_logger
         self.ascending = ascending
 
     def run(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
@@ -587,7 +587,7 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         self.score_threshold = score_threshold
         self.collection_name = collection_name
         self.ascending = ascending
-        self.logger = logger or DefaultLogger()
+        self.logger = logger or default_logger
 
     async def arun(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
         if inspect.iscoroutinefunction(self.get_async_client):
@@ -611,3 +611,9 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         retrieved.usage = embed.usage  # override
 
         return retrieved
+
+
+class BaseMetadataFilter(ABC):
+    @abstractmethod
+    def run(self, metadata: dict[str, str]) -> bool:
+        raise NotImplementedError

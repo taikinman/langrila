@@ -6,9 +6,9 @@ from chromadb.api import AsyncClientAPI, ClientAPI
 from chromadb.api.types import URI, Image, Include, OneOrMany
 from chromadb.types import Where, WhereDocument
 
-from ..legacy.result import RetrievalResults
+from ..core.embedding import BaseEmbeddingModule
+from ..core.retrieval import RetrievalResults
 from .base import (
-    BaseEmbeddingModule,
     BaseLocalCollectionModule,
     BaseLocalRetrievalModule,
     BaseRemoteCollectionModule,
