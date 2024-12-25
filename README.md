@@ -1,5 +1,7 @@
 # Langri-La
 
+> NOTE: This package is under rebuilding including significant changes on the interface. 
+
 Langrila is an open-source third-party python package allows you to develop type-safe multi-agent in an easy way. This package is just personal project. 
 
 # Motivation
