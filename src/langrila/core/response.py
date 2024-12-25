@@ -5,10 +5,9 @@ from typing import Any, Literal, cast
 
 import numpy as np
 from PIL import Image
-from pydantic import field_serializer, model_validator
+from pydantic import model_validator
 
 from ..utils import decode_image, encode_image
-from .prompt import Prompt
 from .pydantic import BaseModel
 from .typing import ArrayType, PathType
 from .usage import NamedUsage, Usage
