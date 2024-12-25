@@ -1,19 +1,48 @@
 # Langri-La
-Langrila is an open-source third-party python package that is useful to use API-based LLM in the same interface. This package puts emphasis on simple architecture for readability. This package is just personal project.
 
-# Contribution
-## Coding style
-1. Sticking to simplicity : This library is motivated by simplifying architecture for readability. Thus too much abstraction should be avoided.
-2. Implementing minimum modules : The more functions each module has, the more complex the source code becomes. Langrila focuses on implementing minimum necessary functions in each module Basically module has only a responsibility expressed by thier module name and main function is implemented in a method easy to understand like `run()` or `arun()` methods except for some.
+Langrila is an open-source third-party python package allows you to develop type-safe multi-agent in an easy way. This package is just personal project. 
 
-## Branch management rule
-- Topic branch are checkout from main branch.
-- Topic branch should be small.
+# Motivation
+
+Widely used existing agent framework is all awesome, but I feel like: 
+
+- Often highly abstracted, making their behavior unclear at times and causes low extensibility. 
+- Code readability has some issues derived from many decorators and special operator when we are developing agent using that framework. 
+- Handling an agent's state or context is a little annoying. Typically it requires special arguments in functions and the state is updated hidden by tool. This might causes confusion on treaceability of the state. Ideally, functions implemented in regular development should be usable as-is with an agent, and state scope is explained by dependencies of agents, I think.
+- The arguments, specifications, and available models of client APIs are frequently updated. To follow that is a little cumbersome.
+
+
+To address these issues, I breathed new life into langrila, which has the following features:
+
+
+- Minimal wrapper classes for each client API: 
+    - Wrapper classes are minimally designed, avoiding unnecessary unification of arguments and eliminating processing dependent on model names.
+- No need for special argument to inject context into tools:
+    - There is no requirement to set instances of special classes as arguments when injecting context into tools.
+- Support for sub-agents as tools:
+    - In addition to passing tools to agents, sub-agents can be passed directly to the agent. Sub-agents are dynamically converted into tools internally and controlled by the parent agent, enabling easy construction of multi-agent systems. This feature brings to you intuitive coding and readability of the multi-agent.
+- Unified message-response model independent of client APIs:
+    - Langrila defines a standardized message-response model that allows multi-agent systems to be built across different clients.
+- Serializable conversation history:
+    - The standardized message-response model can be serialized to JSON and easily stored not only in memory but also in formats like JSON, Pickle, Azure Cosmos DB, and AWS S3.
+- Type-safe structured output: 
+    - Inspired by [PydanticAI](https://github.com/pydantic/pydantic-ai).
+- Multi-modal I/O:
+    - Whatever the client supports like image/video/pdf/audio/uri input, image/audio generation, embed texts and so on.
+        - I will be rolling out support progressively.
+- Others:
+    - Automatic retry when error raised.
+    - Customizable internal prompts.
+    - Usage gathering for all sub-agents.
+    - All we have to do to support new client is to implement a single class in many cases.
+
 
 # Prerequisites
+
 If necessary, set environment variables to use OpenAI API, Azure OpenAI Service, Gemini API, and Claude API; if using VertexAI or Amazon Bedrock, check each platform's user guide and authenticate in advance VertexAI and Amazon Bedrock.
 
 # Supported llm client
+
 - OpenAI
 - Azure OpenAI
 - Gemini on Google AI Studio
@@ -23,118 +52,42 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 - Claude on VertexAI (not tested)
 
 # Breaking changes
-<details>
-<summary>v0.0.20 -> v0.1.0</summary>
 
-Interface was updated in v0.1.0, and response format is different from before. Main difference is how to access response text in completion results. 
-
-Before: 
-```python
-response.message["content"]
-```
-
-In v0.1.0:
-```python
-response.message.content[0].text # for single completion
-```
-
-
-For more details, please see [introduction notebook](https://github.com/taikinman/langrila/blob/main/notebooks/01.introduction.ipynb).
-
-</details>
-
-<details>
-<summary>v0.0.7 -> v0.0.8</summary>
-
-Database modules has breaking changes from v0.0.7 to v0.0.8 such as rename of method, change the interface of some methods. For more details, see [this PR](https://github.com/taikinman/langrila/pull/34).
-
-</details>
-
-
-<details>
-<summary>v0.0.2 -> v0.0.3</summary>
-
-I have integrated gemini api into langrila on v0.0.3. When doing this, the modules for openai and azure openai should be separated from gemini's modules so that unnecessary dependencies won't happen while those components has the same interface. But migration is easy. Basically only thing to do is to change import modules level like `from langrila import OpenAIChatModule` to `from langrila.openai import OpenAIChatModule`. It's the same as other modules related to openai api.
-
-Second change point is return type of `stream()` and `astream()` method. From v0.0.3, all return types of all chunks is CompletionResults.
-
-Third point is the name of results class : `RetrievalResult` to `RetrievalResults`. `RetrievalResults` model has collections atribute now. Also similarities was replaced with scores.
-
-</details>
+Significant breaking changes will be introduced to become agent framework. It's more like a rebuild than just an update. Please be careful to update from the previous version. 
 
 # Basic usage
-Sample notebook [01.introduction.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/01.introduction.ipynb) includes following contents:
 
-- Basic usage with simple text prompt
-    - Chat Completion of OpenAI
-    - Chat Completion on Azure OpenAI
-    - Gemini of Google AI Studio
-    - Gemini on VertexAI
-    - Claude of Anthropic
-    - Claude on Amazon Bedrock
-- Universal message system in langrila
-- How to specify system instruction
-- Token management
-- Usage gathering across multiple models
-- Prompt template
-
-[02.function_calling.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/02.function_calling.ipynb) instruct function calling in langrila.
-
-- Basic usage for OpenAI Chat Completion, Gemini and Claude
-- Universal tool config system
-- Limitation for the function calling
-
-[03.structured_output.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/03.structured_output.ipynb), you can see:
-
-- JSON mode output for OpenAI and Gemini
-- Pydantic schema output for OpenAI
-
-[04.media_and_file_input.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/04.media_and_file_input.ipynb) show you the following contents:
-
-- Image input
-- PDF file input
-- Video input
-- Data uploading and analyzing by specifying uri for Gemini
-
-[05.conversation_memory.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/05.conversation_memory.ipynb) provides you with how to store conversation history.
-
-- Way to keep conversation history
-- Multi-tuen conversation
-- Multi-turn conversation with multiple client
-- Multi-turn conversation using tools
-- Multi-turn conversation using tools with multiple client
-- Introduction conversation memory modules: 
-    - JSONConversationMemory
-    - PickleConversationMemory
-    - CosmosConversationMemory for Azure Cosmos DB (Thanks to [@rioriost](https://github.com/rioriost))
-    - S3ConversationMemory for AWS S3 (Thanks to [@kun432](https://github.com/kun432))
-
-[06.embedding_text.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/06.embedding_text.ipynb)
-
-- For OpenAI
-- For Azure OpenAI
-- For Gemini on Google AI Studio
-- For Gemini on VertexAI
-
-[07.basic_rag.ipynb](https://github.com/taikinman/langrila/blob/main/notebooks/07.basic_rag.ipynb)
-
-- For Qdrant
-- For Chroma
-- For Usearch
-
+Coming soon.
 
 # Dependencies
+
 ## must
-- Python >=3.10,<3.13
+
+```
+python = ">=3.10,<3.13"
+matplotlib = "^3.8.0"
+plotly = "^5.17.0"
+numpy = "^1.26.1"
+pandas = "^2.1.1"
+scipy = "^1.11.3"
+scikit-learn = "^1.3.2"
+pydantic = "^2.10.0"
+griffe = "^1.5.1"
+loguru = "^0.7.3"
+```
 
 ## as needed
+
 Langrila has various extra installation options. See the following installation section and [pyproject.toml](https://github.com/taikinman/langrila/blob/main/pyproject.toml).
 
 # Installation
+
 See extra dependencies section in [pyproject.toml](https://github.com/taikinman/langrila/blob/main/pyproject.toml) for more detail installation options.
 
 ## For user
+
 ### pip
+
 ```
 # For OpenAI
 pip install langrila[openai]
@@ -159,6 +112,7 @@ pip install langrila[openai,qdrant]
 ```
 
 ### poetry
+
 ```
 # For OpenAI
 poetry add langrila --extras openai
@@ -183,12 +137,15 @@ poetry add langrila --extras "openai qdrant"
 ```
 
 ## For developer
+
 ### clone
+
 ```
 git clone git@github.com:taikinman/langrila.git
 ```
 
 ### pip
+
 ```
 cd langrila
 
@@ -196,7 +153,212 @@ pip install -e .{extra packages}
 ```
 
 ### poetry
+
 ```
 # For OpenAI
 poetry add --editable /path/to/langrila/ --extras "{extra packages}"
 ```
+
+# Multi-agent example
+
+In langrila, we can build orchestrator-typed multi-agent, not graph-based multi-agent. The orchestrator routes the execution of tools to individual agents, aggregates the results, and outputs the final answer.
+
+Here is a fragment of the example code with dummy tools.
+
+```python
+
+from langrila import Agent, InMemoryConversationMemory
+from langrila.anthropic import AnthropicClient
+from langrila.google import GoogleClient
+from langrila.openai import OpenAIClient
+from enum import Enum
+from pydantic import BaseModel, Field
+
+
+#################################
+# Client wrapper
+#################################
+
+# For OpenAI
+openai_client = OpenAIClient(api_key_env_name="OPENAI_API_KEY")
+
+# For Gemini on Google AI Studio
+google_client = GoogleClient(api_key_env_name="GEMINI_API_KEY")
+
+# For Claude of Anthropic
+anthropic_client = AnthropicClient(api_key_env_name="ANTHROPIC_API_KEY")
+
+
+#################################
+# Tool definition
+#################################
+
+def power_disco_ball(power: bool) -> bool:
+    """
+    Powers the spinning dissco ball.
+
+    Parameters
+    ----------
+    power : bool
+        Whether to power the disco ball or not.
+
+    Returns
+    ----------
+    bool
+        Whether the disco ball is spinning or not.
+    """
+    return f"Disco ball is {'spinning!' if power else 'stopped.'}"
+
+...
+
+#################################
+# Definition of response schema
+#################################
+
+class DiscoBallSchema(BaseModel):
+    power: bool = Field(..., description="Whether to power the disco ball.")
+    spinning: bool = Field(..., description="Whether the disco ball is spinning.")
+
+
+class MusicGenre(str, Enum):
+    rock = "rock"
+    pop = "pop"
+    jazz = "jazz"
+    classical = "classical"
+    hip_hop = "hip-hop"
+
+
+class MusicSchema(BaseModel):
+    genre: MusicGenre = Field(
+        ...,
+        description="The genre of music to play.",
+    )
+    bpm: int = Field(
+        ...,
+        description="The BPM of the music.",
+        ge=60,
+        le=180,
+    )
+    volume: float = Field(
+        ...,
+        description="The volume level to set the music to.",
+        ge=0,
+        le=1,
+    )
+
+
+class LightsSchema(BaseModel):
+    brightness: float = Field(
+        ...,
+        description="The brightness level to set the lights to.",
+        ge=0,
+        le=1,
+    )
+
+
+class ResponseSchema(BaseModel):
+    disco_ball: DiscoBallSchema = Field(None, description="The disco ball settings.")
+    music: MusicSchema = Field(None, description="The music settings.")
+    lights: LightsSchema = Field(None, description="The lights settings.")
+
+
+#################################
+# Orchestration 
+#################################
+
+lights_agent = Agent(
+    client=openai_client,
+    model="gpt-4o-mini-2024-07-18",
+    temperature=0.0,
+    tools=[dim_lights, brighten_lights, turn_light_on],
+)
+
+disco_ball_agent = Agent(
+    client=openai_client,
+    model="gpt-4o-mini-2024-07-18",
+    temperature=0.0,
+    tools=[power_disco_ball, stop_disco_ball],
+    max_tokens=500,
+)
+
+music_power_agent = Agent(
+    client=openai_client,
+    model="gpt-4o-mini-2024-07-18",
+    temperature=0.0,
+    tools=[start_music],
+)
+
+music_control_agent = Agent(
+    client=openai_client,
+    model="gpt-4o-mini-2024-07-18",
+    temperature=0.0,
+    tools=[change_music, adjust_volume, change_bpm],
+)
+
+# Orchestrator as a sub-agent
+music_agent_orchesrator = Agent(
+    client=anthropic_client,
+    model="claude-3-5-sonnet-20240620",
+    temperature=0.0,
+    subagents=[music_power_agent, music_control_agent],
+    max_tokens=500,
+)
+
+# Master orchestrator
+master_orchesrator = Agent(
+    client=google_client,
+    model="gemini-2.0-flash-exp",
+    temperature=0.0,
+    subagents=[lights_agent, disco_ball_agent, music_agent_orchesrator],
+    response_schema_as_tool=ResponseSchema,
+    conversation_memory=InMemoryConversationMemory(),
+)
+
+#################################
+# Invoke agent
+#################################
+
+prompt = "Turn this place into a party mood."
+
+# synchronous generation
+response = master_orchesrator.generate_text(prompt=prompt)
+
+# asynchronous generation
+response = await master_orchesrator.generate_text_async(prompt=prompt)
+
+#################################
+# Result
+#################################
+
+ResponseSchema.model_validate_json(response.contents[0].text)
+
+
+# >>> ResponseSchema(disco_ball=DiscoBallSchema(power=True, spinning=True), music=MusicSchema(genre=<MusicGenre.pop: 'pop'>, bpm=120, volume=0.7), lights=LightsSchema(brightness=1.0))
+
+#################################
+# Usage 
+#################################
+
+list(response.usage.items())
+
+# >>> [('music_power_agent',
+# >>>   Usage(model_name='gpt-4o-mini-2024-07-18', prompt_tokens=123, output_tokens=23, raw=None)),
+# >>>  ('music_agent_orchesrator',
+# >>>   Usage(model_name='claude-3-5-sonnet-20240620', prompt_tokens=2510, output_tokens=368, raw=None)),
+# >>>  ('music_control_agent',
+# >>>   Usage(model_name='gpt-4o-mini-2024-07-18', prompt_tokens=541, output_tokens=83, raw=None)),
+# >>>  ('lights_agent',
+# >>>   Usage(model_name='gpt-4o-mini-2024-07-18', prompt_tokens=345, output_tokens=60, raw=None)),
+# >>>  ('root',
+# >>>   Usage(model_name='gemini-2.0-flash-exp', prompt_tokens=3273, output_tokens=82, raw=None)),
+# >>>  ('disco_ball_agent',
+# >>>   Usage(model_name='gpt-4o-mini-2024-07-18', prompt_tokens=211, output_tokens=31, raw=None))]
+```
+
+# Roadmap
+
+- [ ] Error handling more
+- [ ] Preparing example notebooks
+- [ ] Linting and refactor
+- [ ] Supporting Huggingface
+- [ ] Aim integration

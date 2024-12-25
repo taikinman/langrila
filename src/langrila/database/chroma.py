@@ -2,13 +2,13 @@ from typing import Any
 
 import chromadb
 from chromadb import DEFAULT_DATABASE, DEFAULT_TENANT, Settings
-from chromadb.api import ClientAPI, AsyncClientAPI
+from chromadb.api import AsyncClientAPI, ClientAPI
 from chromadb.api.types import URI, Image, Include, OneOrMany
 from chromadb.types import Where, WhereDocument
 
-from ..result import RetrievalResults
+from ..core.embedding import BaseEmbeddingModule
+from ..core.retrieval import RetrievalResults
 from .base import (
-    BaseEmbeddingModule,
     BaseLocalCollectionModule,
     BaseLocalRetrievalModule,
     BaseRemoteCollectionModule,
@@ -55,9 +55,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
     ) -> None:
         collection = client.get_collection(name=collection_name)
 
-        collection.delete(
-            ids=[str(i) for i in ids], where=filter, where_document=where_document
-        )
+        collection.delete(ids=[str(i) for i in ids], where=filter, where_document=where_document)
 
     def _upsert(
         self,
@@ -156,9 +154,7 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         where_document: WhereDocument | None = None,
     ) -> None:
         collection = client.get_collection(name=collection_name)
-        collection.delete(
-            ids=[str(i) for i in ids], where=filter, where_document=where_document
-        )
+        collection.delete(ids=[str(i) for i in ids], where=filter, where_document=where_document)
 
     def _upsert(
         self,
@@ -243,7 +239,9 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         await client.create_collection(name=collection_name, metadata=self.metadata)
 
     async def _aexists(self, client: AsyncClientAPI, collection_name: str) -> bool:
-        return len([c.name for c in await client.list_collections() if c.name == collection_name]) > 0
+        return (
+            len([c.name for c in await client.list_collections() if c.name == collection_name]) > 0
+        )
 
     async def _adelete_collection(self, client: AsyncClientAPI, collection_name: str) -> None:
         await client.delete_collection(name=collection_name)

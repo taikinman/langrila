@@ -1,18 +1,16 @@
 import math
-import os
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from usearch.index import DTypeLike, Index, Matches, MetricLike, ProgressCallback
 
-from ..base import BaseMetadataFilter
-from ..result import RetrievalResults
+from ..core.embedding import BaseEmbeddingModule
+from ..core.retrieval import RetrievalResults
 from .base import (
-    BaseEmbeddingModule,
     BaseLocalCollectionModule,
     BaseLocalRetrievalModule,
+    BaseMetadataFilter,
 )
 from .metadata_store.sqlite import SQLiteMetadataStore
 

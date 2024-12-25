@@ -4,10 +4,10 @@ from typing import Generator
 import pypdfium2
 from PIL import Image
 
+from ..core.typing import PathType
 
-def read_pdf_asimage(
-    path: Path | str | bytes, scale: float = 2.5
-) -> Generator[Image.Image, None, None]:
+
+def read_pdf_asimage(path: PathType, scale: float = 2.5) -> Generator[Image.Image, None, None]:
     pdf = pypdfium2.PdfDocument(path)
 
     for page in pdf:

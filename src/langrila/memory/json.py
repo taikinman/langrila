@@ -1,7 +1,7 @@
 import json
 import os
 
-from ..base import BaseConversationMemory
+from ..core.memory import BaseConversationMemory
 
 
 class JSONConversationMemory(BaseConversationMemory):
@@ -13,7 +13,7 @@ class JSONConversationMemory(BaseConversationMemory):
 
     def store(self, conversation_history: list[dict[str, str]]):
         with open(self.path, "w") as f:
-            json.dump(conversation_history, f, ensure_ascii=False)
+            json.dump(conversation_history, f, ensure_ascii=False, indent=2)
 
     def load(self) -> list[dict[str, str]]:
         if os.path.exists(self.path):

@@ -1,6 +1,6 @@
 import copy
 
-from ..base import BaseConversationMemory
+from ..core.memory import BaseConversationMemory
 
 
 class InMemoryConversationMemory(BaseConversationMemory):

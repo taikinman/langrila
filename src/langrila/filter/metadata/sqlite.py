@@ -1,7 +1,7 @@
 import re
 from typing import Any
 
-from ...base import BaseMetadataFilter
+from .base import BaseMetadataFilter
 
 
 class SQLiteMetadataFilter(BaseMetadataFilter):

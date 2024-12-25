@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from ...base import BaseMetadataStore
+from ...legacy.base import BaseMetadataStore
 
 
 @contextlib.contextmanager
@@ -80,7 +80,6 @@ class SQLiteMetadataStore(BaseMetadataStore):
 
         _metadatas = [_metadatas[i] for i in np.argsort(np.argsort(ids))]
         return _metadatas
-
 
     def delete_records(self, ids: list[int]) -> None:
         with sqlite_open(self._path) as cursor:
