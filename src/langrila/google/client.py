@@ -166,7 +166,6 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                 model_name=cast(str | None, kwargs.get("model")),
                 prompt_tokens=response.usage_metadata.prompt_token_count or 0,
                 output_tokens=response.usage_metadata.candidates_token_count or 0,
-                raw=response.usage_metadata,
             ),
             raw=response,
             name=cast(str | None, kwargs.get("name")),
@@ -230,7 +229,6 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                 model_name=cast(str | None, kwargs.get("model")),
                 prompt_tokens=response.usage_metadata.prompt_token_count or 0,
                 output_tokens=response.usage_metadata.candidates_token_count or 0,
-                raw=response.usage_metadata,
             ),
             raw=response,
             name=cast(str | None, kwargs.get("name")),
@@ -281,7 +279,6 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                     model_name=cast(str | None, kwargs.get("model")),
                     prompt_tokens=usage_metadata.prompt_token_count or 0,
                     output_tokens=usage_metadata.candidates_token_count or 0,
-                    raw=usage_metadata,
                 )
 
             for candidate in chunk.candidates:
@@ -381,7 +378,6 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                     model_name=cast(str | None, kwargs.get("model")),
                     prompt_tokens=usage_metadata.prompt_token_count or 0,
                     output_tokens=usage_metadata.candidates_token_count or 0,
-                    raw=usage_metadata,
                 )
 
             for candidate in chunk.candidates:

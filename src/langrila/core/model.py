@@ -70,7 +70,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self.logger = logger or default_logger
         self.conversation_memory = conversation_memory
         self.system_instruction = system_instruction
-        self.tools = tools
+        self.tools = tools or []
         self.init_kwargs = kwargs
 
         if system_instruction:
@@ -124,7 +124,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             system_instruction or self.system_instruction
         )
 
-        self.logger.info("Generating text")
+        self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
         response = self.client.generate_text(prompt, _system_instruction, **all_kwargs)
 
         self.logger.debug(f"Response: {response.contents}")
@@ -181,7 +181,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             system_instruction or self.system_instruction
         )
 
-        self.logger.info("Generating text")
+        self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
         response = await self.client.generate_text_async(prompt, _system_instruction, **all_kwargs)
 
         self.logger.debug(f"Response: {response.contents}")
@@ -237,7 +237,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             system_instruction or self.system_instruction
         )
 
-        self.logger.info("Generating text")
+        self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
         streamed_response = self.client.stream_text(prompt, _system_instruction, **all_kwargs)
 
         if inspect.isgenerator(streamed_response):
@@ -295,7 +295,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             system_instruction or self.system_instruction
         )
 
-        self.logger.info("Generating text")
+        self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
         streamed_response = self.client.stream_text_async(prompt, _system_instruction, **all_kwargs)
 
         if inspect.isasyncgen(streamed_response):

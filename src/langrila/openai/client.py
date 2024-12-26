@@ -219,7 +219,6 @@ class OpenAIClient(
             model_name=cast(str, kwargs.get("model")),
             prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
             output_tokens=response.usage.completion_tokens if response.usage else 0,
-            # raw=response.usage, # NOTE: This is not JSON serializable
         )
 
         contents: list[TextResponse | ToolCallResponse] = []
@@ -300,7 +299,6 @@ class OpenAIClient(
             model_name=cast(str, kwargs.get("model")),
             prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
             output_tokens=response.usage.completion_tokens if response.usage else 0,
-            # raw=response.usage, # NOTE: This is not JSON serializable
         )
 
         contents: list[TextResponse | ToolCallResponse] = []
@@ -827,7 +825,7 @@ class OpenAIClient(
 
         Returns
         ----------
-        list[FunctionDefinition]
+        list[ChatCompletionToolParam]
             List of client-specific tool representations.
         """
         return [
