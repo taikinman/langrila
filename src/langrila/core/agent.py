@@ -822,7 +822,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             self.logger.warning(
                 (
                     f"Function: {tool_name} already exists in the global namespace. "
-                    "Skipping dynamic tool creation."
+                    "Skipping routing tool creation."
                 )
             )
             duplicated_tool = globals()[tool_name]
