@@ -693,7 +693,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
                         next_turn_contents.append(
                             ToolUsePrompt(
-                                output=json.dumps(args),
+                                output=json.dumps(args, ensure_ascii=False),
                                 call_id=content.call_id,
                                 args=content.args,
                                 name=tool_name,
@@ -702,7 +702,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
                         final_result = Response(
                             role="assistant",
-                            contents=[TextResponse(text=json.dumps(args))],
+                            contents=[TextResponse(text=json.dumps(args, ensure_ascii=False))],
                             usage=response.usage,
                             raw=response.raw,
                             name=response.name,
