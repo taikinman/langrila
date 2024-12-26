@@ -1,4 +1,4 @@
-from typing import Any, ItemsView, Iterator, KeysView, ValuesView
+from typing import ItemsView, Iterator, KeysView, ValuesView
 
 from .pydantic import BaseModel
 
@@ -7,7 +7,6 @@ class Usage(BaseModel):
     model_name: str | None = None
     prompt_tokens: int = 0
     output_tokens: int = 0
-    raw: Any = None
 
     @property
     def total_tokens(self) -> int:
@@ -23,7 +22,6 @@ class Usage(BaseModel):
             model_name=self.model_name,
             prompt_tokens=self.prompt_tokens + other.prompt_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
-            raw=None,
         )
 
     def __radd__(self, other: "Usage") -> "Usage":
@@ -39,7 +37,6 @@ class Usage(BaseModel):
             model_name=self.model_name,
             prompt_tokens=self.prompt_tokens - other.prompt_tokens,
             output_tokens=self.output_tokens - other.output_tokens,
-            raw=None,
         )
 
     def __rsub__(self, other: "Usage") -> "Usage":

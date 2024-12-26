@@ -118,7 +118,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 self._recurse_setup_subagent(subagent)
                 agent_name = get_variable_name_inspect(subagent)
                 subagent._name = agent_name
-                _tools += [_generate_dynamic_tool_as_agent(agent=subagent, agent_name=agent_name)]
+                _tools += [
+                    self._generate_dynamic_tool_as_agent(agent=subagent, agent_name=agent_name)
+                ]
             else:
                 raise ValueError(
                     "Subagent must be an instance of Agent class. "
@@ -136,7 +138,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 # then llm.conversation_memory will be ignored.
                 self.llm.conversation_memory = None
 
-            self.llm.tools = _tools
+            self.llm.tools += _tools
         else:
             assert client is not None, "Either client or llm must be provided"
 
@@ -814,6 +816,50 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
         return await self.llm.embed_text_async(texts, **kwargs)
 
+    def _duplicate_function(self, func: Callable[..., Any], name: str) -> Callable[..., Any]:
+        """
+        This function dinamically duplicates the function with a new name.
+        """
+        if name in globals():
+            self.logger.warning(
+                (
+                    f"Function: {name} already exists in the global namespace. "
+                    "Skipping dynamic tool creation."
+                )
+            )
+            return globals()[name]
+
+        new_function_name = name
+        new_function_code = func.__code__
+        new_function_globals = func.__globals__
+        new_function_defaults = func.__defaults__
+        new_function_closure = func.__closure__
+
+        new_func = types.FunctionType(
+            new_function_code,
+            new_function_globals,
+            new_function_name,
+            new_function_defaults,
+            new_function_closure,
+        )
+        new_func.__annotations__ = func.__annotations__
+        globals()[new_function_name] = new_func
+        return new_func
+
+    def _generate_dynamic_tool_as_agent(self, agent: AgentType, agent_name: str) -> Tool:
+        duplicated_tool = self._duplicate_function(_run_subagent, f"route_{agent_name}")
+        agent_description = _get_agent_tools_description(agent)
+
+        return Tool(
+            tool=duplicated_tool,
+            name=f"route_{agent_name}",
+            description=(
+                f"This function invokes the agent capable to run the following tools:\n"
+                f"{agent_description}"
+            ),
+            context={"agent": agent, "agent_name": agent_name},
+        )
+
 
 def _get_agent_tools_description(agent: AgentType) -> str:
     if not isinstance(agent, Agent):
@@ -852,43 +898,3 @@ def _run_subagent(agent: AgentType, agent_name: str, instruction: str) -> str:
         )
 
     return agent.generate_text(instruction, name=agent_name).contents[0].text  # type: ignore
-
-
-def _duplicate_function(func: Callable[..., Any], name: str) -> Callable[..., Any]:
-    """
-    This function dinamically duplicates the function with a new name.
-    """
-    if name in globals():
-        return globals()[name]
-
-    new_function_name = name
-    new_function_code = func.__code__
-    new_function_globals = func.__globals__
-    new_function_defaults = func.__defaults__
-    new_function_closure = func.__closure__
-
-    new_func = types.FunctionType(
-        new_function_code,
-        new_function_globals,
-        new_function_name,
-        new_function_defaults,
-        new_function_closure,
-    )
-    new_func.__annotations__ = func.__annotations__
-    globals()[new_function_name] = new_func
-    return new_func
-
-
-def _generate_dynamic_tool_as_agent(agent: AgentType, agent_name: str) -> Tool:
-    duplicated_tool = _duplicate_function(_run_subagent, f"route_{agent_name}")
-    agent_description = _get_agent_tools_description(agent)
-
-    return Tool(
-        tool=duplicated_tool,
-        name=f"route_{agent_name}",
-        description=(
-            f"This function invokes the agent capable to run the following tools:\n"
-            f"{agent_description}"
-        ),
-        context={"agent": agent, "agent_name": agent_name},
-    )
