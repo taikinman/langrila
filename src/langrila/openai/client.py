@@ -827,7 +827,7 @@ class OpenAIClient(
 
         Returns
         ----------
-        list[FunctionDefinition]
+        list[ChatCompletionToolParam]
             List of client-specific tool representations.
         """
         return [
