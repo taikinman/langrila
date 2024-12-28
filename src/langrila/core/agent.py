@@ -1,3 +1,4 @@
+import inspect
 import json
 import types
 from logging import Logger
@@ -90,6 +91,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         logger: Logger | None = None,
         response_schema_as_tool: BaseModel | None = None,
         system_instruction: SystemPrompt | None = None,
+        planning: bool = False,
         **kwargs: Any,
     ):
         self._client = client
@@ -100,17 +102,13 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self.n_validation_retries = self.agent_config.n_validation_retries
         self.logger = logger or default_logger
         self.response_schema_as_tool = response_schema_as_tool
-        self.system_instruction = (
-            self._setup_system_instruction(system_instruction, self.agent_config)
-            if system_instruction
-            else self.agent_config.internal_prompt.system_instruction
-        )
-
+        self.system_instruction = system_instruction
         self._store_conversation = self.agent_config.store_conversation
         self.__response_schema_name = "final_answer"
         self.__no_tool_use_retry_prompt = self.agent_config.internal_prompt.no_tool_use_retry
         self.__max_repeat_text_response = 3
         _tools = tools or []
+        self.planning = planning
         self._name = "root"
 
         for subagent in subagents or []:
@@ -138,7 +136,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 # then llm.conversation_memory will be ignored.
                 self.llm.conversation_memory = None
 
-            self.llm.tools += _tools
         else:
             assert client is not None, "Either client or llm must be provided"
 
@@ -146,7 +143,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 client=client,
                 logger=logger,
                 system_instruction=system_instruction,
-                tools=_tools,
                 **kwargs,
             )
 
@@ -192,20 +188,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     "Subagent must be an instance of Agent class. "
                     "Please provide the correct agent instance."
                 )
-
-    def _setup_system_instruction(
-        self,
-        system_instruction: SystemPrompt,
-        agent_config: AgentConfig,
-    ) -> SystemPrompt:
-        _system_instruction = (
-            agent_config.internal_prompt.system_instruction + "\n\n" + system_instruction.contents
-        )
-        return SystemPrompt(
-            role=system_instruction.role,
-            contents=_system_instruction.strip(),
-            name=system_instruction.name,
-        )
 
     def _prepare_tool_as_response_schema(self, response_schema_as_tool: BaseModel) -> list[Tool]:
         _response_schema_json = response_schema_as_tool.model_json_schema()
@@ -255,7 +237,32 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         else:
             raise ValueError("Usage must be either NamedUsage or Usage.")
 
-        return base_usage
+        usage_subagent = self._gather_subagent_usage()
+        return base_usage + usage_subagent
+
+    def _make_planning_prompt_contnet(self, prompt: AgentInput) -> list[TextPrompt]:
+        processed_prompt = self._process_user_prompt(prompt)
+
+        user_input = "\n".join(
+            [
+                content.text
+                for _prompt in processed_prompt
+                for content in _prompt.contents
+                if isinstance(content, TextPrompt)
+            ]
+        )
+
+        if not user_input:
+            raise ValueError("Must includes text prompt in the user input for planning.")
+
+        return [
+            TextPrompt(
+                text=self.agent_config.internal_prompt.planning.format(
+                    user_input=user_input,
+                    capabilities=_get_agent_capabilities(self),
+                )
+            )
+        ]
 
     def generate_text(
         self,
@@ -269,7 +276,37 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
-        messages.extend(self._process_user_prompt(prompt))
+
+        if self.planning:
+            while True:
+                messages.append(
+                    Prompt(contents=self._make_planning_prompt_contnet(prompt), role="user")
+                )
+
+                response = self.llm.generate_text(
+                    messages=messages,
+                    system_instruction=system_instruction,
+                    **kwargs,
+                )
+
+                self._usage = self._update_usage(self._usage, response)
+
+                if not response.contents:
+                    self.logger.error("No response received from the model. Retrying.")
+                    continue
+
+                messages.append(response)
+
+                messages.append(
+                    Prompt(
+                        contents=[TextPrompt(text=self.agent_config.internal_prompt.do_plan)],
+                        role="user",
+                    )
+                )
+
+                break
+        else:
+            messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
@@ -288,7 +325,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             )
 
             self._usage = self._update_usage(self._usage, response)
-            self._usage += self._gather_subagent_usage()
 
             if not response.contents:
                 self.logger.error("No response received from the model. Retrying.")
@@ -358,7 +394,36 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
-        messages.extend(self._process_user_prompt(prompt))
+        if self.planning:
+            while True:
+                messages.append(
+                    Prompt(contents=self._make_planning_prompt_contnet(prompt), role="user")
+                )
+
+                response = self.llm.generate_text(
+                    messages=messages,
+                    system_instruction=system_instruction,
+                    **kwargs,
+                )
+
+                self._usage = self._update_usage(self._usage, response)
+
+                if not response.contents:
+                    self.logger.error("No response received from the model. Retrying.")
+                    continue
+
+                messages.append(response)
+
+                messages.append(
+                    Prompt(
+                        contents=[TextPrompt(text=self.agent_config.internal_prompt.do_plan)],
+                        role="user",
+                    )
+                )
+
+                break
+        else:
+            messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
@@ -377,7 +442,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             )
 
             self._usage = self._update_usage(self._usage, response)
-            self._usage += self._gather_subagent_usage()
 
             if not response.contents:
                 self.logger.error("No response received from the model. Retrying.")
@@ -447,7 +511,41 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
-        messages.extend(self._process_user_prompt(prompt))
+
+        if self.planning:
+            while True:
+                messages.append(
+                    Prompt(contents=self._make_planning_prompt_contnet(prompt), role="user")
+                )
+
+                streamed_response = self.llm.stream_text(
+                    messages=messages,
+                    system_instruction=system_instruction,
+                    **kwargs,
+                )
+
+                for chunk in streamed_response:
+                    if not chunk.is_last_chunk:
+                        yield chunk
+
+                self._usage = self._update_usage(self._usage, chunk)
+
+                if not chunk.contents:
+                    self.logger.error("No response received from the model. Retrying.")
+                    continue
+
+                messages.append(chunk)
+
+                messages.append(
+                    Prompt(
+                        contents=[TextPrompt(text=self.agent_config.internal_prompt.do_plan)],
+                        role="user",
+                    )
+                )
+
+                break
+        else:
+            messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
@@ -471,7 +569,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.append(chunk)
 
             self._usage = self._update_usage(self._usage, chunk)
-            self._usage += self._gather_subagent_usage()
 
             message_next_turn, is_error, final_result = (
                 self._validate_tools_and_prepare_next_message(chunk, _tools_dict)
@@ -534,7 +631,41 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
-        messages.extend(self._process_user_prompt(prompt))
+
+        if self.planning:
+            while True:
+                messages.append(
+                    Prompt(contents=self._make_planning_prompt_contnet(prompt), role="user")
+                )
+
+                streamed_response = self.llm.stream_text_async(
+                    messages=messages,
+                    system_instruction=system_instruction,
+                    **kwargs,
+                )
+
+                async for chunk in streamed_response:
+                    if not chunk.is_last_chunk:
+                        yield chunk
+
+                self._usage = self._update_usage(self._usage, chunk)
+
+                if not chunk.contents:
+                    self.logger.error("No response received from the model. Retrying.")
+                    continue
+
+                messages.append(chunk)
+
+                messages.append(
+                    Prompt(
+                        contents=[TextPrompt(text=self.agent_config.internal_prompt.do_plan)],
+                        role="user",
+                    )
+                )
+
+                break
+        else:
+            messages.extend(self._process_user_prompt(prompt))
 
         n_validation_retries = 0
         n_repeat_text_response = 0
@@ -558,7 +689,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.append(chunk)
 
             self._usage = self._update_usage(self._usage, chunk)
-            self._usage += self._gather_subagent_usage()
 
             message_next_turn, is_error, final_result = (
                 self._validate_tools_and_prepare_next_message(chunk, _tools_dict)
@@ -779,7 +909,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 description=(
                     "The final answer which ends this conversation."
                     "Must run at the end of the conversation and "
-                    "arguments of the tool must be picked from the conversation history, not be made up."
+                    "arguments of the tool must be picked from the conversation history, considering conversation flow. "
+                    "The final answer must strictly adhere to the specified response schema."
                 ),
                 schema_dict=response_schema_as_tool,
             )
@@ -829,48 +960,68 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         else:
             duplicated_tool = _duplicate_function(_run_subagent, tool_name)
 
-        agent_description = _get_agent_tools_description(agent)
+        agent_capabilities = _get_agent_capabilities(agent)
 
         return Tool(
             tool=duplicated_tool,
             name=tool_name,
             description=(
-                f"This function invokes the agent capable to run the following tools:\n"
-                f"{agent_description}"
+                f"This function invokes the agent capable to run the following tools or agents:\n"
+                f"{agent_capabilities}"
             ),
             context={"agent": agent, "agent_name": agent_name},
         )
 
 
-def _get_agent_tools_description(agent: AgentType) -> str:
-    if not isinstance(agent, Agent):
-        raise ValueError(
-            "Subagent must be an instance of Agent class. "
-            "Please provide the correct agent instance."
-        )
+def _get_agent_capabilities(subagent: "Agent", indent: int = -1) -> str:
+    if indent == -1:
+        txt = ""
+    else:
+        txt = "  " * (indent) + "- " + subagent._name + "\n"
 
-    return "\n".join(
-        [f"- {tool.name}: {tool.description}" for tool in agent.llm._prepare_tools(agent.tools)]
-    )
+    _subagents = subagent._subagents or []
+
+    if _subagents:
+        for _subagent in _subagents:
+            if isinstance(_subagent, Agent):
+                txt += _get_agent_capabilities(_subagent, indent + 1)
+            else:
+                raise ValueError(
+                    "Subagent must be an instance of Agent class. "
+                    "Please provide the correct agent instance."
+                )
+
+    indent_space = "  " * (indent + 1)
+    for tool in subagent.llm._prepare_tools(subagent.tools):
+        if _tool := tool.tool:
+            if signature := inspect.signature(_tool):
+                if agent_signature := signature.parameters.get("agent"):
+                    if agent_signature.annotation is not AgentType:
+                        txt += f"{indent_space}- {tool.name}: {tool.description}\n"
+                else:
+                    if tool.name != "final_answer":
+                        txt += f"{indent_space}- {tool.name}: {tool.description}\n"
+
+    return txt
 
 
 def _run_subagent(agent: AgentType, agent_name: str, instruction: str) -> str:
     """
-    This function is used to run the subagent from the parent agent.
+    This function is used to run the agent from the parent agent.
 
     Parameters
     ----------
     agent : AgentType
-        The subagent instance.
+        The agent instance.
     agent_name : str
-        The name of the subagent.
+        The name of the agent.
     instruction : str
-        The detail and specific instruction to run the subagent, based on the entire conversation history or tool's result.
+        The detail and specific instruction to the agent, including the plan to get answer.
 
     Returns
     ----------
     str
-        The response from the subagent.
+        The response from the agent.
     """
     if not isinstance(agent, Agent):
         raise ValueError(
@@ -883,7 +1034,7 @@ def _run_subagent(agent: AgentType, agent_name: str, instruction: str) -> str:
 
 def _duplicate_function(func: Callable[..., Any], name: str) -> Callable[..., Any]:
     """
-    This function dinamically duplicates the function with a new name.
+    This function dynamically duplicates the function with a new name.
     """
     new_function_name = name
     new_function_code = func.__code__

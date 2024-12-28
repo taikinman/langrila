@@ -298,7 +298,7 @@ music_control_agent = Agent(
 )
 
 # Orchestrator as a sub-agent
-music_agent_orchesrator = Agent(
+music_agent_orchestrator = Agent(
     client=anthropic_client,
     model="claude-3-5-sonnet-20240620",
     temperature=0.0,
@@ -307,11 +307,11 @@ music_agent_orchesrator = Agent(
 )
 
 # Master orchestrator
-master_orchesrator = Agent(
+master_orchestrator = Agent(
     client=google_client,
     model="gemini-2.0-flash-exp",
     temperature=0.0,
-    subagents=[lights_agent, disco_ball_agent, music_agent_orchesrator],
+    subagents=[lights_agent, disco_ball_agent, music_agent_orchestrator],
     response_schema_as_tool=ResponseSchema,
     conversation_memory=InMemoryConversationMemory(),
 )
@@ -323,10 +323,10 @@ master_orchesrator = Agent(
 prompt = "Turn this place into a party mood."
 
 # synchronous generation
-response = master_orchesrator.generate_text(prompt=prompt)
+response = master_orchestrator.generate_text(prompt=prompt)
 
 # asynchronous generation
-response = await master_orchesrator.generate_text_async(prompt=prompt)
+response = await master_orchestrator.generate_text_async(prompt=prompt)
 
 #################################
 # Result
@@ -345,7 +345,7 @@ list(response.usage.items())
 
 # >>> [('music_power_agent',
 # >>>   Usage(model_name='gpt-4o-mini-2024-07-18', prompt_tokens=123, output_tokens=23, raw=None)),
-# >>>  ('music_agent_orchesrator',
+# >>>  ('music_agent_orchestrator',
 # >>>   Usage(model_name='claude-3-5-sonnet-20240620', prompt_tokens=2510, output_tokens=368, raw=None)),
 # >>>  ('music_control_agent',
 # >>>   Usage(model_name='gpt-4o-mini-2024-07-18', prompt_tokens=541, output_tokens=83, raw=None)),

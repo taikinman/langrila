@@ -177,7 +177,7 @@ Responses = (
 class Response(BaseModel):
     type: Literal["Response"] = "Response"
     role: Literal["assistant"] = "assistant"
-    contents: list[ResponseType] | None = None
+    contents: list[ResponseType]
     usage: Usage | NamedUsage | None = None
     raw: Any | None = None
     name: str | None = None

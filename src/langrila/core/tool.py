@@ -7,7 +7,8 @@ import re
 from inspect import Parameter, signature
 from typing import Any, Callable, Literal, cast
 
-from griffe import Docstring, DocstringSectionKind, Object as GriffeObject
+from griffe import Docstring, DocstringSectionKind
+from griffe import Object as GriffeObject
 from pydantic import ConfigDict, ValidationInfo, field_validator, model_validator
 from pydantic._internal import _decorators, _generate_schema, _typing_extra
 from pydantic._internal._config import ConfigWrapper
