@@ -49,6 +49,7 @@ from ..utils import (
     snake_to_camel,
     utf8_to_bytes,
 )
+from .gemini_utils import recurse_transform_type_to_upper
 
 GeminiMessage = Content | str
 
@@ -720,28 +721,11 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             )
         ]
 
-    def _recurse_transform_type_to_upper(self, schema: dict[str, Any]) -> dict[str, Any]:
-        new_schema = deepcopy(schema)
-        if isinstance(new_schema, dict):
-            new_schema.pop("title", None)
-            for key, value in new_schema.items():
-                if isinstance(value, dict):
-                    new_schema[key] = self._recurse_transform_type_to_upper(value)
-                elif isinstance(value, list):
-                    new_schema[key] = [self._recurse_transform_type_to_upper(v) for v in value]
-                elif isinstance(value, str):
-                    if key == "type":
-                        new_schema[key] = value.upper()
-                else:
-                    new_schema[key] = value
-
-        return new_schema
-
     def map_to_client_tool(self, tool: Tool, **kwargs: Any) -> FunctionDeclaration:
         if tool.schema_dict is None:
             raise ValueError("Tool schema is required.")
 
-        schema = self._recurse_transform_type_to_upper(tool.schema_dict)
+        schema = recurse_transform_type_to_upper(tool.schema_dict)
         return FunctionDeclaration(
             description=tool.description,
             parameters=schema

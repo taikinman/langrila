@@ -10,7 +10,7 @@ class AgentConfig(BaseModel):
         description="Retry prompt configuration",
     )
 
-    n_validation_retries: int = Field(
+    max_error_retries: int = Field(
         default=3,
         description="Number of retries when an error occurs",
     )

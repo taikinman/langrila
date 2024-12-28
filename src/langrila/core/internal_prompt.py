@@ -21,8 +21,8 @@ class InternalPrompt(BaseModel):
 
     planning: str = Field(
         default=(
-            "Please make a concise plan to answer the following question/requirement.\n"
-            "You can invoke the sub-agent or tools to answer the questions/requirements shown in the capabilities section.\n"
+            "Please make a concise plan to answer the following question/requirement, considering the conversation history.\n"
+            "You can invoke the sub-agents or tools to answer the questions/requirements shown in the capabilities section.\n"
             "Agent has no description while the tools have a description.\n\n"
             "Question/Requirement:\n"
             "{user_input}\n\n"

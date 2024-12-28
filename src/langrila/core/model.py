@@ -1,6 +1,6 @@
 import inspect
 from logging import Logger
-from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, cast
+from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence
 
 from .client import LLMClient
 from .embedding import EmbeddingResults
@@ -231,6 +231,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
+        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
+
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
         _system_instruction = self.client._setup_system_instruction(
@@ -288,6 +290,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
+
+        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -402,7 +406,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {mapped_messages.contents}")
+        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -451,7 +455,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {mapped_messages.contents}")
+        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
