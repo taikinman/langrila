@@ -19,3 +19,16 @@ class AgentConfig(BaseModel):
         default=True,
         description="Whether to store the conversation",
     )
+
+    final_answer_description: str = Field(
+        default=(
+            "The final answer which ends this conversation. "
+            "Arguments of this tool must be selected from the conversation history.\n"
+            "Unkown argument in the entire conversation history must be null, "
+            "however, the argument appeared in the previous conversation must be provided.\n"
+        ),
+        description=(
+            "Description of the tool for generating final answer with specified response schema. "
+            "This tool is invoked when 'response_schema_as_tool' is specified."
+        ),
+    )

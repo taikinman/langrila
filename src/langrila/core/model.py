@@ -173,7 +173,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -231,7 +231,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -244,6 +244,9 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         if inspect.isgenerator(streamed_response):
             for chunk in streamed_response:
+                if chunk.is_last_chunk:
+                    self.logger.debug(f"Response: {chunk.contents}")
+
                 yield chunk
         else:
             raise ValueError(f"Expected a generator, but got {type(streamed_response)}")
@@ -291,7 +294,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -304,6 +307,9 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         if inspect.isasyncgen(streamed_response):
             async for chunk in streamed_response:
+                if chunk.is_last_chunk:
+                    self.logger.debug(f"Response: {chunk.contents}")
+
                 yield chunk
         else:
             raise ValueError(f"Expected a async generator, but got {type(streamed_response)}")
@@ -406,7 +412,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -455,7 +461,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)

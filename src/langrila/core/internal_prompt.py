@@ -5,8 +5,12 @@ from .pydantic import BaseModel
 
 class InternalPrompt(BaseModel):
     error_retry: str = Field(
-        default=("Please fix the error on tool use."),
-        description="Retry prompt when validation error is raised",
+        default=(
+            "Please fix the error on tool use. "
+            "If the validation error is raised, reflect the conversation history and try to find the correct answer. "
+            "If there is no fact to answer the user, try to run other tools to get necessary information. "
+        ),
+        description="Retry prompt when error is raised",
     )
 
     no_tool_use_retry: str = Field(
@@ -14,7 +18,6 @@ class InternalPrompt(BaseModel):
             "Decide the next action based on the conversation. "
             "If you have all information for answering the user, run 'final_result' tool. "
             "If you need more information, invoke other tool to get necessary information. "
-            "When you are running 'final_result' tool, unknown arguments must be null."
         ),
         description="Prompt when no tool use is detected while `response_schema_as_tool' is specified.",
     )

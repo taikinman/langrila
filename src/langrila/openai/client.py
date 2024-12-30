@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 from typing import Any, AsyncGenerator, Generator, Literal, Sequence, cast
@@ -38,7 +37,6 @@ from ..core.prompt import (
     ImagePrompt,
     PDFPrompt,
     Prompt,
-    PromptType,
     SystemPrompt,
     TextPrompt,
     ToolCallPrompt,

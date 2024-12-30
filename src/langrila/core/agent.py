@@ -13,6 +13,7 @@ from ._context import AgentInternalContext
 from .client import LLMClient
 from .config import AgentConfig
 from .embedding import EmbeddingResults
+from .error import RetryExceededError
 from .logger import DEFAULT_LOGGER as default_logger
 from .memory import BaseConversationMemory
 from .message import Message
@@ -134,7 +135,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 client=client,
                 logger=logger,
                 system_instruction=system_instruction,
-                **kwargs,
+                # **kwargs,
             )
 
         self.tools = self._setup_all_tools(
@@ -142,6 +143,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             response_schema_as_tool=response_schema_as_tool,
             subagents=subagents,
         )
+
+        self.init_kwargs = kwargs
 
     def _gather_subagent_usage(self) -> NamedUsage:
         """Sub-agent is invoked as a tool in the parent agent.
@@ -294,6 +297,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         return _tools
 
+    def _filter_kwargs_for_planning(self, **kwargs: dict[str, Any]) -> dict[str, Any]:
+        remove_keys = {"response_schema", "response_format"}
+        return {k: v for k, v in kwargs.items() if k not in remove_keys}
+
     def _planning_step(
         self,
         messages: list[Prompt | Response],
@@ -311,7 +318,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             response = self.llm.generate_text(
                 messages=messages + [planning_message],
                 system_instruction=system_instruction,
-                **kwargs,
+                **self._filter_kwargs_for_planning(**kwargs),
             )
 
             self._usage = self._update_usage(self._usage, response)
@@ -347,7 +354,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             response = await self.llm.generate_text_async(
                 messages=messages + [planning_message],
                 system_instruction=system_instruction,
-                **kwargs,
+                **self._filter_kwargs_for_planning(**kwargs),
             )
 
             self._usage = self._update_usage(self._usage, response)
@@ -392,7 +399,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response from the model containing TextResponse. You can access the response text
             as `response.contents[0].text`.
         """
-        self._validate_generation_params(**kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
         _tools_dict = self._get_tools_dict(self.tools)
@@ -405,7 +413,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     messages=messages,
                     prompt=prompt,
                     system_instruction=system_instruction,
-                    **kwargs,
+                    **all_kwargs,
                 )
             )
         else:
@@ -421,7 +429,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 messages=messages,
                 system_instruction=system_instruction,
                 tools=self.tools,
-                **kwargs,
+                **all_kwargs,
             )
 
             self._usage = self._update_usage(self._usage, response)
@@ -472,6 +480,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                 messages.append(
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
+
+        if not ctx:
+            raise RetryExceededError()
 
         self.store_history(messages)
 
@@ -508,7 +519,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response from the model containing TextResponse. You can access the response text
             as `response.contents[0].text`.
         """
-        self._validate_generation_params(**kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
         _tools_dict = self._get_tools_dict(self.tools)
@@ -521,7 +533,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     messages=messages,
                     prompt=prompt,
                     system_instruction=system_instruction,
-                    **kwargs,
+                    **all_kwargs,
                 )
             )
         else:
@@ -537,7 +549,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 messages=messages,
                 system_instruction=system_instruction,
                 tools=self.tools,
-                **kwargs,
+                **all_kwargs,
             )
 
             self._usage = self._update_usage(self._usage, response)
@@ -588,6 +600,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                 messages.append(
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
+
+        if not ctx:
+            raise RetryExceededError()
 
         self.store_history(messages)
 
@@ -626,7 +641,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The last chunk is the same as the result of generate_text method, and
             it's stored in the conversation memory.
         """
-        self._validate_generation_params(**kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
         _tools_dict = self._get_tools_dict(self.tools)
@@ -639,7 +655,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     messages=messages,
                     prompt=prompt,
                     system_instruction=system_instruction,
-                    **kwargs,
+                    **all_kwargs,
                 )
             )
         else:
@@ -655,7 +671,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 messages=messages,
                 system_instruction=system_instruction,
                 tools=self.tools,
-                **kwargs,
+                **all_kwargs,
             )
             for chunk in streamed_response:
                 if not chunk.is_last_chunk:
@@ -708,6 +724,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
 
+        if not ctx:
+            raise RetryExceededError()
+
         self.store_history(messages)
 
         chunk.usage = self._usage
@@ -741,7 +760,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The last chunk is the same as the result of generate_text method, and
             it's stored in the conversation memory.
         """
-        self._validate_generation_params(**kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
         _tools_dict = self._get_tools_dict(self.tools)
@@ -754,7 +774,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     messages=messages,
                     prompt=prompt,
                     system_instruction=system_instruction,
-                    **kwargs,
+                    **all_kwargs,
                 )
             )
         else:
@@ -770,7 +790,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 messages=messages,
                 system_instruction=system_instruction,
                 tools=self.tools,
-                **kwargs,
+                **all_kwargs,
             )
             async for chunk in streamed_response:
                 if not chunk.is_last_chunk:
@@ -823,6 +843,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
 
+        if not ctx:
+            raise RetryExceededError()
+
         self.store_history(messages)
 
         chunk.usage = self._usage
@@ -846,7 +869,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         Response
             The response from the model containing ImageResponse.
         """
-        return self.llm.generate_image(prompt, **kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        return self.llm.generate_image(prompt, **all_kwargs)
 
     async def generate_image_async(self, prompt: str, **kwargs: Any) -> Response:
         """Generate image response from the model asynchronously.
@@ -866,7 +890,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         Response
             The response from the model containing ImageResponse.
         """
-        return await self.llm.generate_image_async(prompt, **kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        return await self.llm.generate_image_async(prompt, **all_kwargs)
 
     def generate_audio(
         self,
@@ -890,9 +915,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         Response
             The response from the model containing AudioResponse.
         """
+        all_kwargs = {**self.init_kwargs, **kwargs}
         messages = self.load_history()
         messages.extend(self._process_user_prompt(prompt))
-        response = self.llm.generate_audio(messages, **kwargs)
+        response = self.llm.generate_audio(messages, **all_kwargs)
 
         messages.append(response)
         self.store_history(messages)
@@ -920,20 +946,23 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         Response
             The response from the model containing AudioResponse.
         """
+        all_kwargs = {**self.init_kwargs, **kwargs}
         messages = self.load_history()
 
         messages.extend(self._process_user_prompt(prompt))
-        response = await self.llm.generate_audio_async(messages, **kwargs)
+        response = await self.llm.generate_audio_async(messages, **all_kwargs)
 
         messages.append(response)
         self.store_history(messages)
         return response
 
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
-        return self.llm.embed_text(texts, **kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        return self.llm.embed_text(texts, **all_kwargs)
 
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
-        return await self.llm.embed_text_async(texts, **kwargs)
+        all_kwargs = {**self.init_kwargs, **kwargs}
+        return await self.llm.embed_text_async(texts, **all_kwargs)
 
     def _process_user_prompt(self, prompt: AgentInput) -> list[Prompt | Response]:
         if isinstance(prompt, (Prompt, Response)):
@@ -1085,7 +1114,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             self.conversation_memory.store(
                 [
                     m.model_dump(
-                        include={"role", "contents", "name", "usage", "type"}, exclude={"raw"}
+                        include={"role", "contents", "name", "type"}, exclude={"raw", "usage"}
                     )
                     for m in messages
                     if m.contents
@@ -1105,12 +1134,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         return [
             Tool(
                 name=self.__response_schema_name,
-                description=(
-                    "The final answer which ends this conversation."
-                    "Must run at the end of the conversation and "
-                    "arguments of the tool must be picked from the conversation history, considering conversation flow. "
-                    "The final answer must strictly adhere to the specified response schema."
-                ),
+                description=self.agent_config.final_answer_description,
                 schema_dict=response_schema_as_tool,
             )
         ]
