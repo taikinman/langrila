@@ -6,7 +6,7 @@ from chromadb.api import AsyncClientAPI, ClientAPI
 from chromadb.api.types import URI, Image, Include, OneOrMany
 from chromadb.types import Where, WhereDocument
 
-from ..core.embedding import BaseEmbeddingModule
+from ..core.model import LLMModel
 from ..core.retrieval import RetrievalResults
 from .base import (
     BaseLocalCollectionModule,
@@ -22,7 +22,7 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         persistence_directory: str,
         collection_name: str,
         metadata: dict[str, Any] | None = None,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         logger: Any | None = None,
         settings: Settings | None = None,
         tenant: str = DEFAULT_TENANT,
@@ -120,7 +120,7 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         headers: dict[str, str] | None = None,
         settings: Settings | None = None,
         metadata: dict[str, Any] | None = None,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         logger: Any | None = None,
         tenant: str = DEFAULT_TENANT,
         database: str = DEFAULT_DATABASE,
@@ -290,7 +290,7 @@ class ChromaLocalRetrievalModule(BaseLocalRetrievalModule):
         self,
         persistence_directory: str,
         collection_name: str,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,
@@ -383,7 +383,7 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
         ssl: bool = False,
         headers: dict[str, str] | None = None,
         settings: Settings | None = None,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,

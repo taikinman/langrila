@@ -612,10 +612,8 @@ class OpenAIClient(
         for batch in make_batch(texts, batch_size=batch_size):
             response = self._client.embeddings.create(input=batch, **embed_params)
             embeddings.extend([e.embedding for e in response.data])
-            total_usage.update(
-                **{
-                    "prompt_tokens": response.usage.prompt_tokens,
-                }
+            total_usage += Usage(
+                prompt_tokens=response.usage.prompt_tokens,
             )
 
         results = EmbeddingResults(
@@ -654,10 +652,8 @@ class OpenAIClient(
         for batch in make_batch(texts, batch_size=batch_size):
             response = await self._async_client.embeddings.create(input=batch, **embed_params)
             embeddings.extend([e.embedding for e in response.data])
-            total_usage.update(
-                **{
-                    "prompt_tokens": response.usage.prompt_tokens,
-                }
+            total_usage += Usage(
+                prompt_tokens=response.usage.prompt_tokens,
             )
 
         results = EmbeddingResults(

@@ -22,19 +22,8 @@ class TextPrompt(BaseModel):
 
 class ImagePrompt(BaseModel):
     image: Image.Image | PathType
+    format: str
     resolution: Literal["auto", "low", "high"] | None = None
-
-    @property
-    def format(self) -> str:
-        if isinstance(self.image, Image.Image):
-            if self.image.format:
-                return self.image.format.lower()
-            else:
-                return "jpeg"
-        elif isinstance(self.image, PathType):
-            return Path(self.image).suffix.lstrip(".").lower()
-        else:
-            raise ValueError("Invalid image type")
 
     @model_validator(mode="before")
     @classmethod
@@ -42,15 +31,24 @@ class ImagePrompt(BaseModel):
         if isinstance(data, dict) and "image" in data:
             image = data["image"]
 
+            img_format = None
+
             if isinstance(image, (str | Path)):
                 assert Path(image).is_file(), f"File not found: {data['image']}"
+                img_format = Path(image).suffix.lstrip(".").lower().replace("jpg", "jpeg")
                 image = Image.open(image)
             elif isinstance(image, bytes):
                 image = image.decode("utf-8")
+                if pil_format := decode_image(image).format:
+                    img_format = pil_format.lower()
+            elif isinstance(image, Image.Image):
+                if pil_format := image.format:
+                    img_format = pil_format.lower()
 
             image = encode_image(image)
 
             data["image"] = image
+            data["format"] = img_format or "jpeg"
 
         return data
 
@@ -61,6 +59,12 @@ class ImagePrompt(BaseModel):
             return decode_image(self.image)
         else:
             raise ValueError("Invalid image type")
+
+    def __str__(self) -> str:
+        return f"ImagePrompt(image={self.image[:20]}..., format={self.format}, resolution={self.resolution})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class PDFPrompt(BaseModel):

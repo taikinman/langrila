@@ -8,8 +8,9 @@ from typing import Any, Optional
 
 from tqdm import tqdm
 
-from ..core.embedding import BaseEmbeddingModule, EmbeddingResults
+from ..core.embedding import EmbeddingResults
 from ..core.logger import DEFAULT_LOGGER as default_logger
+from ..core.model import LLMModel
 from ..core.retrieval import RetrievalResults
 from ..utils import make_batch
 
@@ -49,7 +50,7 @@ class AbstractLocalCollectionModule(ABC):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         upsert embeddings, documents and metadatas.
@@ -138,7 +139,7 @@ class AbstractRemoteCollectionModule(ABC):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         upsert embeddings, documents and metadatas.
@@ -154,7 +155,7 @@ class AbstractRemoteCollectionModule(ABC):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         upsert embeddings, documents and metadatas.
@@ -206,7 +207,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         self,
         persistence_directory: Path | str,
         collection_name: str,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         logger: Any | None = None,
     ):
         self.persistence_directory = Path(persistence_directory)
@@ -228,7 +229,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self._verify_metadata(metadatas)
         client = self.get_client()
@@ -256,7 +257,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         self,
         documents: list[str],
         metadatas: Optional[list[dict[str, str]]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         client = self.get_client()
 
@@ -291,7 +292,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             zip(documents_batch, metadatas_batch, ids_batch, strict=True),
             total=n_batches,
         ):
-            embedding_batch: EmbeddingResults = self.embedder.run(doc_batch)
+            embedding_batch: EmbeddingResults = self.embedder.embed_text(doc_batch)
 
             n_retries = 0
             while n_retries < 3:
@@ -332,7 +333,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         url: str,
         collection_name: str,
         port: str,
-        embedder: BaseEmbeddingModule = None,
+        embedder: LLMModel = None,
         logger: Any | None = None,
     ):
         self.url = url
@@ -363,7 +364,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         documents: list[str],
         embeddings: list[list[float]],
         metadatas: list[dict[str, str]],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self._verify_metadata(metadatas)
         if inspect.iscoroutinefunction(self.get_async_client):
@@ -402,7 +403,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         self,
         documents: list[str],
         metadatas: Optional[list[dict[str, str]]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         if inspect.iscoroutinefunction(self.get_async_client):
             client = await self.get_async_client()
@@ -440,7 +441,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             zip(documents_batch, metadatas_batch, ids_batch, strict=True),
             total=n_batches,
         ):
-            embedding_batch: EmbeddingResults = await self.embedder.arun(doc_batch)
+            embedding_batch: EmbeddingResults = await self.embedder.embed_text_async(doc_batch)
 
             n_retries = 0
             while n_retries < 3:
@@ -484,7 +485,7 @@ class AbstractLocalRetrievalModule(ABC):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RetrievalResults:
         raise NotImplementedError
 
@@ -510,7 +511,7 @@ class AbstractRemoteRetrievalModule(AbstractLocalRetrievalModule):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RetrievalResults:
         raise NotImplementedError
 
@@ -523,7 +524,7 @@ class AbstractRemoteRetrievalModule(AbstractLocalRetrievalModule):
         n_results: int,
         score_threshold: float,
         filter: Any | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RetrievalResults:
         raise NotImplementedError
 
@@ -533,7 +534,7 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
         self,
         persistence_directory: Path | str,
         collection_name: str,
-        embedder: BaseEmbeddingModule = None,
+        embedder: LLMModel = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,
@@ -550,7 +551,7 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
     def run(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
         client = self.get_client()
 
-        embed: EmbeddingResults = self.embedder.run(query)
+        embed: EmbeddingResults = self.embedder.embed_text(query)
 
         self.logger.info(f"Retrieve from collection {self.collection_name}...")
         retrieved: RetrievalResults = self._retrieve(
@@ -574,7 +575,7 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         url: str,
         collection_name: str,
         port: str,
-        embedder: BaseEmbeddingModule = None,
+        embedder: LLMModel = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,
@@ -595,7 +596,7 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         else:
             client = self.get_async_client()
 
-        embed: EmbeddingResults = await self.embedder.arun(query)
+        embed: EmbeddingResults = await self.embedder.embed_text_async(query)
 
         self.logger.info(f"Retrieve from collection {self.collection_name}...")
         retrieved: RetrievalResults = await self._aretrieve(

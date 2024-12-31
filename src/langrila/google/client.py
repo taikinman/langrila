@@ -473,13 +473,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             embeddings.extend([emb.values for emb in embedding.embeddings])
             if matadata := embedding.metadata:
                 if billable_character_count := matadata.billable_character_count:
-                    total_usage.update(
-                        **{
-                            "prompt_tokens": total_usage.prompt_tokens
-                            + billable_character_count  # correct?
-                            or 0,
-                        }
-                    )
+                    total_usage += Usage(prompt_tokens=billable_character_count or 0)
 
         return EmbeddingResults(
             text=texts,
@@ -527,13 +521,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             embeddings.extend([emb.values for emb in embedding.embeddings])
             if matadata := embedding.metadata:
                 if billable_character_count := matadata.billable_character_count:
-                    total_usage.update(
-                        **{
-                            "prompt_tokens": total_usage.prompt_tokens
-                            + billable_character_count  # correct?
-                            or 0,
-                        }
-                    )
+                    total_usage += Usage(prompt_tokens=billable_character_count or 0)
 
         return EmbeddingResults(
             text=texts,
@@ -569,8 +557,14 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             config=embed_config,
         )
 
+        contents = []
+        for generated_image in image.generated_images:
+            pil_image = generated_image.image._pil_image
+            img_format = pil_image.format.lower() if pil_image.format else "png"
+            contents.append(ImageResponse(image=pil_image, format=img_format))
+
         return Response(
-            contents=[ImageResponse(image=img.image._pil_image) for img in image.generated_images],
+            contents=contents,
             usage=Usage(),
             raw=image,
             name=cast(str | None, kwargs.get("name")),
@@ -604,8 +598,14 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             config=embed_config,
         )
 
+        contents = []
+        for generated_image in image.generated_images:
+            pil_image = generated_image.image._pil_image
+            img_format = pil_image.format.lower() if pil_image.format else "png"
+            contents.append(ImageResponse(image=pil_image, format=img_format))
+
         return Response(
-            contents=[ImageResponse(image=img.image._pil_image) for img in image.generated_images],
+            contents=contents,
             usage=Usage(),
             raw=image,
             name=cast(str | None, kwargs.get("name")),

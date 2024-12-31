@@ -13,7 +13,7 @@ from ._context import AgentInternalContext
 from .client import LLMClient
 from .config import AgentConfig
 from .embedding import EmbeddingResults
-from .error import RetryExceededError
+from .error import RetryLimitExceededError
 from .logger import DEFAULT_LOGGER as default_logger
 from .memory import BaseConversationMemory
 from .message import Message
@@ -26,11 +26,12 @@ from .typing import ClientMessage, ClientMessageContent, ClientSystemMessage, Cl
 from .usage import NamedUsage, Usage
 
 AgentInput = (
-    Prompt
+    str
+    | Prompt
     | PromptType
     | Response
     | ResponseType
-    | list[Prompt | PromptType | ResponseType | Response]
+    | list[str | Prompt | PromptType | ResponseType | Response]
 )
 
 
@@ -112,7 +113,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self.retry_prompt = self.agent_config.internal_prompt.error_retry
         self.max_error_retries = self.agent_config.max_error_retries
         self.logger = logger or default_logger
-        self.response_schema_as_tool = response_schema_as_tool
         self.system_instruction = system_instruction
         self._store_conversation = self.agent_config.store_conversation
         self.__response_schema_name = "final_answer"
@@ -292,9 +292,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         _tools = self.llm._prepare_tools(_tools)
 
-        if response_schema_as_tool:
-            _tools += self._prepare_tool_as_response_schema(response_schema_as_tool)
-
         return _tools
 
     def _filter_kwargs_for_planning(self, **kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -377,6 +374,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self,
         prompt: AgentInput,
         system_instruction: SystemPrompt | None = None,
+        response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> Response:
         """Generate text response from the model.
@@ -403,7 +401,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
-        _tools_dict = self._get_tools_dict(self.tools)
+
+        _tools = copy.copy(self.tools)
+        _response_schema_as_tool = response_schema_as_tool or self.response_schema_as_tool
+        if _response_schema_as_tool:
+            _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
+        _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
 
@@ -421,14 +424,14 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(self.tools) + 2,
+            max_repeat_tool_call=len(_tools) + 2,
         )
         final_result = None
         while ctx:
             response = self.llm.generate_text(
                 messages=messages,
                 system_instruction=system_instruction,
-                tools=self.tools,
+                tools=_tools,
                 **all_kwargs,
             )
 
@@ -441,7 +444,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.append(response)
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(response, _tools_dict)
+                self._validate_tools_and_prepare_next_message(
+                    response, _tools_dict, _response_schema_as_tool
+                )
             )
 
             if message_next_turn:
@@ -461,7 +466,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 else:
                     ctx.reset_error_retries_count()
 
-                    if self.response_schema_as_tool is None:
+                    if _response_schema_as_tool is None:
                         if self._include_tool_call_response(response):
                             ctx.increment_repeat_tool_call_count()
                             ctx.reset_repeat_text_response_count()
@@ -482,7 +487,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                 )
 
         if not ctx:
-            raise RetryExceededError()
+            raise RetryLimitExceededError()
 
         self.store_history(messages)
 
@@ -497,6 +502,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self,
         prompt: AgentInput,
         system_instruction: SystemPrompt | None = None,
+        response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> Response:
         """Generate text response from the model asynchronously.
@@ -523,7 +529,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
-        _tools_dict = self._get_tools_dict(self.tools)
+
+        _tools = copy.copy(self.tools)
+        _response_schema_as_tool = response_schema_as_tool or self.response_schema_as_tool
+        if _response_schema_as_tool:
+            _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
+        _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
 
@@ -541,14 +552,14 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(self.tools) + 2,
+            max_repeat_tool_call=len(_tools) + 2,
         )
         final_result = None
         while ctx:
             response = await self.llm.generate_text_async(
                 messages=messages,
                 system_instruction=system_instruction,
-                tools=self.tools,
+                tools=_tools,
                 **all_kwargs,
             )
 
@@ -561,7 +572,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.append(response)
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(response, _tools_dict)
+                self._validate_tools_and_prepare_next_message(
+                    response, _tools_dict, _response_schema_as_tool
+                )
             )
 
             if message_next_turn:
@@ -581,7 +594,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 else:
                     ctx.reset_error_retries_count()
 
-                    if self.response_schema_as_tool is None:
+                    if _response_schema_as_tool is None:
                         if self._include_tool_call_response(response):
                             ctx.increment_repeat_tool_call_count()
                             ctx.reset_repeat_text_response_count()
@@ -602,7 +615,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                 )
 
         if not ctx:
-            raise RetryExceededError()
+            raise RetryLimitExceededError()
 
         self.store_history(messages)
 
@@ -617,6 +630,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self,
         prompt: AgentInput,
         system_instruction: SystemPrompt | None = None,
+        response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> Generator[Response, None, None]:
         """Stream text response from the model.
@@ -645,7 +659,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
-        _tools_dict = self._get_tools_dict(self.tools)
+
+        _tools = copy.copy(self.tools)
+        _response_schema_as_tool = response_schema_as_tool or self.response_schema_as_tool
+        if _response_schema_as_tool:
+            _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
+        _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
 
@@ -663,14 +682,14 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(self.tools) + 2,
+            max_repeat_tool_call=len(_tools) + 2,
         )
         final_result = None
         while ctx:
             streamed_response = self.llm.stream_text(
                 messages=messages,
                 system_instruction=system_instruction,
-                tools=self.tools,
+                tools=_tools,
                 **all_kwargs,
             )
             for chunk in streamed_response:
@@ -682,7 +701,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             self._usage = self._update_usage(self._usage, chunk)
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(chunk, _tools_dict)
+                self._validate_tools_and_prepare_next_message(
+                    chunk, _tools_dict, _response_schema_as_tool
+                )
             )
 
             if message_next_turn:
@@ -704,7 +725,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 else:
                     ctx.reset_error_retries_count()
 
-                    if self.response_schema_as_tool is None:
+                    if _response_schema_as_tool is None:
                         if self._include_tool_call_response(chunk):
                             ctx.increment_repeat_tool_call_count()
                             ctx.reset_repeat_text_response_count()
@@ -725,7 +746,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                 )
 
         if not ctx:
-            raise RetryExceededError()
+            raise RetryLimitExceededError()
 
         self.store_history(messages)
 
@@ -736,6 +757,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self,
         prompt: AgentInput,
         system_instruction: SystemPrompt | None = None,
+        response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> AsyncGenerator[Response, None]:
         """Stream text response from the model asynchronously.
@@ -764,7 +786,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self._validate_generation_params(**all_kwargs)
 
         self._usage = NamedUsage()
-        _tools_dict = self._get_tools_dict(self.tools)
+
+        _tools = copy.copy(self.tools)
+        _response_schema_as_tool = response_schema_as_tool or self.response_schema_as_tool
+        if _response_schema_as_tool:
+            _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
+        _tools_dict = self._get_tools_dict(_tools)
 
         messages = self.load_history()
 
@@ -782,14 +809,14 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(self.tools) + 2,
+            max_repeat_tool_call=len(_tools) + 2,
         )
         final_result = None
         while ctx:
             streamed_response = self.llm.stream_text_async(
                 messages=messages,
                 system_instruction=system_instruction,
-                tools=self.tools,
+                tools=_tools,
                 **all_kwargs,
             )
             async for chunk in streamed_response:
@@ -801,7 +828,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             self._usage = self._update_usage(self._usage, chunk)
 
             message_next_turn, is_error, final_result = (
-                self._validate_tools_and_prepare_next_message(chunk, _tools_dict)
+                self._validate_tools_and_prepare_next_message(
+                    chunk, _tools_dict, _response_schema_as_tool
+                )
             )
 
             if message_next_turn:
@@ -823,7 +852,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 else:
                     ctx.reset_error_retries_count()
 
-                    if self.response_schema_as_tool is None:
+                    if _response_schema_as_tool is None:
                         if self._include_tool_call_response(chunk):
                             ctx.increment_repeat_tool_call_count()
                             ctx.reset_repeat_text_response_count()
@@ -844,7 +873,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                                 )
 
         if not ctx:
-            raise RetryExceededError()
+            raise RetryLimitExceededError()
 
         self.store_history(messages)
 
@@ -972,10 +1001,30 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         elif isinstance(prompt, ResponseType):
             return [Response(role="assistant", contents=[prompt], usage=Usage())]
         elif isinstance(prompt, list):
-            messages = []
+            include_prompt_or_response = False
+            include_content = False
+
             for p in prompt:
-                messages.extend(self._process_user_prompt(p))
+                if isinstance(p, (Prompt, Response)):
+                    include_prompt_or_response = True
+                elif isinstance(p, (str, PromptType)):
+                    include_content = True
+
+            if include_prompt_or_response and include_content:
+                raise ValueError(
+                    "Prompt types or roles are ambiguous. Don't mix Prompt/Response and str/content."
+                )
+
+            if include_prompt_or_response:
+                messages = prompt
+            elif include_content:
+                messages = [Prompt(role="user", contents=prompt)]
+            else:
+                raise ValueError("Invalid prompt type")
+
             return messages
+        else:
+            raise ValueError("Invalid prompt type. Please provide the correct prompt type.")
 
     def _is_tool_call_response(self, content: ResponseType) -> bool:
         if isinstance(content, ToolCallResponse):
@@ -988,7 +1037,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         return False
 
     def _validate_tools_and_prepare_next_message(
-        self, response: Response, tools_dict: dict[str, Tool]
+        self,
+        response: Response,
+        tools_dict: dict[str, Tool],
+        response_schema_as_tool: BaseModel | None,
     ) -> tuple[Prompt | None, bool, Response | None]:
         next_turn_contents: list[PromptType] = []
         is_error = False
@@ -1037,11 +1089,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
                     else:
                         assert (
-                            self.response_schema_as_tool is not None
+                            response_schema_as_tool is not None
                         ), "Please provide response_schema_as_tool in the agent."
 
                         # validate response schema
-                        self.response_schema_as_tool.model_validate(args)
+                        response_schema_as_tool.model_validate(args)
 
                         next_turn_contents.append(
                             ToolUsePrompt(

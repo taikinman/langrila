@@ -11,7 +11,7 @@ from typing import (
 from qdrant_client import AsyncQdrantClient, QdrantClient, models
 from qdrant_client.conversions import common_types as types
 
-from ..core.embedding import BaseEmbeddingModule
+from ..core.model import LLMModel
 from ..core.retrieval import RetrievalResults
 from .base import (
     BaseLocalCollectionModule,
@@ -27,7 +27,7 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         persistence_directory: str,
         collection_name: str,
         vectors_config: Union[types.VectorParams, Mapping[str, types.VectorParams]],
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         logger: Any | None = None,
         sparse_vectors_config: Mapping[str, types.SparseVectorParams] | None = None,
         on_disk_payload: bool | None = None,
@@ -151,7 +151,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         url: str,
         collection_name: str,
         port: str = "6333",
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         logger: Any | None = None,
         https: bool | None = None,
         api_key_env_name: str | None = None,
@@ -402,7 +402,7 @@ class QdrantLocalRetrievalModule(BaseLocalRetrievalModule):
         self,
         persistence_directory: str,
         collection_name: str,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,
@@ -480,7 +480,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
         url: str,
         collection_name: str,
         port: str = "6333",
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,

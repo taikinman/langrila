@@ -1,4 +1,4 @@
-class RetryExceededError(Exception):
+class RetryLimitExceededError(Exception):
     def __init__(
         self,
         message: str = "Retry limit exceeded. Please try again or change the request parameters.",
