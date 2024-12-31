@@ -7,7 +7,8 @@ import re
 from inspect import signature
 from typing import Any, Callable, Literal, cast
 
-from griffe import Docstring, DocstringSectionKind, Object as GriffeObject
+from griffe import Docstring, DocstringSectionKind
+from griffe import Object as GriffeObject
 
 DocstringStyle = Literal["google", "numpy", "sphinx"]
 

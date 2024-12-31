@@ -1,6 +1,6 @@
 import inspect
 from logging import Logger
-from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, cast
+from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence
 
 from .client import LLMClient
 from .embedding import EmbeddingResults
@@ -28,11 +28,12 @@ from .tool import Tool
 from .typing import ClientMessage, ClientMessageContent, ClientSystemMessage, ClientTool
 
 LLMInput = (
-    Prompt
+    str
+    | Prompt
     | PromptType
     | Response
     | ResponseType
-    | list[Prompt | PromptType | ResponseType | Response]
+    | list[str | Prompt | PromptType | ResponseType | Response]
 )
 
 
@@ -173,7 +174,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {[m.contents for m in mapped_messages]}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -231,6 +232,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
+
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
         _system_instruction = self.client._setup_system_instruction(
@@ -242,6 +245,9 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         if inspect.isgenerator(streamed_response):
             for chunk in streamed_response:
+                if chunk.is_last_chunk:
+                    self.logger.debug(f"Response: {chunk.contents}")
+
                 yield chunk
         else:
             raise ValueError(f"Expected a generator, but got {type(streamed_response)}")
@@ -289,6 +295,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
+
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
         _system_instruction = self.client._setup_system_instruction(
@@ -300,6 +308,9 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         if inspect.isasyncgen(streamed_response):
             async for chunk in streamed_response:
+                if chunk.is_last_chunk:
+                    self.logger.debug(f"Response: {chunk.contents}")
+
                 yield chunk
         else:
             raise ValueError(f"Expected a async generator, but got {type(streamed_response)}")
@@ -402,7 +413,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {mapped_messages.contents}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -451,7 +462,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         history = self._convert_message_to_list(history)
         mapped_messages = self._response_to_prompt(history)
 
-        self.logger.debug(f"Prompt: {mapped_messages.contents}")
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         # self.logger.debug("Mapping Prompt to client-specific representation")
         prompt = self.client.map_to_client_prompts(mapped_messages)
@@ -532,7 +543,9 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
                 if isinstance(content, TextResponse):
                     contents.append(TextPrompt(text=content.text))
                 elif isinstance(content, ImageResponse):
-                    contents.append(ImagePrompt(image=content.image))
+                    contents.append(
+                        ImagePrompt(image=content.image, format=content.format or "jpeg")
+                    )
                 elif isinstance(content, AudioResponse):
                     contents.append(
                         AudioPrompt(
@@ -604,9 +617,28 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         elif isinstance(prompt, (str, PromptType)):
             return [Prompt(role="user", contents=prompt)]
         elif isinstance(prompt, list):
-            messages = []
+            include_prompt_or_response = False
+            include_content = False
+
             for p in prompt:
-                messages.extend(self._process_user_prompt(p))
+                if isinstance(p, (Prompt, Response)):
+                    include_prompt_or_response = True
+                elif isinstance(p, (str, PromptType)):
+                    include_content = True
+
+            if include_prompt_or_response and include_content:
+                raise ValueError(
+                    "Prompt types or roles are ambiguous. Don't mix Prompt/Response and str/content."
+                )
+
+            if include_prompt_or_response:
+                messages = prompt
+            elif include_content:
+                messages = [Prompt(role="user", contents=prompt)]
+            else:
+                raise ValueError("Invalid prompt type")
+
             return messages
+
         else:
             raise ValueError(f"Invalid prompt type: {type(prompt)}")

@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 from usearch.index import DTypeLike, Index, Matches, MetricLike, ProgressCallback
 
-from ..core.embedding import BaseEmbeddingModule
+from ..core.model import LLMModel
 from ..core.retrieval import RetrievalResults
 from .base import (
     BaseLocalCollectionModule,
@@ -29,7 +29,7 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
         multi: bool = False,
         view: bool = False,
         enable_key_lookups: bool = True,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         logger: Any | None = None,
     ):
         super().__init__(
@@ -171,7 +171,7 @@ class UsearchLocalRetrievalModule(BaseLocalRetrievalModule):
         multi: bool = False,
         view: bool = False,
         enable_key_lookups: bool = True,
-        embedder: BaseEmbeddingModule | None = None,
+        embedder: LLMModel | None = None,
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,

@@ -9,7 +9,7 @@ from loguru._logger import Logger
 
 def get_logger(
     sink: TextIO = sys.stderr,
-    level: str = "INFO",
+    level: str = "DEBUG",
 ) -> Logger:
     logger.remove()
     logger.add(

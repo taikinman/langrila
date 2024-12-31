@@ -8,6 +8,4 @@ class BaseModel(PydanticBaseModel):
         arbitrary_types_allowed = True
 
     def update(self, **kwargs: Any) -> "BaseModel":
-        attribs = self.__dict__.copy()
-        attribs.update(kwargs)
-        return self.__class__(**attribs)
+        return self.model_copy(update=kwargs)

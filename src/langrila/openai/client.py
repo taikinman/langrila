@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 from typing import Any, AsyncGenerator, Generator, Literal, Sequence, cast
@@ -38,7 +37,6 @@ from ..core.prompt import (
     ImagePrompt,
     PDFPrompt,
     Prompt,
-    PromptType,
     SystemPrompt,
     TextPrompt,
     ToolCallPrompt,
@@ -169,6 +167,24 @@ class OpenAIClient(
             **({"name": system_instruction.name} if system_instruction.name else {}),
         }
 
+    def _prepare_tools_for_native_response_format(self, tools: dict[str, Any]) -> dict[str, Any]:
+        """If you are using the native response format, the tool schemas must be strict."""
+        tools_formatted = []
+        for tool in tools:
+            tools_formatted.append(
+                ChatCompletionToolParam(
+                    type="function",
+                    function=FunctionDefinition(
+                        name=tool["function"]["name"],
+                        description=tool["function"]["description"],
+                        parameters=tool["function"]["parameters"] | {"additionalProperties": False},
+                        strict=True,
+                    ),
+                )
+            )
+
+        return tools_formatted
+
     def generate_text(
         self,
         messages: list[OpenAIMessage],
@@ -200,6 +216,9 @@ class OpenAIClient(
             _messages = messages
 
         if not isinstance(kwargs.get("response_format", NOT_GIVEN), (NotGiven, dict)):
+            if _tools := kwargs.get("tools"):
+                kwargs["tools"] = self._prepare_tools_for_native_response_format(_tools)
+
             completion_params = create_parameters(
                 self._client.beta.chat.completions.parse, **kwargs
             )
@@ -280,6 +299,9 @@ class OpenAIClient(
             _messages = messages
 
         if not isinstance(kwargs.get("response_format", NOT_GIVEN), (NotGiven, dict)):
+            if _tools := kwargs.get("tools"):
+                kwargs["tools"] = self._prepare_tools_for_native_response_format(_tools)
+
             completion_params = create_parameters(
                 self._client.beta.chat.completions.parse, **kwargs
             )
@@ -590,10 +612,8 @@ class OpenAIClient(
         for batch in make_batch(texts, batch_size=batch_size):
             response = self._client.embeddings.create(input=batch, **embed_params)
             embeddings.extend([e.embedding for e in response.data])
-            total_usage.update(
-                **{
-                    "prompt_tokens": response.usage.prompt_tokens,
-                }
+            total_usage += Usage(
+                prompt_tokens=response.usage.prompt_tokens,
             )
 
         results = EmbeddingResults(
@@ -632,10 +652,8 @@ class OpenAIClient(
         for batch in make_batch(texts, batch_size=batch_size):
             response = await self._async_client.embeddings.create(input=batch, **embed_params)
             embeddings.extend([e.embedding for e in response.data])
-            total_usage.update(
-                **{
-                    "prompt_tokens": response.usage.prompt_tokens,
-                }
+            total_usage += Usage(
+                prompt_tokens=response.usage.prompt_tokens,
             )
 
         results = EmbeddingResults(

@@ -25,6 +25,7 @@ class ToolCallResponse(BaseModel):
 
 class ImageResponse(BaseModel):
     image: str | Image.Image
+    format: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -36,6 +37,12 @@ class ImageResponse(BaseModel):
 
     def decode(self) -> Image.Image:
         return decode_image(cast(str, self.image))
+
+    def __str__(self) -> str:
+        return f"ImageResponse(image={self.image[:20]}..., format={self.format})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class AudioResponse(BaseModel):
@@ -177,7 +184,7 @@ Responses = (
 class Response(BaseModel):
     type: Literal["Response"] = "Response"
     role: Literal["assistant"] = "assistant"
-    contents: list[ResponseType] | None = None
+    contents: list[ResponseType]
     usage: Usage | NamedUsage | None = None
     raw: Any | None = None
     name: str | None = None

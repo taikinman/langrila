@@ -522,7 +522,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                     ImageBlockParam(
                         source=Source(
                             data=content.image,
-                            media_type=f"image/{content.image.format}",
+                            media_type=f"image/{content.format}",
                             type="base64",
                         ),
                         type="image",

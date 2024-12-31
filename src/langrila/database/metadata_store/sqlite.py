@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from ...legacy.base import BaseMetadataStore
+from ...core.metadata import BaseMetadataStore
 
 
 @contextlib.contextmanager
