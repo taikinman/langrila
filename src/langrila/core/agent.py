@@ -140,7 +140,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         self.tools = self._setup_all_tools(
             tools=tools,
-            response_schema_as_tool=response_schema_as_tool,
             subagents=subagents,
         )
 
@@ -272,7 +271,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
     def _setup_all_tools(
         self,
         tools: list[Callable[..., Any] | Tool] | None = None,
-        response_schema_as_tool: BaseModel | None = None,
         subagents: list["Agent"] | None = None,  # type: ignore
     ) -> list[Tool]:
         _tools = copy.copy(tools) or []
