@@ -291,9 +291,8 @@ class Tool(BaseModel):
         from the function's type hints.
     schema_validator : SchemaValidator, optional
         The schema validator to use. If not provided, a new schema validator will be created.
-    no_valid_args : set[str], optional
-        A set of arguments that should not be validated by the schema. These arguments will be
-        passed to the function as is.
+    serializer : Callable[[Any], str], optional
+        Callable to serialize the result of the tool. If not provided, the result will be converted to a string.
     """
 
     tool: Callable[..., Any] | None = None
@@ -302,7 +301,7 @@ class Tool(BaseModel):
     context: dict[str, Any] | None = None
     schema_dict: dict[str, Any] | None = None
     schema_validator: SchemaValidator | None = None
-    no_valid_args: set[str] | None = None
+    serializer: Callable[[Any], str] = str
 
     @model_validator(mode="before")
     def setup(cls, data: dict[str, Any]) -> dict[str, Any]:
@@ -368,33 +367,23 @@ class Tool(BaseModel):
 
         assert self.tool is not None, "Tool is not set"
         all_args = ({**args, **(self.context or {})}).copy()
-
-        no_valids = {}
-        if self.no_valid_args:
-            for arg in self.no_valid_args:
-                no_valids[arg] = all_args.pop(arg)
-
         valid_args = self.validate_args(all_args)
-        return self.tool(**{**valid_args, **no_valids})
+
+        return self.serializer(self.tool(**valid_args))
 
     async def run_async(self, args: str | dict[str, Any]) -> Any:
         if isinstance(args, str):
             args = cast(dict[str, Any], json.loads(args))
 
         all_args = {**args, **(self.context or {})}
-
-        no_valids = {}
-        if self.no_valid_args:
-            for arg in self.no_valid_args:
-                no_valids[arg] = all_args.pop(arg)
-
         valid_args = self.validate_args(all_args)
 
         assert self.tool is not None, "Tool is not set"
         if inspect.iscoroutinefunction(self.tool):
-            return await self.tool(**{**valid_args, **no_valids})
+            result = await self.tool(**valid_args)
+            return self.serializer(result)
         else:
-            raise self.tool(**{**valid_args, **no_valids})
+            return self.serializer(self.tool(**valid_args))
 
 
 # This class is heavily based on the PydanticAI v0.0.12.

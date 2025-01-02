@@ -1097,7 +1097,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                         tool_result = tool.run(args)
                         next_turn_contents.append(
                             ToolUsePrompt(
-                                output=str(tool_result),
+                                output=tool_result,
                                 call_id=content.call_id,
                                 args=content.args,
                                 name=tool_name,
