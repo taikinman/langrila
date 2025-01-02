@@ -28,7 +28,7 @@ To address these issues, I breathed new life into langrila, which has the follow
 - Serializable conversation history:
     - The standardized message-response model can be serialized to JSON and easily stored not only in memory but also in formats like JSON, Pickle, Azure Cosmos DB, and AWS S3.
 - Type-safe structured output: 
-    - Inspired by [PydanticAI](https://github.com/pydantic/pydantic-ai).
+    - Inspired by [PydanticAI](https://github.com/pydantic/pydantic-ai). Args are validated when a tool is invoked by the pydantic schema validator.
 - Multi-modal I/O:
     - Whatever the provider supports like image/video/pdf/audio/uri input, image/audio generation, embed texts and so on.
         - I will be rolling out support progressively.
