@@ -595,7 +595,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             self.conversation_memory.store(
                 [
                     m.model_dump(
-                        include={"role", "contents", "name", "usage", "type"}, exclude={"raw"}
+                        include={"role", "contents", "name", "type"}, exclude={"raw", "usage"}
                     )
                     for m in messages
                     if m.contents
