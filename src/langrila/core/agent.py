@@ -140,7 +140,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         self.tools = self._setup_all_tools(
             tools=tools,
-            response_schema_as_tool=response_schema_as_tool,
             subagents=subagents,
         )
 
@@ -272,7 +271,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
     def _setup_all_tools(
         self,
         tools: list[Callable[..., Any] | Tool] | None = None,
-        response_schema_as_tool: BaseModel | None = None,
         subagents: list["Agent"] | None = None,  # type: ignore
     ) -> list[Tool]:
         _tools = copy.copy(tools) or []
@@ -377,7 +375,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> Response:
-        """Generate text response from the model.
+        """Generate text response from the model. If you specified the same parameter in both
+        the constructor and this method, the parameter in this method will be used.
 
         Parameters
         ----------
@@ -385,6 +384,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The user input to the agent.
         system_instruction : SystemPrompt, optional
             The system instruction to the agent, by default None.
+        response_schema_as_tool : BaseModel, optional
+            The response schema as a tool to validate the final answer, by default None.
+            If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw client API.
@@ -505,7 +507,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> Response:
-        """Generate text response from the model asynchronously.
+        """Generate text response from the model asynchronously. If you specified the same parameter in both
+        the constructor and this method, the parameter in this method will be used.
+
 
         Parameters
         ----------
@@ -513,6 +517,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The user input to the agent.
         system_instruction : SystemPrompt, optional
             The system instruction to the agent, by default None.
+        response_schema_as_tool : BaseModel, optional
+            The response schema as a tool to validate the final answer, by default None.
+            If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw client API.
@@ -633,7 +640,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> Generator[Response, None, None]:
-        """Stream text response from the model.
+        """Stream text response from the model. If you specified the same parameter in both
+        the constructor and this method, the parameter in this method will be used.
+
 
         Parameters
         ----------
@@ -641,6 +650,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The user input to the agent.
         system_instruction : SystemPrompt, optional
             The system instruction to the agent, by default None.
+        response_schema_as_tool : BaseModel, optional
+            The response schema as a tool to validate the final answer, by default None.
+            If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw client API.
@@ -760,7 +772,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         response_schema_as_tool: BaseModel | None = None,
         **kwargs: Any,
     ) -> AsyncGenerator[Response, None]:
-        """Stream text response from the model asynchronously.
+        """Stream text response from the model asynchronously. If you specified the same parameter in both
+        the constructor and this method, the parameter in this method will be used.
+
 
         Parameters
         ----------
@@ -768,6 +782,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The user input to the agent.
         system_instruction : SystemPrompt, optional
             The system instruction to the agent, by default None.
+        response_schema_as_tool : BaseModel, optional
+            The response schema as a tool to validate the final answer, by default None.
+            If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
             Additional keyword arguments to pass to the API client.
             Basically the same as the parameters in the raw client API.
@@ -1080,7 +1097,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                         tool_result = tool.run(args)
                         next_turn_contents.append(
                             ToolUsePrompt(
-                                output=str(tool_result),
+                                output=tool_result,
                                 call_id=content.call_id,
                                 args=content.args,
                                 name=tool_name,
