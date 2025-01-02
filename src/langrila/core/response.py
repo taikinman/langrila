@@ -39,7 +39,10 @@ class ImageResponse(BaseModel):
         return decode_image(cast(str, self.image))
 
     def __str__(self) -> str:
-        return f"ImageResponse(image={self.image[:20]}..., format={self.format})"
+        if isinstance(self.image, str):
+            return f"ImageResponse(image={self.image[:20]}..., format={self.format})"
+        else:
+            raise ValueError("Invalid image type")
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -144,6 +147,15 @@ class AudioResponse(BaseModel):
                 )
                 data["audio"] = base64.b64encode(audio_bytes).decode("utf-8")
         return data
+
+    def __str__(self) -> str:
+        if isinstance(self.audio, str):
+            return f"AudioResponse(audio={self.audio[:20]}..., sr={self.sr}, mime_type={self.mime_type})"
+        else:
+            raise ValueError("Invalid audio type")
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     @staticmethod
     def _convert_stereo_to_mono(data: ArrayType) -> ArrayType:
