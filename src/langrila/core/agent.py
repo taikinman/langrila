@@ -388,10 +388,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response schema as a tool to validate the final answer, by default None.
             If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Returns
         ----------
@@ -521,10 +521,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response schema as a tool to validate the final answer, by default None.
             If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Returns
         ----------
@@ -654,10 +654,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response schema as a tool to validate the final answer, by default None.
             If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Yields
         ----------
@@ -786,10 +786,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response schema as a tool to validate the final answer, by default None.
             If provided, then the final answer is structured using tool-calling, and is validated based on the schema.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Yields
         ----------
@@ -905,10 +905,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         prompt : str
             The user input to the agent.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Returns
         ----------
@@ -926,10 +926,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         prompt : str
             The user input to the agent.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Returns
         ----------
@@ -951,10 +951,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         prompt : AgentInput
             The user input to the agent.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Returns
         ----------
@@ -982,10 +982,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         prompt : AgentInput
             The user input to the agent.
         **kwargs : Any
-            Additional keyword arguments to pass to the API client.
-            Basically the same as the parameters in the raw client API.
-            It means the agent accepts raw parameters of OpenAI API if you use OpenAIClient in this agent.
-            For more details, please refer to the API reference of each client.
+            Additional keyword arguments to pass to the API provider.
+            Basically the same as the parameters in the original provider API.
+            It means the agent accepts original parameters of OpenAI API if you use OpenAIClient in this agent.
+            For more details, please refer to the API reference of each provider.
 
         Returns
         ----------

@@ -8,42 +8,42 @@ Langrila is an open-source third-party python package allows you to develop type
 
 Widely used existing agent framework is all awesome, but I feel like: 
 
-- Often highly abstracted, making their behavior unclear at times and causes low extensibility. 
+- Often highly abstracted, making their behavior unclear at times and it causes some limitations as well.
 - Code readability has some issues derived from many decorators and special operator when we are developing agent using that framework. 
 - Handling an agent's state or context is a little annoying. Typically it requires special arguments in functions and the state is updated hidden by tool. This might causes confusion on treaceability of the state. Ideally, functions implemented in regular development should be usable as-is with an agent, and state scope is explained by dependencies of agents, I think.
-- The arguments, specifications, and available models of client APIs are frequently updated. To follow that is a little cumbersome.
+- The arguments, specifications, and available models of providers are frequently updated. To follow that is a little cumbersome.
 
 
 To address these issues, I breathed new life into langrila, which has the following features:
 
 
-- Minimal wrapper classes for each client API: 
-    - Wrapper classes are minimally designed, avoiding unnecessary unification of arguments and eliminating processing dependent on model names.
+- Deliberately avoiding over-abstracting the module.: 
+    - Wrapper classes of the provider sdk are minimally designed, avoiding unnecessary unification of arguments and eliminating processing dependent on model names. Langrila gives you high-level interface to use LLM while almost all the provider original parameters can be accepted as it is.
 - No need for special argument to inject context into tools:
     - There is no requirement to set instances of special classes as arguments when injecting context into tools.
 - Support for sub-agents as tools:
     - In addition to passing tools to agents, sub-agents can be passed directly to the agent. Sub-agents are dynamically converted into tools internally and controlled by the parent agent, enabling easy construction of multi-agent systems. This feature brings to you intuitive coding and readability of the multi-agent.
-- Unified message-response model independent of client APIs:
-    - Langrila defines a standardized message-response model that allows multi-agent systems to be built across different clients.
+- Unified message-response model independent of provider APIs:
+    - Langrila defines a standardized message-response model that allows multi-agent systems to be built across different providers.
 - Serializable conversation history:
     - The standardized message-response model can be serialized to JSON and easily stored not only in memory but also in formats like JSON, Pickle, Azure Cosmos DB, and AWS S3.
 - Type-safe structured output: 
     - Inspired by [PydanticAI](https://github.com/pydantic/pydantic-ai).
 - Multi-modal I/O:
-    - Whatever the client supports like image/video/pdf/audio/uri input, image/audio generation, embed texts and so on.
+    - Whatever the provider supports like image/video/pdf/audio/uri input, image/audio generation, embed texts and so on.
         - I will be rolling out support progressively.
 - Others:
     - Automatic retry when error raised.
     - Customizable internal prompts.
     - Usage gathering for all sub-agents.
-    - All we have to do to support new client is to implement a single class in many cases.
+    - All we have to do to support new provider is to implement a single class in many cases.
 
 
 # Prerequisites
 
 If necessary, set environment variables to use OpenAI API, Azure OpenAI Service, Gemini API, and Claude API; if using VertexAI or Amazon Bedrock, check each platform's user guide and authenticate in advance VertexAI and Amazon Bedrock.
 
-# Supported llm client
+# Supported llm providers
 
 - OpenAI
 - Azure OpenAI
@@ -100,7 +100,7 @@ pip install langrila[gemini]
 # For Claude
 pip install langrila[claude]
 
-# For multiple clients
+# For multiple providers
 pip install langrila[openai,gemini,claude]
 
 # With dependencies to handle specific data. Here is an example using gemini
@@ -125,7 +125,7 @@ poetry add langrila --extras gemini
 # For Claude
 poetry add langrila --extras claude
 
-# For multiple clients
+# For multiple providers
 poetry add langrila --extras "openai gemini claude"
 
 # With dependencies to handle specific data. Here is an example using gemini
@@ -178,7 +178,7 @@ from pydantic import BaseModel, Field
 
 
 #################################
-# Client wrapper
+# Client modules
 #################################
 
 # For OpenAI
@@ -326,7 +326,7 @@ prompt = "Turn this place into a party mood."
 response = master_orchestrator.generate_text(prompt=prompt)
 
 # asynchronous generation
-response = await master_orchestrator.generate_text_async(prompt=prompt)
+# response = await master_orchestrator.generate_text_async(prompt=prompt)
 
 #################################
 # Result
