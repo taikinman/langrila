@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, AsyncGenerator, Generator, Literal, Sequence
+from typing import Any, AsyncGenerator, Generator, Literal
 
 from anthropic import (
     Anthropic,

@@ -195,6 +195,17 @@ class AudioPrompt(BaseModel):
         audio_array = np.array(list(audio.iter_frames()))
         return audio_array, fps
 
+    def __str__(self) -> str:
+        if isinstance(self.audio, str):
+            return (
+                f"AudioPrompt(audio={self.audio[:20]}..., sr={self.sr}, mime_type={self.mime_type})"
+            )
+        else:
+            raise ValueError("Invalid audio type")
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 class VideoPrompt(BaseModel):
     video: PathType

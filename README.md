@@ -1,7 +1,5 @@
 # Langri-La
 
-> NOTE: This package is under rebuilding including significant changes on the interface. 
-
 Langrila is an open-source third-party python package allows you to develop type-safe multi-agent in an easy way. This package is just personal project. 
 
 # Motivation
@@ -28,7 +26,7 @@ To address these issues, I breathed new life into langrila, which has the follow
 - Serializable conversation history:
     - The standardized message-response model can be serialized to JSON and easily stored not only in memory but also in formats like JSON, Pickle, Azure Cosmos DB, and AWS S3.
 - Type-safe structured output: 
-    - Inspired by [PydanticAI](https://github.com/pydantic/pydantic-ai).
+    - Inspired by [PydanticAI](https://github.com/pydantic/pydantic-ai). Args are validated when a tool is invoked by the pydantic schema validator.
 - Multi-modal I/O:
     - Whatever the provider supports like image/video/pdf/audio/uri input, image/audio generation, embed texts and so on.
         - I will be rolling out support progressively.
@@ -37,6 +35,21 @@ To address these issues, I breathed new life into langrila, which has the follow
     - Customizable internal prompts.
     - Usage gathering for all sub-agents.
     - All we have to do to support new provider is to implement a single class in many cases.
+
+# Breaking changes
+
+Significant breaking changes were introduced from version v0.4.1 to reborn as an agent framework. It's more like a rebuild than just an update. Please be careful to update from the previous version. 
+
+
+<details>
+<summary>Here is a rough guide of migration.</summary>
+
+1. Migrate from `{Provider}FunctionalChat` to `Agent`
+2. `response.message.content[0].text` to `response.contents[0].text`. Same for the other modalities.
+3. `TextContent` to `TextPrompt` / `TextResponse`. Same for the other modalities.
+
+
+</details>
 
 
 # Prerequisites
@@ -53,13 +66,55 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 - Claude on Amazon Bedrock
 - Claude on VertexAI (not tested)
 
-# Breaking changes
-
-Significant breaking changes will be introduced to become agent framework. It's more like a rebuild than just an update. Please be careful to update from the previous version. 
-
 # Basic usage
 
-Coming soon.
+[01.introduction.ipynb](./notebooks/01.introduction.ipynb)
+
+- Generate text (non-streaming / streaming, synchronous / asynchronous)
+- System prompt
+- Structured output using tool calling with validation
+- Customize internal prompt
+
+[02.tool_calling_and_dependency_injection.ipynb](./notebooks/02.tool_calling_and_dependency_injection.ipynb)
+
+- How to use tool call with single agent (non-streaming / streaming)
+- Structured output using tool calling
+- Dependency injection
+- Tool result serializer
+
+[03.multi_agent.ipynb](./notebooks/03.multi_agent.ipynb)
+
+- Orchestration of multi-agent
+- State handling in langrila
+
+[04.conversation_memory.ipynb](./notebooks/04.conversation_memory.ipynb)
+
+- In-memory
+- Local pickle file
+- Local JSON file
+- Storing S3 bucket (thanks to [@kun432](https://github.com/kun432))
+- Storing Azure Cosmos DB (thanks to [@rioriost](https://github.com/rioriost))
+
+[05.multi_modal_io.ipynb](./notebooks/05.multi_modal_io.ipynb)
+
+- Image input
+- PDF input
+- Video input
+- Audio input
+- Media file input from the cloud resource (GCS)
+- Image generation
+- Audio generation
+
+[06.embedding_text.ipynb](./notebooks/06.embedding_text.ipynb)
+
+- Embedding with OpenAI API
+- Embedding with Gemini API
+
+[07.basic_rag.ipynb](./notebooks/07.basic_rag.ipynb)
+
+- Qdrant (Local / Remote)
+- Chroma (Local / Remote)
+- Usearch
 
 # Dependencies
 
@@ -360,7 +415,8 @@ list(response.usage.items())
 # Roadmap
 
 - [ ] Error handling more
-- [ ] Preparing example notebooks
+- [x] Preparing example notebooks
 - [ ] Linting and refactor
 - [ ] Supporting Huggingface
+- [ ] Adding test code
 - [ ] Aim integration

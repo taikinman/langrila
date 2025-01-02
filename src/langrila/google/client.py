@@ -1,6 +1,5 @@
 import json
 import os
-from copy import deepcopy
 from typing import Any, AsyncGenerator, Generator, Literal, Sequence, cast
 
 from google import genai  # type: ignore
@@ -653,7 +652,9 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                     ]
                 )
             elif isinstance(content, URIPrompt):
-                parts.append(Part(file_data=FileData(file_uri=content.uri)))
+                parts.append(
+                    Part(file_data=FileData(file_uri=content.uri, mime_type=content.mime_type))
+                )
             elif isinstance(content, VideoPrompt):
                 parts.extend(
                     [
@@ -667,7 +668,14 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                     ]
                 )
             elif isinstance(content, AudioPrompt):
-                raise NotImplementedError
+                parts.append(
+                    Part(
+                        inline_data=Blob(
+                            data=utf8_to_bytes(cast(str, content.audio)),
+                            mime_type=content.mime_type,
+                        )
+                    )
+                )
             elif isinstance(content, ToolCallPrompt):
                 content_args = content.args
                 if isinstance(content_args, str) and content_args:
