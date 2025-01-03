@@ -27,12 +27,14 @@ class ChromaLocalCollectionModule(BaseLocalCollectionModule):
         settings: Settings | None = None,
         tenant: str = DEFAULT_TENANT,
         database: str = DEFAULT_DATABASE,
+        batch_size: int = 100,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
             collection_name=collection_name,
             embedder=embedder,
             logger=logger,
+            batch_size=batch_size,
         )
         self.metadata = metadata or {"hnsw:space": "cosine"}
         self.settings = settings
@@ -124,6 +126,7 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
         logger: Any | None = None,
         tenant: str = DEFAULT_TENANT,
         database: str = DEFAULT_DATABASE,
+        batch_size: int = 100,
     ):
         super().__init__(
             url=host,
@@ -131,6 +134,7 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
             collection_name=collection_name,
             embedder=embedder,
             logger=logger,
+            batch_size=batch_size,
         )
         self.metadata = metadata or {"hnsw:space": "cosine"}
         self.tenant = tenant
@@ -235,18 +239,18 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
             database=self.database,
         )
 
-    async def _acreate_collection(self, client: AsyncClientAPI, collection_name: str) -> None:
+    async def _create_collection_async(self, client: AsyncClientAPI, collection_name: str) -> None:
         await client.create_collection(name=collection_name, metadata=self.metadata)
 
-    async def _aexists(self, client: AsyncClientAPI, collection_name: str) -> bool:
+    async def _exists_async(self, client: AsyncClientAPI, collection_name: str) -> bool:
         return (
             len([c.name for c in await client.list_collections() if c.name == collection_name]) > 0
         )
 
-    async def _adelete_collection(self, client: AsyncClientAPI, collection_name: str) -> None:
+    async def _delete_collection_async(self, client: AsyncClientAPI, collection_name: str) -> None:
         await client.delete_collection(name=collection_name)
 
-    async def _adelete_record(
+    async def _delete_record_async(
         self,
         client: AsyncClientAPI,
         collection_name: str,
@@ -260,7 +264,7 @@ class ChromaRemoteCollectionModule(BaseRemoteCollectionModule):
             ids=[str(i) for i in ids], where=filter, where_document=where_document
         )
 
-    async def _aupsert(
+    async def _upsert_async(
         self,
         client: AsyncClientAPI,
         collection_name: str,
@@ -492,7 +496,7 @@ class ChromaRemoteRetrievalModule(BaseRemoteRetrievalModule):
             collections=collections,
         )
 
-    async def _aretrieve(
+    async def _retrieve_async(
         self,
         client: AsyncClientAPI,
         collection_name: str,

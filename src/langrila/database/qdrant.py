@@ -38,12 +38,14 @@ class QdrantLocalCollectionModule(BaseLocalCollectionModule):
         init_from: types.InitFrom | None = None,
         timeout: int | None = None,
         force_disable_check_same_thread: bool = False,
+        batch_size: int = 100,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
             collection_name=collection_name,
             embedder=embedder,
             logger=logger,
+            batch_size=batch_size,
         )
         self.vectors_config = vectors_config
         self.sparse_vectors_config = sparse_vectors_config
@@ -172,6 +174,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
         quantization_config: types.QuantizationConfig | None = None,
         init_from: types.InitFrom | None = None,
         timeout: int | None = None,
+        batch_size: int = 100,
     ):
         super().__init__(
             collection_name=collection_name,
@@ -179,6 +182,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             logger=logger,
             url=url,
             port=port,
+            batch_size=batch_size,
         )
         self.https = https
         self.api_key_env_name = api_key_env_name
@@ -269,10 +273,12 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             shard_key_selector=shard_key_selector,
         )
 
-    async def _aexists(self, client: AsyncQdrantClient, collection_name: str) -> bool:
+    async def _exists_async(self, client: AsyncQdrantClient, collection_name: str) -> bool:
         return await client.collection_exists(collection_name=collection_name)
 
-    async def _acreate_collection(self, client: AsyncQdrantClient, collection_name: str) -> None:
+    async def _create_collection_async(
+        self, client: AsyncQdrantClient, collection_name: str
+    ) -> None:
         await client.create_collection(
             collection_name=collection_name,
             vectors_config=self.vectors_config,
@@ -290,7 +296,7 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
             timeout=self.timeout,
         )
 
-    async def _aupsert(
+    async def _upsert_async(
         self,
         client: AsyncQdrantClient,
         collection_name: str,
@@ -318,10 +324,12 @@ class QdrantRemoteCollectionModule(BaseRemoteCollectionModule):
 
         return
 
-    async def _adelete_collection(self, client: AsyncQdrantClient, collection_name: str) -> None:
+    async def _delete_collection_async(
+        self, client: AsyncQdrantClient, collection_name: str
+    ) -> None:
         await client.delete_collection(collection_name=collection_name)
 
-    async def _adelete_record(
+    async def _delete_record_async(
         self,
         client: AsyncQdrantClient,
         collection_name: str,
@@ -592,7 +600,7 @@ class QdrantRemoteRetrievalModule(BaseRemoteRetrievalModule):
             collections=collections,
         )
 
-    async def _aretrieve(
+    async def _retrieve_async(
         self,
         client: AsyncQdrantClient,
         collection_name: str,
