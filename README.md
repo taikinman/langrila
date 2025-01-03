@@ -4,7 +4,7 @@ Langrila is an open-source third-party python package allows you to develop type
 
 # Motivation
 
-Widely used existing agent framework is all awesome, but I feel like: 
+Widely used agent frameworks are all excellent, but I feel like: 
 
 - Often highly abstracted, making their behavior unclear at times and it causes some limitations as well.
 - Code readability has some issues derived from many decorators and special operator when we are developing agent using that framework. 
@@ -223,3 +223,12 @@ poetry add --editable /path/to/langrila/ --extras "{extra packages}"
 - [ ] Supporting Huggingface
 - [ ] Adding test code
 - [ ] Aim integration
+
+# Contributing
+
+This project is just personal, so I don't prepare the contribution guide yet, but feel free to open issues and PRs if you have any suggestions and feedbacks. 
+
+# Acknowledgement
+
+- [PydanticAI](https://github.com/pydantic/pydantic-ai)
+    - Awesome project to build type-safe and robust agent in a simple way. When updating langrila, I took significant inspiration from PydanticAI.
