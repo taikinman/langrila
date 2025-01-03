@@ -65,7 +65,7 @@ class AbstractLocalCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _delete_record(self, client: Any, collection_name: str, **kwargs) -> None:
+    def _delete_record(self, client: Any, collection_name: str, **kwargs: Any) -> None:
         """
         delete the record from the collection. kwargs depends on the clieint.
         """
@@ -110,7 +110,7 @@ class AbstractRemoteCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _acreate_collection(self, client: Any, collection_name: str) -> None:
+    async def _create_collection_async(self, client: Any, collection_name: str) -> None:
         """
         create a collection
         """
@@ -124,7 +124,7 @@ class AbstractRemoteCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _aexists(self, client: Any, collection_name: str) -> bool:
+    async def _exists_async(self, client: Any, collection_name: str) -> bool:
         """
         check if the collection exists
         """
@@ -147,7 +147,7 @@ class AbstractRemoteCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _aupsert(
+    async def _upsert_async(
         self,
         client: Any,
         collection_name: str,
@@ -163,7 +163,7 @@ class AbstractRemoteCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _adelete_collection(self, client: Any, collection_name: str) -> None:
+    async def _delete_collection_async(self, client: Any, collection_name: str) -> None:
         """
         delete the collection
         """
@@ -177,14 +177,14 @@ class AbstractRemoteCollectionModule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _adelete_record(self, client: Any, collection_name: str, **kwargs) -> None:
+    async def _delete_record_async(self, client: Any, collection_name: str, **kwargs: Any) -> None:
         """
         delete the record from the collection. kwargs depends on the clieint.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def _delete_record(self, client: Any, collection_name: str, **kwargs) -> None:
+    def _delete_record(self, client: Any, collection_name: str, **kwargs: Any) -> None:
         """
         delete the record from the collection. kwargs depends on the clieint.
         """
@@ -207,13 +207,15 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         self,
         persistence_directory: Path | str,
         collection_name: str,
-        embedder: LLMModel | None = None,
+        embedder: LLMModel | None = None,  # type: ignore
         logger: Any | None = None,
+        batch_size: int = 100,
     ):
         self.persistence_directory = Path(persistence_directory)
         self.embedder = embedder
         self.collection_name = collection_name
         self.logger = logger or default_logger
+        self.batch_size = batch_size
 
     def create_collection(self) -> None:
         client = self.get_client()
@@ -249,7 +251,7 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
         if self._exists(client=client, collection_name=self.collection_name):
             self._delete_collection(client=client, collection_name=self.collection_name)
 
-    def delete_record(self, **kwargs) -> None:
+    def delete_record(self, **kwargs: Any) -> None:
         client = self.get_client()
         self._delete_record(client=client, collection_name=self.collection_name, **kwargs)
 
@@ -275,14 +277,11 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
 
         ids = [i for i in range(len(documents))]
 
-        # batchfy due to memory usage
-        batch_size: int = 100
+        documents_batch = make_batch(documents, batch_size=self.batch_size)
+        metadatas_batch = make_batch(metadatas, batch_size=self.batch_size)
+        ids_batch = make_batch(ids, batch_size=self.batch_size)
 
-        documents_batch = make_batch(documents, batch_size=batch_size)
-        metadatas_batch = make_batch(metadatas, batch_size=batch_size)
-        ids_batch = make_batch(ids, batch_size=batch_size)
-
-        n_batches: int = math.ceil(len(documents) / batch_size)
+        n_batches: int = math.ceil(len(documents) / self.batch_size)
 
         if not self._exists(client=client, collection_name=self.collection_name):
             self._create_collection(client=client, collection_name=self.collection_name)
@@ -292,6 +291,9 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             zip(documents_batch, metadatas_batch, ids_batch, strict=True),
             total=n_batches,
         ):
+            if self.embedder is None:
+                raise ValueError("embedder is not set.")
+
             embedding_batch: EmbeddingResults = self.embedder.embed_text(doc_batch)
 
             n_retries = 0
@@ -315,9 +317,6 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
                     if n_retries == 3:
                         raise e
 
-        if hasattr(self, "_save_on_last"):
-            self._save_on_last(client=client)
-
     def _verify_metadata(self, metadatas: list[dict[str, str]]) -> None:
         """
         check if the key 'document' is included in metadatas
@@ -327,38 +326,40 @@ class BaseLocalCollectionModule(AbstractLocalCollectionModule):
             raise ValueError("The key 'document' is reserved. Use another key.")
 
 
-class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollectionModule):
+class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollectionModule):  # type: ignore[misc]
     def __init__(
         self,
         url: str,
         collection_name: str,
         port: str,
-        embedder: LLMModel = None,
+        embedder: LLMModel | None = None,  # type: ignore
         logger: Any | None = None,
-    ):
+        batch_size: int = 100,
+    ) -> None:
         self.url = url
         self.port = port
         self.embedder = embedder
         self.collection_name = collection_name
         self.logger = logger or default_logger
+        self.batch_size = batch_size
 
-    async def acreate_collection(self) -> None:
+    async def create_collection_async(self) -> None:
         if inspect.iscoroutinefunction(self.get_async_client):
             client = await self.get_async_client()
         else:
             client = self.get_async_client()
 
-        await self._acreate_collection(client=client, collection_name=self.collection_name)
+        await self._create_collection_async(client=client, collection_name=self.collection_name)
 
-    async def aexists(self) -> bool:
+    async def exists_async(self) -> bool:
         if inspect.iscoroutinefunction(self.get_async_client):
             client = await self.get_async_client()
         else:
             client = self.get_async_client()
 
-        return await self._aexists(client=client, collection_name=self.collection_name)
+        return await self._exists_async(client=client, collection_name=self.collection_name)
 
-    async def aupsert(
+    async def upsert_async(
         self,
         ids: list[str | int],
         documents: list[str],
@@ -372,7 +373,7 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
         else:
             client = self.get_async_client()
 
-        await self._aupsert(
+        await self._upsert_async(
             client=client,
             collection_name=self.collection_name,
             ids=ids,
@@ -382,24 +383,26 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
             **kwargs,
         )
 
-    async def adelete_collection(self) -> None:
+    async def delete_collection_async(self) -> None:
         if inspect.iscoroutinefunction(self.get_async_client):
             client = await self.get_async_client()
         else:
             client = self.get_async_client()
 
-        if await self._aexists(client=client, collection_name=self.collection_name):
-            await self._adelete_collection(client=client, collection_name=self.collection_name)
+        if await self._exists_async(client=client, collection_name=self.collection_name):
+            await self._delete_collection_async(client=client, collection_name=self.collection_name)
 
-    async def adelete_record(self, **kwargs) -> None:
+    async def delete_record_async(self, **kwargs: Any) -> None:
         if inspect.iscoroutinefunction(self.get_async_client):
             client = await self.get_async_client()
         else:
             client = self.get_async_client()
 
-        await self._adelete_record(client=client, collection_name=self.collection_name, **kwargs)
+        await self._delete_record_async(
+            client=client, collection_name=self.collection_name, **kwargs
+        )
 
-    async def arun(
+    async def run_async(
         self,
         documents: list[str],
         metadatas: Optional[list[dict[str, str]]] = None,
@@ -424,29 +427,29 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
 
         ids = [i for i in range(len(documents))]
 
-        # batchfy due to memory usage
-        batch_size: int = 100
+        documents_batch = make_batch(documents, batch_size=self.batch_size)
+        metadatas_batch = make_batch(metadatas, batch_size=self.batch_size)
+        ids_batch = make_batch(ids, batch_size=self.batch_size)
 
-        documents_batch = make_batch(documents, batch_size=batch_size)
-        metadatas_batch = make_batch(metadatas, batch_size=batch_size)
-        ids_batch = make_batch(ids, batch_size=batch_size)
+        n_batches: int = math.ceil(len(documents) / self.batch_size)
 
-        n_batches: int = math.ceil(len(documents) / batch_size)
-
-        if not await self._aexists(client=client, collection_name=self.collection_name):
-            await self._acreate_collection(client=client, collection_name=self.collection_name)
+        if not await self._exists_async(client=client, collection_name=self.collection_name):
+            await self._create_collection_async(client=client, collection_name=self.collection_name)
             self.logger.info(f"Create collection {self.collection_name}.")
 
         for doc_batch, metadata_batch, id_batch in tqdm(
             zip(documents_batch, metadatas_batch, ids_batch, strict=True),
             total=n_batches,
         ):
+            if self.embedder is None:
+                raise ValueError("embedder is not set.")
+
             embedding_batch: EmbeddingResults = await self.embedder.embed_text_async(doc_batch)
 
             n_retries = 0
             while n_retries < 3:
                 try:
-                    await self._aupsert(
+                    await self._upsert_async(
                         client=client,
                         collection_name=self.collection_name,
                         ids=id_batch,
@@ -463,9 +466,6 @@ class BaseRemoteCollectionModule(BaseLocalCollectionModule, AbstractRemoteCollec
 
                     if n_retries == 3:
                         raise e
-
-        if hasattr(self, "_save_on_last"):
-            self._save_on_last(client=client)
 
 
 class AbstractLocalRetrievalModule(ABC):
@@ -516,7 +516,7 @@ class AbstractRemoteRetrievalModule(AbstractLocalRetrievalModule):
         raise NotImplementedError
 
     @abstractmethod
-    async def _aretrieve(
+    async def _retrieve_async(
         self,
         client: Any,
         collection_name: str,
@@ -534,7 +534,7 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
         self,
         persistence_directory: Path | str,
         collection_name: str,
-        embedder: LLMModel = None,
+        embedder: LLMModel | None = None,  # type: ignore
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,
@@ -548,8 +548,11 @@ class BaseLocalRetrievalModule(AbstractLocalRetrievalModule):
         self.logger = logger or default_logger
         self.ascending = ascending
 
-    def run(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
+    def run(self, query: str, filter: Any | None = None, **kwargs: Any) -> RetrievalResults:
         client = self.get_client()
+
+        if self.embedder is None:
+            raise ValueError("embedder is not set.")
 
         embed: EmbeddingResults = self.embedder.embed_text(query)
 
@@ -575,7 +578,7 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         url: str,
         collection_name: str,
         port: str,
-        embedder: LLMModel = None,
+        embedder: LLMModel | None = None,  # type: ignore
         n_results: int = 4,
         score_threshold: float = 0.5,
         logger: Any | None = None,
@@ -590,16 +593,21 @@ class BaseRemoteRetrievalModule(BaseLocalRetrievalModule, AbstractRemoteRetrieva
         self.ascending = ascending
         self.logger = logger or default_logger
 
-    async def arun(self, query: str, filter: Any | None = None, **kwargs) -> RetrievalResults:
+    async def run_async(
+        self, query: str, filter: Any | None = None, **kwargs: Any
+    ) -> RetrievalResults:
         if inspect.iscoroutinefunction(self.get_async_client):
             client = await self.get_async_client()
         else:
             client = self.get_async_client()
 
+        if self.embedder is None:
+            raise ValueError("embedder is not set.")
+
         embed: EmbeddingResults = await self.embedder.embed_text_async(query)
 
         self.logger.info(f"Retrieve from collection {self.collection_name}...")
-        retrieved: RetrievalResults = await self._aretrieve(
+        retrieved: RetrievalResults = await self._retrieve_async(
             client=client,
             collection_name=self.collection_name,
             query_vector=embed.embeddings[0],

@@ -31,12 +31,14 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
         enable_key_lookups: bool = True,
         embedder: LLMModel | None = None,
         logger: Any | None = None,
+        batch_size: int = 100,
     ):
         super().__init__(
             persistence_directory=persistence_directory,
             collection_name=collection_name,
             embedder=embedder,
             logger=logger,
+            batch_size=batch_size,
         )
         self.ndim = ndim
         self.metric = metric
@@ -121,6 +123,8 @@ class UsearchLocalCollectionModule(BaseLocalCollectionModule):
             ids=ids,
             metadatas=[m | {"document": doc} for m, doc in zip(metadatas, documents, strict=True)],
         )
+
+        self._save_on_last(client)
 
         return
 
