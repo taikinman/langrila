@@ -13,6 +13,7 @@ jobs:
     - name: Install poetry
       uses: snok/install-poetry@v1
       with:
+        version: 1.8.5
         plugins: poetry-dynamic-versioning[plugin]
     - name: Build and publish
       env:
