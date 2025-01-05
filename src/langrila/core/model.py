@@ -5,8 +5,6 @@ from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence
 from .client import LLMClient
 from .embedding import EmbeddingResults
 from .logger import DEFAULT_LOGGER as default_logger
-from .memory import BaseConversationMemory
-from .message import Message
 from .prompt import (
     AudioPrompt,
     ImagePrompt,
@@ -61,7 +59,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
     def __init__(
         self,
         client: LLMClient[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool],
-        conversation_memory: BaseConversationMemory | None = None,
         system_instruction: SystemPrompt | None = None,
         tools: list[Callable[..., Any] | Tool] | None = None,
         logger: Logger | None = None,
@@ -69,7 +66,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
     ):
         self.client = client
         self.logger = logger or default_logger
-        self.conversation_memory = conversation_memory
         self.system_instruction = system_instruction
         self.tools = tools or []
         self.init_kwargs = kwargs
@@ -104,9 +100,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        history = self.load_history()
         messages = self._process_user_prompt(messages)
-        history = history + messages
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
@@ -114,8 +108,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             _tools = self._prepare_tools(__tools)
             all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
-        history = self._convert_message_to_list(history)
-        mapped_messages = self._response_to_prompt(history)
+        messages = self._convert_message_to_list(messages)
+        mapped_messages = self._response_to_prompt(messages)
 
         self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
@@ -130,8 +124,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         self.logger.debug(f"Response: {response.contents}")
 
-        history.append(response)
-        self.store_history(history)
         return response
 
     async def generate_text_async(
@@ -161,9 +153,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        history = self.load_history()
         messages = self._process_user_prompt(messages)
-        history = history + messages
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
@@ -171,8 +161,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             _tools = self._prepare_tools(__tools)
             all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
-        history = self._convert_message_to_list(history)
-        mapped_messages = self._response_to_prompt(history)
+        messages = self._convert_message_to_list(messages)
+        mapped_messages = self._response_to_prompt(messages)
 
         self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
@@ -186,9 +176,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         response = await self.client.generate_text_async(prompt, _system_instruction, **all_kwargs)
 
         self.logger.debug(f"Response: {response.contents}")
-
-        history.append(response)
-        self.store_history(history)
 
         return response
 
@@ -219,9 +206,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        history = self.load_history()
         messages = self._process_user_prompt(messages)
-        history = history + messages
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
@@ -229,8 +214,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             _tools = self._prepare_tools(__tools)
             all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
-        history = self._convert_message_to_list(history)
-        mapped_messages = self._response_to_prompt(history)
+        messages = self._convert_message_to_list(messages)
+        mapped_messages = self._response_to_prompt(messages)
 
         self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
@@ -251,9 +236,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
                 yield chunk
         else:
             raise ValueError(f"Expected a generator, but got {type(streamed_response)}")
-
-        history.append(chunk)
-        self.store_history(history)
 
     async def stream_text_async(
         self,
@@ -282,9 +264,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        history = self.load_history()
         messages = self._process_user_prompt(messages)
-        history = history + messages
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
@@ -292,8 +272,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             _tools = self._prepare_tools(__tools)
             all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
 
-        history = self._convert_message_to_list(history)
-        mapped_messages = self._response_to_prompt(history)
+        messages = self._convert_message_to_list(messages)
+        mapped_messages = self._response_to_prompt(messages)
 
         self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
@@ -315,9 +295,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         else:
             raise ValueError(f"Expected a async generator, but got {type(streamed_response)}")
 
-        history.append(chunk)
-        self.store_history(history)
-
     def generate_image(self, prompt: str, **kwargs: Any) -> Response:
         """
         Generate an image based on the given prompt.
@@ -335,14 +312,10 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated image.
         """
-        history = self.load_history()
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Generating image")
         response = self.client.generate_image(prompt, **all_kwargs)
-
-        history.append(response)
-        self.store_history(history)
 
         return response
 
@@ -363,14 +336,10 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated image.
         """
-        history = self.load_history()
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
         self.logger.info("Generating image")
         response = await self.client.generate_image_async(prompt, **all_kwargs)
-
-        history.append(response)
-        self.store_history(history)
 
         return response
 
@@ -404,14 +373,12 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated audio.
         """
-        history = self.load_history()
         messages = self._process_user_prompt(messages)
-        history = history + messages
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
-        history = self._convert_message_to_list(history)
-        mapped_messages = self._response_to_prompt(history)
+        messages = self._convert_message_to_list(messages)
+        mapped_messages = self._response_to_prompt(messages)
 
         self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
@@ -423,9 +390,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         self.logger.info("Generating audio")
         response = self.client.generate_audio(prompt, _system_instruction, **all_kwargs)
-
-        history.append(response)
-        self.store_history(history)
 
         return response
 
@@ -453,14 +417,12 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated audio.
         """
-        history = self.load_history()
         messages = self._process_user_prompt(messages)
-        history = history + messages
 
         all_kwargs: Any = {**self.init_kwargs, **kwargs}
 
-        history = self._convert_message_to_list(history)
-        mapped_messages = self._response_to_prompt(history)
+        messages = self._convert_message_to_list(messages)
+        mapped_messages = self._response_to_prompt(messages)
 
         self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
@@ -472,9 +434,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
 
         self.logger.info("Generating audio")
         response = await self.client.generate_audio_async(prompt, _system_instruction, **all_kwargs)
-
-        history.append(response)
-        self.store_history(history)
 
         return response
 
@@ -537,6 +496,10 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         """
         messages: list[Prompt] = []
         for _msg_or_res in msg_or_res:
+            if isinstance(_msg_or_res, Prompt):
+                messages.append(_msg_or_res)
+                continue
+
             contents: list[PromptType] = []
 
             for content in _msg_or_res.contents or []:
@@ -589,27 +552,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             else:
                 raise ValueError(f"Invalid tool type: {type(tool)}")
         return outputs
-
-    def store_history(self, messages: list[Prompt | Response]) -> None:
-        if self.conversation_memory is not None:
-            self.conversation_memory.store(
-                [
-                    m.model_dump(
-                        include={"role", "contents", "name", "type"}, exclude={"raw", "usage"}
-                    )
-                    for m in messages
-                    if m.contents
-                ]
-            )
-
-    def load_history(self) -> list[Prompt | Response]:
-        if self.conversation_memory is not None:
-            messages = self.conversation_memory.load()
-            return [
-                Message[eval(m["type"])].model_validate({"message": m}).message  # type: ignore[misc]
-                for m in messages
-            ]
-        return []
 
     def _process_user_prompt(self, prompt: LLMInput) -> list[Prompt | Response]:
         if isinstance(prompt, (Prompt, Response)):
