@@ -90,10 +90,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
     def __init__(
         self,
-        client: LLMClient[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool]
-        | None = None,
-        llm: LLMModel[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool]
-        | None = None,
+        client: LLMClient[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool],
         tools: list[Callable[..., Any] | Tool] | None = None,
         subagents: list["Agent"] | None = None,  # type: ignore
         agent_config: AgentConfig | None = None,
@@ -120,17 +117,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self._name = "root"
         self._usage: NamedUsage
 
-        if llm is not None:
-            self.llm = llm
-
-        else:
-            assert client is not None, "Either client or llm must be provided"
-
-            self.llm = LLMModel(
-                client=client,
-                logger=logger,
-                system_instruction=system_instruction,
-            )
+        self.llm = LLMModel(
+            client=client,
+            logger=logger,
+            system_instruction=system_instruction,
+        )
 
         self.tools = self._setup_all_tools(
             tools=tools,
