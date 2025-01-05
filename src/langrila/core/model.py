@@ -43,8 +43,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
     ----------
     client : LLMClient
         Client to interact with.
-    conversation_memory : BaseConversationMemory, optional
-        Conversation memory to store and load conversation history, by default None.
     system_instruction : SystemPrompt, optional
         System instruction to generate text, by default None.
     tools : list[Callable[..., Any] | Tool], optional
