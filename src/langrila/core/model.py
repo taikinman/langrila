@@ -501,6 +501,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             return [prompt]
         elif isinstance(prompt, (str, PromptType)):
             return [Prompt(role="user", contents=prompt)]
+        elif isinstance(prompt, ResponseType):
+            return [Response(role="assistant", contents=[prompt])]
         elif isinstance(prompt, list):
             include_prompt_or_response = False
             include_content = False
@@ -524,6 +526,5 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
                 raise ValueError("Invalid prompt type")
 
             return messages
-
         else:
-            raise ValueError(f"Invalid prompt type: {type(prompt)}")
+            raise ValueError("Invalid prompt type. Please provide the correct prompt type.")

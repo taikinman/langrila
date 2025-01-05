@@ -226,7 +226,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         return base_usage + usage_subagent
 
     def _make_planning_prompt_contnet(self, prompt: AgentInput) -> list[TextPrompt]:
-        processed_prompt = self._process_user_prompt(prompt)
+        processed_prompt = self.llm._process_user_prompt(prompt)
 
         user_input = "\n".join(
             [
@@ -416,7 +416,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 )
             )
         else:
-            messages.extend(self._process_user_prompt(prompt))
+            messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
@@ -549,7 +549,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 )
             )
         else:
-            messages.extend(self._process_user_prompt(prompt))
+            messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
@@ -684,7 +684,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 )
             )
         else:
-            messages.extend(self._process_user_prompt(prompt))
+            messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
@@ -816,7 +816,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 )
             )
         else:
-            messages.extend(self._process_user_prompt(prompt))
+            messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
             max_error_retries=self.max_error_retries,
@@ -957,7 +957,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         """
         all_kwargs = {**self.init_kwargs, **kwargs}
         messages = self.load_history()
-        messages.extend(self._process_user_prompt(prompt))
+        messages.extend(self.llm._process_user_prompt(prompt))
         response = self.llm.generate_audio(messages, **all_kwargs)
 
         messages.append(response)
@@ -989,7 +989,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         all_kwargs = {**self.init_kwargs, **kwargs}
         messages = self.load_history()
 
-        messages.extend(self._process_user_prompt(prompt))
+        messages.extend(self.llm._process_user_prompt(prompt))
         response = await self.llm.generate_audio_async(messages, **all_kwargs)
 
         messages.append(response)
@@ -1003,39 +1003,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
     async def embed_text_async(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
         all_kwargs = {**self.init_kwargs, **kwargs}
         return await self.llm.embed_text_async(texts, **all_kwargs)
-
-    def _process_user_prompt(self, prompt: AgentInput) -> list[Prompt | Response]:
-        if isinstance(prompt, (Prompt, Response)):
-            return [prompt]
-        elif isinstance(prompt, (str, PromptType)):
-            return [Prompt(role="user", contents=prompt)]
-        elif isinstance(prompt, ResponseType):
-            return [Response(role="assistant", contents=[prompt], usage=Usage())]
-        elif isinstance(prompt, list):
-            include_prompt_or_response = False
-            include_content = False
-
-            for p in prompt:
-                if isinstance(p, (Prompt, Response)):
-                    include_prompt_or_response = True
-                elif isinstance(p, (str, PromptType)):
-                    include_content = True
-
-            if include_prompt_or_response and include_content:
-                raise ValueError(
-                    "Prompt types or roles are ambiguous. Don't mix Prompt/Response and str/content."
-                )
-
-            if include_prompt_or_response:
-                messages = prompt
-            elif include_content:
-                messages = [Prompt(role="user", contents=prompt)]
-            else:
-                raise ValueError("Invalid prompt type")
-
-            return messages
-        else:
-            raise ValueError("Invalid prompt type. Please provide the correct prompt type.")
 
     def _is_tool_call_response(self, content: ResponseType) -> bool:
         if isinstance(content, ToolCallResponse):
