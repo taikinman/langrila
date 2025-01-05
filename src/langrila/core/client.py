@@ -88,7 +88,7 @@ class LLMClient(ABC, Generic[ClientMessage, ClientSystemMessage, ClientMessageCo
 
         Returns
         ----------
-        Any
+        ClientMessage | list[ClientMessage]
             Client-specific message representation.
         """
         raise NotImplementedError
@@ -116,7 +116,7 @@ class LLMClient(ABC, Generic[ClientMessage, ClientSystemMessage, ClientMessageCo
 
         Returns
         ----------
-        list[Any]
+        list[ClientTool]
             List of client-specific tool representations.
         """
         raise NotImplementedError
@@ -143,7 +143,7 @@ class LLMClient(ABC, Generic[ClientMessage, ClientSystemMessage, ClientMessageCo
 
         Returns
         ----------
-        ClientMessage
+        ClientSystemMessage
             List of messages with the system instruction.
         """
         raise NotImplementedError
