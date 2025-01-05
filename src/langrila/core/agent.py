@@ -1170,6 +1170,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             )
         ]
 
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}(name={self._name})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 def _generate_dynamic_tool_as_agent(
     agent: Agent,  # type: ignore
