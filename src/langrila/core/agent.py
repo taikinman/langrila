@@ -141,6 +141,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             subagents=subagents,
         )
 
+        self._check_memory_identity()
+
         self.init_kwargs = kwargs
 
     def _gather_subagent_usage(self) -> NamedUsage:
@@ -163,6 +165,28 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 )
 
         return all_usages
+
+    def _check_memory_identity(self) -> None:
+        """
+        Check if the conversation memory instance is not the same as the one used in other agent and subagent.
+        If the memory instance is shared, then raise an error.
+        """
+
+        def _get_all_memories(agent: "Agent") -> list[BaseConversationMemory]:
+            memories = [agent.conversation_memory]
+            for subagent in agent.subagents or []:
+                if isinstance(subagent, Agent):
+                    memories += _get_all_memories(subagent)
+            return memories
+
+        memories = _get_all_memories(self)
+        n_memories = len(memories)
+        for i in range(n_memories):
+            for j in range(i + 1, n_memories):
+                if memories[i] is memories[j]:
+                    raise ValueError(
+                        "The conversation memory instance must not be shared among agents and subagents."
+                    )
 
     def _recurse_setup_subagent(
         self,
