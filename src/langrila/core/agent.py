@@ -8,6 +8,7 @@ from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, 
 
 from pydantic_core import ValidationError
 
+from ..memory.in_memory import InMemoryConversationMemory
 from ..utils import get_variable_name_inspect
 from ._context import AgentInternalContext
 from .client import LLMClient
@@ -154,12 +155,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         subagent: "Agent",  # type: ignore
     ) -> None:
         def _setup_subagent(subagent: "Agent") -> None:  # type: ignore
-            # If conversation_memory is provided to the subagent, then it's overridden by the,
-            # conversation_memory of the orchestrator agent.
-            subagent.conversation_memory = self.conversation_memory
-
-            # Internal conversaion history of the subagent isn't stored but input.
-            subagent._store_conversation = False
+            # If conversation_memory is not provided, then the subagent uses InMemoryConversationMemory.
+            # Each subagent always need own conversation memory because the state within the multi-agent is kept or updated
+            # based on the conversation history and response schema if specified.
+            if subagent.conversation_memory is None:
+                subagent.conversation_memory = InMemoryConversationMemory()
 
             # override logger of the subagent
             subagent.logger = subagent.llm.logger = self.logger
