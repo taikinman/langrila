@@ -73,6 +73,33 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         if system_instruction:
             self.init_kwargs["system_instruction"] = system_instruction
 
+    def _prepare_client_request(
+        self,
+        messages: LLMInput,
+        system_instruction: SystemPrompt | None = None,
+        tools: list[Callable[..., Any] | Tool] | None = None,
+        **kwargs: Any,
+    ) -> tuple[list[ClientMessage], ClientSystemMessage | None, Any]:
+        messages = self._process_user_prompt(messages)
+
+        all_kwargs: Any = {**self.init_kwargs, **kwargs}
+
+        if __tools := tools or self.tools:
+            _tools = self._prepare_tools(__tools)
+            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
+
+        messages = self._convert_message_to_list(messages)
+        mapped_messages = self._response_to_prompt(messages)
+
+        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
+
+        prompt = self.client.map_to_client_prompts(mapped_messages)
+        _system_instruction = self.client._setup_system_instruction(
+            system_instruction or self.system_instruction
+        )
+
+        return prompt, _system_instruction, all_kwargs
+
     def generate_text(
         self,
         messages: LLMInput,
@@ -100,23 +127,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        messages = self._process_user_prompt(messages)
-
-        all_kwargs: Any = {**self.init_kwargs, **kwargs}
-
-        if __tools := tools or self.tools:
-            _tools = self._prepare_tools(__tools)
-            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
-
-        messages = self._convert_message_to_list(messages)
-        mapped_messages = self._response_to_prompt(messages)
-
-        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
-
-        # self.logger.debug("Mapping Prompt to client-specific representation")
-        prompt = self.client.map_to_client_prompts(mapped_messages)
-        _system_instruction = self.client._setup_system_instruction(
-            system_instruction or self.system_instruction
+        prompt, _system_instruction, all_kwargs = self._prepare_client_request(
+            messages, system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
@@ -153,23 +165,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        messages = self._process_user_prompt(messages)
-
-        all_kwargs: Any = {**self.init_kwargs, **kwargs}
-
-        if __tools := tools or self.tools:
-            _tools = self._prepare_tools(__tools)
-            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
-
-        messages = self._convert_message_to_list(messages)
-        mapped_messages = self._response_to_prompt(messages)
-
-        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
-
-        # self.logger.debug("Mapping Prompt to client-specific representation")
-        prompt = self.client.map_to_client_prompts(mapped_messages)
-        _system_instruction = self.client._setup_system_instruction(
-            system_instruction or self.system_instruction
+        prompt, _system_instruction, all_kwargs = self._prepare_client_request(
+            messages, system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
@@ -206,23 +203,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        messages = self._process_user_prompt(messages)
-
-        all_kwargs: Any = {**self.init_kwargs, **kwargs}
-
-        if __tools := tools or self.tools:
-            _tools = self._prepare_tools(__tools)
-            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
-
-        messages = self._convert_message_to_list(messages)
-        mapped_messages = self._response_to_prompt(messages)
-
-        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
-
-        # self.logger.debug("Mapping Prompt to client-specific representation")
-        prompt = self.client.map_to_client_prompts(mapped_messages)
-        _system_instruction = self.client._setup_system_instruction(
-            system_instruction or self.system_instruction
+        prompt, _system_instruction, all_kwargs = self._prepare_client_request(
+            messages, system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
@@ -264,23 +246,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated text.
         """
-        messages = self._process_user_prompt(messages)
-
-        all_kwargs: Any = {**self.init_kwargs, **kwargs}
-
-        if __tools := tools or self.tools:
-            _tools = self._prepare_tools(__tools)
-            all_kwargs["tools"] = self.client.map_to_client_tools(tools=_tools)
-
-        messages = self._convert_message_to_list(messages)
-        mapped_messages = self._response_to_prompt(messages)
-
-        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
-
-        # self.logger.debug("Mapping Prompt to client-specific representation")
-        prompt = self.client.map_to_client_prompts(mapped_messages)
-        _system_instruction = self.client._setup_system_instruction(
-            system_instruction or self.system_instruction
+        prompt, _system_instruction, all_kwargs = self._prepare_client_request(
+            messages, system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
@@ -373,19 +340,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated audio.
         """
-        messages = self._process_user_prompt(messages)
-
-        all_kwargs: Any = {**self.init_kwargs, **kwargs}
-
-        messages = self._convert_message_to_list(messages)
-        mapped_messages = self._response_to_prompt(messages)
-
-        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
-
-        # self.logger.debug("Mapping Prompt to client-specific representation")
-        prompt = self.client.map_to_client_prompts(mapped_messages)
-        _system_instruction = self.client._setup_system_instruction(
-            system_instruction or self.system_instruction
+        prompt, _system_instruction, all_kwargs = self._prepare_client_request(
+            messages, system_instruction, None, **kwargs
         )
 
         self.logger.info("Generating audio")
@@ -417,19 +373,8 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         Response
             Generated audio.
         """
-        messages = self._process_user_prompt(messages)
-
-        all_kwargs: Any = {**self.init_kwargs, **kwargs}
-
-        messages = self._convert_message_to_list(messages)
-        mapped_messages = self._response_to_prompt(messages)
-
-        self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
-
-        # self.logger.debug("Mapping Prompt to client-specific representation")
-        prompt = self.client.map_to_client_prompts(mapped_messages)
-        _system_instruction = self.client._setup_system_instruction(
-            system_instruction or self.system_instruction
+        prompt, _system_instruction, all_kwargs = self._prepare_client_request(
+            messages, system_instruction, None, **kwargs
         )
 
         self.logger.info("Generating audio")
