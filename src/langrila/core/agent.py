@@ -253,7 +253,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         params_constructor_only = {
             "tools",
             "subagents",
-            "response_schema_as_tool",
             "logger",
             "agent_config",
         }
