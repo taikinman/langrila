@@ -54,7 +54,14 @@ def format_validation_error_msg(e: ValidationError, tool_name: str) -> str:
 @dataclass(init=False)  # to apply pydantic TypeAdapter
 class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool]):
     """
-    The Agent class is the main class to interact with the model and tools.
+    The Agent class is the main class to interact with the model and tools. Agent is responsible for
+    managing the conversation flow and the interaction with the model and tools looping through the process as needed.
+    The agent can be used to generate text, image, audio, and embed text.
+    The agent can also be used to stream text response from the model.
+
+    When running tools, the agent validates the input arguments based on the schema validator of the tool.
+    If an error occurs during the validation, the agent retries the tool call with the error message.
+    The agent retries the tool call until the maximum error retries count is reached.
 
     Parameters
     ----------
@@ -70,6 +77,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         Subagents are treated as tools in the parent agent, which is prepared dynamically.
         Tool name is generated based on the subagent's variable name, e.g., route_{subagent_variable_name}.
         Please be careful for the conflict of the tool name in the global namespace.
+
+        If you don't specify the conversation memory for subagent, InMemoryConversationMemory is internally
+        used in default, which is not persisted automatically.
+        Each subagent always need own conversation memory because the state within the multi-agent is kept or updated
+        based on the conversation history and response schema if specified. Please be aware of using internal memory
+        even if you don't specify the conversation memory for the subagent.
     agent_config : AgentConfig, optional
         The internal configuration of the agent, by default None.
     conversation_memory : BaseConversationMemory, optional
