@@ -81,8 +81,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         If you don't specify the conversation memory for subagent, InMemoryConversationMemory is internally
         used in default, which is not persisted automatically.
         Each subagent always need own conversation memory because the state within the multi-agent is kept or updated
-        based on the conversation history (and response schema if specified). Please be aware of using internal memory
-        even if you don't specify the conversation memory for the subagent.
+        based on the conversation history (and response schema if specified), and the scope of the state is limited
+        by the dependencies between agent. Please be aware of using internal memory even if you don't specify
+        the conversation memory for the subagent.
     agent_config : AgentConfig, optional
         The internal configuration of the agent, by default None.
     conversation_memory : BaseConversationMemory, optional
