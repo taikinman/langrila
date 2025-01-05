@@ -8,6 +8,7 @@ from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, 
 
 from pydantic_core import ValidationError
 
+from ..memory.in_memory import InMemoryConversationMemory
 from ..utils import get_variable_name_inspect
 from ._context import AgentInternalContext
 from .client import LLMClient
@@ -53,7 +54,14 @@ def format_validation_error_msg(e: ValidationError, tool_name: str) -> str:
 @dataclass(init=False)  # to apply pydantic TypeAdapter
 class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool]):
     """
-    The Agent class is the main class to interact with the model and tools.
+    The Agent class is the main class to interact with the model and tools. Agent is responsible for
+    managing the conversation flow and the interaction with the model and tools looping through the process as needed.
+    The agent can be used to generate text, image, audio, and embed text.
+    The agent can also be used to stream text response from the model.
+
+    When running tools, the agent validates the input arguments based on the schema validator of the tool.
+    If an error occurs during the validation, the agent retries the tool call with the error message.
+    The agent retries the tool call until the maximum error retries count is reached.
 
     Parameters
     ----------
@@ -69,6 +77,13 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         Subagents are treated as tools in the parent agent, which is prepared dynamically.
         Tool name is generated based on the subagent's variable name, e.g., route_{subagent_variable_name}.
         Please be careful for the conflict of the tool name in the global namespace.
+
+        If you don't specify the conversation memory for subagent, InMemoryConversationMemory is internally
+        used in default, which is not persisted automatically.
+        Each subagent always need own conversation memory because the state within the multi-agent is kept or updated
+        based on the conversation history (and response schema if specified), and the scope of the state is limited
+        by the dependencies between agent. Please be aware of using internal memory even if you don't specify
+        the conversation memory for the subagent.
     agent_config : AgentConfig, optional
         The internal configuration of the agent, by default None.
     conversation_memory : BaseConversationMemory, optional
@@ -126,6 +141,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             subagents=subagents,
         )
 
+        self._check_memory_identity()
+
         self.init_kwargs = kwargs
 
     def _gather_subagent_usage(self) -> NamedUsage:
@@ -149,17 +166,38 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         return all_usages
 
+    def _check_memory_identity(self) -> None:
+        """
+        Check if the conversation memory instance is not the same as the one used in other agent and subagent.
+        If the memory instance is shared, then raise an error.
+        """
+
+        def _get_all_memories(agent: "Agent") -> list[BaseConversationMemory]:
+            memories = [agent.conversation_memory]
+            for subagent in agent.subagents or []:
+                if isinstance(subagent, Agent):
+                    memories += _get_all_memories(subagent)
+            return memories
+
+        memories = _get_all_memories(self)
+        n_memories = len(memories)
+        for i in range(n_memories):
+            for j in range(i + 1, n_memories):
+                if memories[i] is memories[j]:
+                    raise ValueError(
+                        "The conversation memory instance must not be shared among agents and subagents."
+                    )
+
     def _recurse_setup_subagent(
         self,
         subagent: "Agent",  # type: ignore
     ) -> None:
         def _setup_subagent(subagent: "Agent") -> None:  # type: ignore
-            # If conversation_memory is provided to the subagent, then it's overridden by the,
-            # conversation_memory of the orchestrator agent.
-            subagent.conversation_memory = self.conversation_memory
-
-            # Internal conversaion history of the subagent isn't stored but input.
-            subagent._store_conversation = False
+            # If conversation_memory is not provided, then the subagent uses InMemoryConversationMemory.
+            # Each subagent always need own conversation memory because the state within the multi-agent is kept or updated
+            # based on the conversation history and response schema if specified.
+            if subagent.conversation_memory is None:
+                subagent.conversation_memory = InMemoryConversationMemory()
 
             # override logger of the subagent
             subagent.logger = subagent.llm.logger = self.logger
@@ -1156,6 +1194,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 schema_dict=response_schema_as_tool,
             )
         ]
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}(name={self._name})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 def _generate_dynamic_tool_as_agent(
