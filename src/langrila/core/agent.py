@@ -59,8 +59,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
     ----------
     client : LLMClient[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool], optional
         The client instance to interact with the model, by default None.
-    llm : LLMModel[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool], optional
-        The LLMModel instance to interact with the model, by default None.
     tools : list[Callable[..., Any] | Tool], optional
         The list of tools to be used in the conversation, by default None.
         Schema of the tool is generated based on the function signature and docstring.
