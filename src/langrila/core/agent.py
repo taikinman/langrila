@@ -123,11 +123,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         if llm is not None:
             self.llm = llm
 
-            if conversation_memory is not None and self.llm.conversation_memory is not None:
-                # If both conversation_memory and llm.conversation_memory are provided,
-                # then llm.conversation_memory will be ignored.
-                self.llm.conversation_memory = None
-
         else:
             assert client is not None, "Either client or llm must be provided"
 
@@ -135,7 +130,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 client=client,
                 logger=logger,
                 system_instruction=system_instruction,
-                # **kwargs,
             )
 
         self.tools = self._setup_all_tools(
