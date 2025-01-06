@@ -68,9 +68,6 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self.tools = tools or []
         self.init_kwargs = kwargs
 
-        if system_instruction:
-            self.init_kwargs["system_instruction"] = system_instruction
-
     def _prepare_client_request(
         self,
         messages: LLMInput,
@@ -92,9 +89,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
         self.logger.debug(f"Prompt: {mapped_messages[-1].contents}")
 
         prompt = self.client.map_to_client_prompts(mapped_messages)
-        _system_instruction = self.client._setup_system_instruction(
-            system_instruction or self.system_instruction
-        )
+        _system_instruction = self.client._setup_system_instruction(system_instruction)
 
         return prompt, _system_instruction, all_kwargs
 
@@ -126,7 +121,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Generated text.
         """
         prompt, _system_instruction, all_kwargs = self._prepare_client_request(
-            messages, system_instruction, tools, **kwargs
+            messages, system_instruction or self.system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
@@ -164,7 +159,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Generated text.
         """
         prompt, _system_instruction, all_kwargs = self._prepare_client_request(
-            messages, system_instruction, tools, **kwargs
+            messages, system_instruction or self.system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
@@ -202,7 +197,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Generated text.
         """
         prompt, _system_instruction, all_kwargs = self._prepare_client_request(
-            messages, system_instruction, tools, **kwargs
+            messages, system_instruction or self.system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
@@ -245,7 +240,7 @@ class LLMModel(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent,
             Generated text.
         """
         prompt, _system_instruction, all_kwargs = self._prepare_client_request(
-            messages, system_instruction, tools, **kwargs
+            messages, system_instruction or self.system_instruction, tools, **kwargs
         )
 
         self.logger.info("{name}: Generating text".format(name=all_kwargs.get("name", "root")))
