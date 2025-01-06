@@ -9,7 +9,6 @@ from ..core.tool import JsonSchemaHandler
 def recurse_transform_type_to_upper(schema: dict[str, Any]) -> dict[str, Any]:
     new_schema = copy.deepcopy(schema)
     if isinstance(new_schema, dict):
-        new_schema.pop("title", None)
         for key, value in new_schema.items():
             if isinstance(value, dict):
                 new_schema[key] = recurse_transform_type_to_upper(value)
