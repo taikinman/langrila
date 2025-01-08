@@ -97,6 +97,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         The system instruction. If provided, then it's used as a system instruction in the conversation, by default None.
     planning : bool, optional
         If True, the agent makes a plan to answer the user's question/requirement at the first step, by default False.
+    use_last_n_turns : int, optional
+        The number of turns to consider in the conversation history, by default -1, which means use all the history.
+        If 0, no conversation history is used but the memory is still updated.
     **kwargs : Any
         The additional keyword arguments to be passed to the LLMModel instance.
     """
@@ -112,6 +115,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         response_schema_as_tool: BaseModel | None = None,
         system_instruction: SystemPrompt | None = None,
         planning: bool = False,
+        use_last_n_turns: int = -1,
         **kwargs: Any,
     ):
         self._client = client
@@ -129,6 +133,10 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self.__no_tool_use_retry_prompt = self.agent_config.internal_prompt.no_tool_use_retry
         self._name = "root"
         self._usage: NamedUsage
+
+        if use_last_n_turns < -1:
+            raise ValueError("use_last_n_turns must be greater than or equal to 0.")
+        self.use_last_n_turns = use_last_n_turns
 
         self.llm = LLMModel(
             client=client,
@@ -388,6 +396,19 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         return [planning_message, response, next_turn_message]
 
+    def _flatten_history(self, messages: list[list[Prompt | Response]]) -> list[Prompt | Response]:
+        return sum(messages, [])
+
+    def _pick_last_n_turns_history(
+        self, messages: list[list[Prompt | Response]]
+    ) -> list[list[Prompt | Response]]:
+        if self.use_last_n_turns == -1:
+            return messages
+        elif self.use_last_n_turns == 0:
+            return []
+        else:
+            return messages[-self.use_last_n_turns :]
+
     def generate_text(
         self,
         prompt: AgentInput,
@@ -430,7 +451,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
         _tools_dict = self._get_tools_dict(_tools)
 
-        messages = self.load_history()
+        messages_list = self.load_history()
+        messages = self._flatten_history(self._pick_last_n_turns_history(messages_list))
+        init_len_messages = len(messages)
 
         if self.planning:
             messages.extend(
@@ -511,7 +534,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         if not ctx:
             raise RetryLimitExceededError()
 
-        self.store_history(messages)
+        messages_list.append(messages[init_len_messages:])
+        self.store_history(messages_list)
 
         if final_result:
             final_result.usage = self._usage
@@ -563,7 +587,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
         _tools_dict = self._get_tools_dict(_tools)
 
-        messages = self.load_history()
+        messages_list = self.load_history()
+        messages = self._flatten_history(self._pick_last_n_turns_history(messages_list))
+        init_len_messages = len(messages)
 
         if self.planning:
             messages.extend(
@@ -644,7 +670,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         if not ctx:
             raise RetryLimitExceededError()
 
-        self.store_history(messages)
+        messages_list.append(messages[init_len_messages:])
+        self.store_history(messages_list)
 
         if final_result:
             final_result.usage = self._usage
@@ -698,7 +725,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
         _tools_dict = self._get_tools_dict(_tools)
 
-        messages = self.load_history()
+        messages_list = self.load_history()
+        messages = self._flatten_history(self._pick_last_n_turns_history(messages_list))
+        init_len_messages = len(messages)
 
         if self.planning:
             messages.extend(
@@ -780,7 +809,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         if not ctx:
             raise RetryLimitExceededError()
 
-        self.store_history(messages)
+        messages_list.append(messages[init_len_messages:])
+        self.store_history(messages_list)
 
         chunk.usage = self._usage
         yield chunk
@@ -830,7 +860,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             _tools += self._prepare_tool_as_response_schema(_response_schema_as_tool)
         _tools_dict = self._get_tools_dict(_tools)
 
-        messages = self.load_history()
+        messages_list = self.load_history()
+        messages = self._flatten_history(self._pick_last_n_turns_history(messages_list))
+        init_len_messages = len(messages)
 
         if self.planning:
             messages.extend(
@@ -912,7 +944,8 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         if not ctx:
             raise RetryLimitExceededError()
 
-        self.store_history(messages)
+        messages_list.append(messages[init_len_messages:])
+        self.store_history(messages_list)
 
         chunk.usage = self._usage
         yield chunk
@@ -982,12 +1015,18 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response from the model containing AudioResponse.
         """
         all_kwargs = {**self.init_kwargs, **kwargs}
-        messages = self.load_history()
+        messages_list = self.load_history()
+        messages = self._flatten_history(self._pick_last_n_turns_history(messages_list))
+        init_len_messages = len(messages)
+
         messages.extend(self.llm._process_user_prompt(prompt))
+
         response = self.llm.generate_audio(messages, **all_kwargs)
 
         messages.append(response)
-        self.store_history(messages)
+
+        messages_list.append(messages[init_len_messages:])
+        self.store_history(messages_list)
         return response
 
     async def generate_audio_async(
@@ -1013,13 +1052,18 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             The response from the model containing AudioResponse.
         """
         all_kwargs = {**self.init_kwargs, **kwargs}
-        messages = self.load_history()
+        messages_list = self.load_history()
+        messages = self._flatten_history(self._pick_last_n_turns_history(messages_list))
+        init_len_messages = len(messages)
 
         messages.extend(self.llm._process_user_prompt(prompt))
+
         response = await self.llm.generate_audio_async(messages, **all_kwargs)
 
         messages.append(response)
-        self.store_history(messages)
+
+        messages_list.append(messages[init_len_messages:])
+        self.store_history(messages_list)
         return response
 
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
@@ -1165,24 +1209,30 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
         return next_turn_message, is_error, final_result
 
-    def store_history(self, messages: list[Prompt | Response]) -> None:
+    def store_history(self, messages: list[list[Prompt | Response]]) -> None:
         if self.conversation_memory is not None and self._store_conversation:
             self.conversation_memory.store(
                 [
-                    m.model_dump(
-                        include={"role", "contents", "name", "type"}, exclude={"raw", "usage"}
-                    )
-                    for m in messages
-                    if m.contents
+                    [
+                        m.model_dump(
+                            include={"role", "contents", "name", "type"}, exclude={"raw", "usage"}
+                        )
+                        for m in messages_one_turn
+                        if m.contents
+                    ]
+                    for messages_one_turn in messages
                 ]
             )
 
-    def load_history(self) -> list[Prompt | Response]:
+    def load_history(self) -> list[list[Prompt | Response]]:
         if self.conversation_memory is not None:
-            messages = self.conversation_memory.load()
+            messages_list = self.conversation_memory.load()
             return [
-                Message[eval(m["type"])].model_validate({"message": m}).message  # type: ignore[misc]
-                for m in messages
+                [
+                    Message[eval(m["type"])].model_validate({"message": m}).message  # type: ignore[misc]
+                    for m in messages
+                ]
+                for messages in messages_list
             ]
         return []
 

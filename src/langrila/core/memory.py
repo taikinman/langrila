@@ -4,9 +4,9 @@ from typing import Any
 
 class BaseConversationMemory(ABC):
     @abstractmethod
-    def store(self, conversation_history: list[dict[str, Any]]) -> None:
+    def store(self, conversation_history: list[list[dict[str, Any]]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def load(self) -> list[dict[str, Any]]:
+    def load(self) -> list[list[dict[str, Any]]]:
         raise NotImplementedError
