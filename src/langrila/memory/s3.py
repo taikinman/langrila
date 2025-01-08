@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import secrets
-from typing import Optional, Union
+from typing import Any, cast
 
 import boto3
 from botocore.client import Config as BotoConfig
@@ -17,17 +17,17 @@ class S3ConversationMemory(BaseConversationMemory):
         self,
         bucket: str,
         *,
-        object_key: Optional[str] = None,
-        region_name: Optional[str] = None,
-        api_version: Optional[str] = None,
-        use_ssl: Optional[bool] = True,
-        verify: Union[str, bool, None] = None,
-        endpoint_url_env_name: Optional[str] = None,
-        aws_access_key_id_env_name: Optional[str] = None,
-        aws_secret_access_key_env_name: Optional[str] = None,
-        aws_session_token_env_name: Optional[str] = None,
-        boto_config: Optional[BotoConfig] = None,
-    ):
+        object_key: str | None = None,
+        region_name: str | None = None,
+        api_version: str | None = None,
+        use_ssl: bool = True,
+        verify: str | bool | None = None,
+        endpoint_url_env_name: str | None = None,
+        aws_access_key_id_env_name: str | None = None,
+        aws_secret_access_key_env_name: str | None = None,
+        aws_session_token_env_name: str | None = None,
+        boto_config: BotoConfig | None = None,
+    ) -> None:
         self.bucket = bucket
         self.object_key = object_key
         self.region_name = region_name
@@ -67,7 +67,7 @@ class S3ConversationMemory(BaseConversationMemory):
             logging.error(f"s3 connect failed:{e}")
             raise
 
-    def store(self, conversation_history: list[dict[str, str]]):
+    def store(self, conversation_history: list[list[dict[str, Any]]]) -> None:
         if self.object_key is None:
             self.object_key = hashlib.sha256(secrets.token_bytes(32)).hexdigest()
         try:
@@ -77,14 +77,14 @@ class S3ConversationMemory(BaseConversationMemory):
             logging.error(f"s3 store failed: {e}")
             raise
 
-    def load(self) -> list[dict[str, str]]:
+    def load(self) -> list[list[dict[str, Any]]]:
         if self.object_key is None:
             return []
         try:
             response = self.s3_client.get_object(Bucket=self.bucket, Key=self.object_key)
             content = response["Body"].read().decode("utf-8")
             conversation_history = json.loads(content)
-            return conversation_history
+            return cast(list[list[dict[str, Any]]], conversation_history)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "NoSuchKey":

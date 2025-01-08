@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, cast
 
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
 
@@ -15,13 +15,16 @@ class CosmosConversationMemory(BaseConversationMemory):
         container_name: str,
         item_name: str,
         partition_key: str | None = None,
-    ):
+    ) -> None:
         self.endpoint = os.getenv(endpoint_env_name)
         self.key = os.getenv(key_env_name)
         self.dbname = os.getenv(db_env_name)
         self.containername = container_name
         self.itemname = item_name
         self.partition_key = partition_key if partition_key else f"{container_name}"
+
+        if not self.endpoint or not self.key or not self.dbname:
+            raise ValueError("Please provide the endpoint, key, and database name for Cosmos DB.")
 
         # Create a Cosmos client
         client = CosmosClient(url=self.endpoint, credential=self.key)
@@ -38,8 +41,8 @@ class CosmosConversationMemory(BaseConversationMemory):
 
         self.__stored = False
 
-    def store(self, conversation_history: list[dict[str, Any]]):
-        item = {}
+    def store(self, conversation_history: list[list[dict[str, Any]]]) -> None:
+        item: dict[str, Any] = {}
         item["id"] = self.itemname
         item[self.partition_key] = self.partition_key
         item["history"] = conversation_history
@@ -47,16 +50,15 @@ class CosmosConversationMemory(BaseConversationMemory):
 
         self.__stored = True
 
-    def load(self) -> list[dict[str, Any]]:
-        result = []
+    def load(self) -> list[list[dict[str, Any]]]:
         try:
             history = self.container.read_item(
                 item=self.itemname, partition_key=self.partition_key
             )["history"]
-            return history
+            return cast(list[list[dict[str, Any]]], history)
         except exceptions.CosmosResourceNotFoundError:
             if not self.__stored:
-                return result
+                return []
 
             raise
         except Exception as e:
