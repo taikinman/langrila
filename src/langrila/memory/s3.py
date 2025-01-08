@@ -13,6 +13,36 @@ from ..core.memory import BaseConversationMemory
 
 
 class S3ConversationMemory(BaseConversationMemory):
+    """
+    A conversation memory that stores the conversation history in an S3 bucket.
+    To use this memory, you need to create an S3 bucket in advance.
+
+    Parameters
+    ----------
+    bucket : str
+        The name of the S3 bucket to store the conversation history.
+    object_key : str, optional
+        The key of the object to store the conversation history. If not provided, a random key is generated.
+    region_name : str, optional
+        The region name of the S3 bucket, by default None.
+    api_version : str, optional
+        The API version of the S3 client, by default None.
+    use_ssl : bool, optional
+        Whether to use SSL for the S3 client, by default True.
+    verify : str or bool, optional
+        Whether to verify the SSL certificate for the S3 client, by default None.
+    endpoint_url_env_name : str, optional
+        The environment variable name for the S3 endpoint URL, by default None.
+    aws_access_key_id_env_name : str, optional
+        The environment variable name for the AWS access key ID, by default None.
+    aws_secret_access_key_env_name : str, optional
+        The environment variable name for the AWS secret access key, by default None.
+    aws_session_token_env_name : str, optional
+        The environment variable name for the AWS session token, by default None.
+    boto_config : BotoConfig, optional
+        The configuration for the S3 client, by default None.
+    """
+
     def __init__(
         self,
         bucket: str,
@@ -68,6 +98,15 @@ class S3ConversationMemory(BaseConversationMemory):
             raise
 
     def store(self, conversation_history: list[list[dict[str, Any]]]) -> None:
+        """
+        Store the conversation history in an S3 bucket.
+
+        Parameters
+        ----------
+        conversation_history : list[list[dict[str, Any]]]
+            The conversation history to store. The outer list represents the conversation turns,
+            and the inner list represents the messages in each turn.
+        """
         if self.object_key is None:
             self.object_key = hashlib.sha256(secrets.token_bytes(32)).hexdigest()
         try:
@@ -78,6 +117,16 @@ class S3ConversationMemory(BaseConversationMemory):
             raise
 
     def load(self) -> list[list[dict[str, Any]]]:
+        """
+        Load the conversation history from an S3 bucket. If no history is found, return an empty list.
+        The outer list represents the conversation turns, and the inner list represents the messages
+        in each turn.
+
+        Returns
+        -------
+        list[list[dict[str, Any]]]
+            The conversation history. If no history is found, return an empty list.
+        """
         if self.object_key is None:
             return []
         try:
