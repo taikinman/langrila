@@ -1113,7 +1113,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     )
                     continue
 
-                schema_validator = tool.schema_validator
                 context = tool.context or {}
 
                 try:
@@ -1122,9 +1121,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
                     if tool_name != self.__response_schema_name:
                         assert (
-                            schema_validator is not None
+                            tool.validator is not None
                         ), f"Schema validator is required for tool: {tool_name} but it's NoneType object. "
-                        args = schema_validator.validate_python({**args, **context})
+                        args = tool.validator.validate({**args, **context})
                         tool_result = tool.run(args)
                         next_turn_contents.append(
                             ToolUsePrompt(
