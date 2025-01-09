@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import secrets
-from typing import Optional, Union
+from typing import Any, cast
 
 import boto3
 from botocore.client import Config as BotoConfig
@@ -13,21 +13,51 @@ from ..core.memory import BaseConversationMemory
 
 
 class S3ConversationMemory(BaseConversationMemory):
+    """
+    A conversation memory that stores the conversation history in an S3 bucket.
+    To use this memory, you need to create an S3 bucket in advance.
+
+    Parameters
+    ----------
+    bucket : str
+        The name of the S3 bucket to store the conversation history.
+    object_key : str, optional
+        The key of the object to store the conversation history. If not provided, a random key is generated.
+    region_name : str, optional
+        The region name of the S3 bucket, by default None.
+    api_version : str, optional
+        The API version of the S3 client, by default None.
+    use_ssl : bool, optional
+        Whether to use SSL for the S3 client, by default True.
+    verify : str or bool, optional
+        Whether to verify the SSL certificate for the S3 client, by default None.
+    endpoint_url_env_name : str, optional
+        The environment variable name for the S3 endpoint URL, by default None.
+    aws_access_key_id_env_name : str, optional
+        The environment variable name for the AWS access key ID, by default None.
+    aws_secret_access_key_env_name : str, optional
+        The environment variable name for the AWS secret access key, by default None.
+    aws_session_token_env_name : str, optional
+        The environment variable name for the AWS session token, by default None.
+    boto_config : BotoConfig, optional
+        The configuration for the S3 client, by default None.
+    """
+
     def __init__(
         self,
         bucket: str,
         *,
-        object_key: Optional[str] = None,
-        region_name: Optional[str] = None,
-        api_version: Optional[str] = None,
-        use_ssl: Optional[bool] = True,
-        verify: Union[str, bool, None] = None,
-        endpoint_url_env_name: Optional[str] = None,
-        aws_access_key_id_env_name: Optional[str] = None,
-        aws_secret_access_key_env_name: Optional[str] = None,
-        aws_session_token_env_name: Optional[str] = None,
-        boto_config: Optional[BotoConfig] = None,
-    ):
+        object_key: str | None = None,
+        region_name: str | None = None,
+        api_version: str | None = None,
+        use_ssl: bool = True,
+        verify: str | bool | None = None,
+        endpoint_url_env_name: str | None = None,
+        aws_access_key_id_env_name: str | None = None,
+        aws_secret_access_key_env_name: str | None = None,
+        aws_session_token_env_name: str | None = None,
+        boto_config: BotoConfig | None = None,
+    ) -> None:
         self.bucket = bucket
         self.object_key = object_key
         self.region_name = region_name
@@ -67,7 +97,16 @@ class S3ConversationMemory(BaseConversationMemory):
             logging.error(f"s3 connect failed:{e}")
             raise
 
-    def store(self, conversation_history: list[dict[str, str]]):
+    def store(self, conversation_history: list[list[dict[str, Any]]]) -> None:
+        """
+        Store the conversation history in an S3 bucket.
+
+        Parameters
+        ----------
+        conversation_history : list[list[dict[str, Any]]]
+            The conversation history to store. The outer list represents the conversation turns,
+            and the inner list represents the messages in each turn.
+        """
         if self.object_key is None:
             self.object_key = hashlib.sha256(secrets.token_bytes(32)).hexdigest()
         try:
@@ -77,14 +116,24 @@ class S3ConversationMemory(BaseConversationMemory):
             logging.error(f"s3 store failed: {e}")
             raise
 
-    def load(self) -> list[dict[str, str]]:
+    def load(self) -> list[list[dict[str, Any]]]:
+        """
+        Load the conversation history from an S3 bucket. If no history is found, return an empty list.
+        The outer list represents the conversation turns, and the inner list represents the messages
+        in each turn.
+
+        Returns
+        -------
+        list[list[dict[str, Any]]]
+            The conversation history. If no history is found, return an empty list.
+        """
         if self.object_key is None:
             return []
         try:
             response = self.s3_client.get_object(Bucket=self.bucket, Key=self.object_key)
             content = response["Body"].read().decode("utf-8")
             conversation_history = json.loads(content)
-            return conversation_history
+            return cast(list[list[dict[str, Any]]], conversation_history)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "NoSuchKey":
