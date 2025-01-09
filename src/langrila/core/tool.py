@@ -160,7 +160,7 @@ class FunctionValidator:
         self.description = description
         self.field_descriptions = field_descriptions
         self.model = self._create_model_for_func(func, fields)
-        self.schema = self._create_schema(func, description, fields, self.context)
+        self.schema = self._create_partial_schema(func, description, fields, self.context)
 
     def _get_fields(
         self,
@@ -211,7 +211,7 @@ class FunctionValidator:
     def validate(self, obj: dict[str, Any]) -> dict[str, Any]:
         return self.model.model_validate({**obj, **self.context}).__dict__
 
-    def _create_schema(
+    def _create_partial_schema(
         self,
         func: Callable[..., Any],
         description: str,
