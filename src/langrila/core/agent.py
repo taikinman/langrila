@@ -505,9 +505,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 if is_error:
                     ctx.increment_error_retries_count()
                     ctx.increment_repeat_tool_call_count()
-                    messages.append(
-                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
-                    )
                 else:
                     ctx.reset_error_retries_count()
 
@@ -641,9 +638,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 if is_error:
                     ctx.increment_error_retries_count()
                     ctx.increment_repeat_tool_call_count()
-                    messages.append(
-                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
-                    )
                 else:
                     ctx.reset_error_retries_count()
 
@@ -780,9 +774,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 if is_error:
                     ctx.increment_error_retries_count()
                     ctx.increment_repeat_tool_call_count()
-                    messages.append(
-                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
-                    )
                 else:
                     ctx.reset_error_retries_count()
 
@@ -915,9 +906,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                 if is_error:
                     ctx.increment_error_retries_count()
                     ctx.increment_repeat_tool_call_count()
-                    messages.append(
-                        Prompt(contents=[TextPrompt(text=self.retry_prompt)], role="user")
-                    )
                 else:
                     ctx.reset_error_retries_count()
 
@@ -1198,6 +1186,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     )
 
                     is_error = True
+
+        if is_error:
+            next_turn_contents.append(TextPrompt(text=self.retry_prompt))
 
         if len(next_turn_contents) != 0:
             next_turn_message = Prompt(contents=next_turn_contents, role="user")
