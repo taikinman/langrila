@@ -610,118 +610,138 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             name=cast(str | None, kwargs.get("name")),
         )
 
-    def map_to_client_prompt(self, message: Prompt) -> Content:
+    def map_to_client_prompts(self, messages: list[Prompt]) -> list[Content]:
         """
-        Map a message to a client-specific representation.
+        Map a message to a provider-specific representation.
 
         Parameters
         ----------
-        message : Prompt
-            Prompt to map.
+        message : list[Prompt]
+            List of prompts to map.
 
         Returns
         ----------
-        Content
-            Client-specific message representation.
+        list[Content]
+            List of provider-specific message representation.
         """
-        parts: list[Part] = []
-        for content in message.contents:
-            if isinstance(content, str):
-                parts.append(Part(text=content))
-            elif isinstance(content, TextPrompt):
-                parts.append(Part(text=content.text))
-            elif isinstance(content, ImagePrompt):
-                parts.append(
-                    Part(
-                        inline_data=Blob(
-                            data=utf8_to_bytes(cast(str, content.image)),
-                            mime_type=f"image/{content.format}",
-                        )
-                    )
-                )
-            elif isinstance(content, PDFPrompt):
-                parts.extend(
-                    [
-                        Part(
-                            inline_data=Blob(
-                                data=utf8_to_bytes(cast(str, img.image)),
-                                mime_type="image/jpeg",
-                            )
-                        )
-                        for img in content.as_image_content()
-                    ]
-                )
-            elif isinstance(content, URIPrompt):
-                parts.append(
-                    Part(file_data=FileData(file_uri=content.uri, mime_type=content.mime_type))
-                )
-            elif isinstance(content, VideoPrompt):
-                parts.extend(
-                    [
-                        Part(
-                            inline_data=Blob(
-                                data=utf8_to_bytes(cast(str, img.image)),
-                                mime_type="image/jpeg",
-                            )
-                        )
-                        for img in content.as_image_content()
-                    ]
-                )
-            elif isinstance(content, AudioPrompt):
-                parts.append(
-                    Part(
-                        inline_data=Blob(
-                            data=utf8_to_bytes(cast(str, content.audio)),
-                            mime_type=content.mime_type,
-                        )
-                    )
-                )
-            elif isinstance(content, ToolCallPrompt):
-                content_args = content.args
-                if isinstance(content_args, str) and content_args:
-                    content_args = json.loads(content_args)
+        mapped_messages: list[Content] = []
+        for message in messages:
+            if not message.contents:
+                continue
 
-                parts.append(
-                    Part(
-                        function_call=FunctionCall(
-                            id=content.call_id
-                            if not self.vertexai
-                            else None,  # VertexAI does not support id
-                            args=content_args,
-                            name=content.name,
-                        )
-                    )
-                )
-            elif isinstance(content, ToolUsePrompt):
-                if content.output:
+            parts: list[Part] = []
+            for content in message.contents:
+                if isinstance(content, str):
+                    parts.append(Part(text=content))
+                elif isinstance(content, TextPrompt):
+                    parts.append(Part(text=content.text))
+                elif isinstance(content, ImagePrompt):
                     parts.append(
                         Part(
-                            function_response=FunctionResponse(
+                            inline_data=Blob(
+                                data=utf8_to_bytes(cast(str, content.image)),
+                                mime_type=f"image/{content.format}",
+                            )
+                        )
+                    )
+                elif isinstance(content, PDFPrompt):
+                    parts.extend(
+                        [
+                            Part(
+                                inline_data=Blob(
+                                    data=utf8_to_bytes(cast(str, img.image)),
+                                    mime_type="image/jpeg",
+                                )
+                            )
+                            for img in content.as_image_content()
+                        ]
+                    )
+                elif isinstance(content, URIPrompt):
+                    parts.append(
+                        Part(file_data=FileData(file_uri=content.uri, mime_type=content.mime_type))
+                    )
+                elif isinstance(content, VideoPrompt):
+                    parts.extend(
+                        [
+                            Part(
+                                inline_data=Blob(
+                                    data=utf8_to_bytes(cast(str, img.image)),
+                                    mime_type="image/jpeg",
+                                )
+                            )
+                            for img in content.as_image_content()
+                        ]
+                    )
+                elif isinstance(content, AudioPrompt):
+                    parts.append(
+                        Part(
+                            inline_data=Blob(
+                                data=utf8_to_bytes(cast(str, content.audio)),
+                                mime_type=content.mime_type,
+                            )
+                        )
+                    )
+                elif isinstance(content, ToolCallPrompt):
+                    content_args = content.args
+                    if isinstance(content_args, str) and content_args:
+                        content_args = json.loads(content_args)
+
+                    parts.append(
+                        Part(
+                            function_call=FunctionCall(
                                 id=content.call_id
                                 if not self.vertexai
                                 else None,  # VertexAI does not support id
+                                args=content_args,
                                 name=content.name,
-                                response={"output": content.output},
                             )
                         )
                     )
-                elif content.error:
-                    parts.append(
-                        Part(
-                            function_response=FunctionResponse(
-                                id=content.call_id
-                                if not self.vertexai
-                                else None,  # VertexAI does not support id
-                                name=content.name,
-                                response={"error": content.error},
+                elif isinstance(content, ToolUsePrompt):
+                    if content.output:
+                        parts.append(
+                            Part(
+                                function_response=FunctionResponse(
+                                    id=content.call_id
+                                    if not self.vertexai
+                                    else None,  # VertexAI does not support id
+                                    name=content.name,
+                                    response={"output": content.output},
+                                )
                             )
                         )
-                    )
+                    elif content.error:
+                        parts.append(
+                            Part(
+                                function_response=FunctionResponse(
+                                    id=content.call_id
+                                    if not self.vertexai
+                                    else None,  # VertexAI does not support id
+                                    name=content.name,
+                                    response={"error": content.error},
+                                )
+                            )
+                        )
 
-        # return parts
-        return Content(role=message.role, parts=parts)
+            mapped_messages.append(Content(role=message.role, parts=parts))
+
+        return mapped_messages
 
     def map_to_client_tools(self, tools: list[Tool], **kwargs: Any) -> list[GeminiTool]:
+        """
+        Map tools to provider-specific representations.
+
+        Parameters
+        ----------
+        tools : list[Tool]
+            List of tools to map.
+
+        Returns
+        ----------
+        list[GeminiTool]
+            List of provider-specific tool representations.
+        """
+
         return [
             GeminiTool(
                 function_declarations=[self.map_to_client_tool(tool=tool) for tool in tools],
