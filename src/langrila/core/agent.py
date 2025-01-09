@@ -2,7 +2,6 @@ import copy
 import inspect
 import json
 import types
-from dataclasses import dataclass
 from logging import Logger
 from typing import Any, AsyncGenerator, Callable, Generator, Generic, Sequence, TypeVar, final
 
@@ -51,7 +50,6 @@ def format_validation_error_msg(e: ValidationError, tool_name: str) -> str:
 
 
 @final
-@dataclass(init=False)  # to apply pydantic TypeAdapter
 class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, ClientTool]):
     """
     The Agent class is the main class to interact with the model and tools. Agent is responsible for
