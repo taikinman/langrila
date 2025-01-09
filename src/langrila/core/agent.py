@@ -1113,8 +1113,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                     )
                     continue
 
-                context = tool.context or {}
-
                 try:
                     args = json.loads(content.args or "{}")
                     self.logger.info(f"Running tool: {tool_name}")
@@ -1123,7 +1121,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                         assert (
                             tool.validator is not None
                         ), f"Schema validator is required for tool: {tool_name} but it's NoneType object. "
-                        args = tool.validator.validate({**args, **context})
+                        args = tool.validator.validate(args)
                         tool_result = tool.run(args)
                         next_turn_contents.append(
                             ToolUsePrompt(
