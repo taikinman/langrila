@@ -474,101 +474,110 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
 
         yield Response(contents=contents, usage=usage, is_last_chunk=True)
 
-    def map_to_client_prompt(self, message: Prompt) -> MessageParam | list[MessageParam]:
+    def map_to_client_prompts(self, messages: list[Prompt]) -> list[MessageParam]:
         """
-        Map a message to a client-specific representation.
+        Map a message to a provider-specific representation.
 
         Parameters
         ----------
-        message : Prompt
-            Prompt to map.
+        message : list[Prompt]
+            List of prompts to map.
 
         Returns
         ----------
-        MessageParam | list[MessageParam]
-            Client-specific message representation.
+        list[MessageParam]
+            List of provider-specific message representation.
         """
-        contents: list[AnthropicContentType] = []
-        for content in message.contents:
-            if isinstance(content, str):
-                contents.append(TextBlockParam(text=content, type="text"))
-            elif isinstance(content, TextPrompt):
-                contents.append(TextBlockParam(text=content.text, type="text"))
-            elif isinstance(content, ToolCallPrompt):
-                contents.append(
-                    ToolUseBlockParam(
-                        id="toolu_" + content.call_id.split("_")[-1],
-                        name=content.name,
-                        input=json.loads(content.args),
-                        type="tool_use",
-                    )
-                )
-            elif isinstance(content, ToolUsePrompt):
-                contents.append(
-                    ToolResultBlockParam(
-                        tool_use_id="toolu_" + content.call_id.split("_")[-1],
-                        type="tool_result",
-                        content=[
-                            TextBlockParam(
-                                text=content.output if content.output else content.error,
-                                type="text",
-                            )
-                        ],
-                        is_error=bool(content.error),
-                    )
-                )
-            elif isinstance(content, ImagePrompt):
-                contents.append(
-                    ImageBlockParam(
-                        source=Source(
-                            data=content.image,
-                            media_type=f"image/{content.format}",
-                            type="base64",
-                        ),
-                        type="image",
-                    ),
-                )
-            elif isinstance(content, VideoPrompt):
-                contents.extend(
-                    [
-                        ImageBlockParam(
-                            source=Source(
-                                data=frame.image,
-                                media_type=f"image/{frame.format}",
-                                type="base64",
-                            ),
-                            type="image",
-                        )
-                        for frame in content.as_image_content()
-                    ]
-                )
-            elif isinstance(content, AudioPrompt):
-                raise NotImplementedError
-            elif isinstance(content, PDFPrompt):
-                contents.extend(
-                    [
-                        ImageBlockParam(
-                            source=Source(
-                                data=page.image,
-                                media_type=f"image/{page.format}",
-                                type="base64",
-                            ),
-                            type="image",
-                        )
-                        for page in content.as_image_content()
-                    ]
-                )
-            elif isinstance(content, URIPrompt):
-                raise NotImplementedError
+        mapped_messages: list[MessageParam] = []
+        for message in messages:
+            if not message.contents:
+                continue
 
-        return MessageParam(
-            role=message.role,
-            content=contents,
-        )
+            contents: list[AnthropicContentType] = []
+            for content in message.contents:
+                if isinstance(content, str):
+                    contents.append(TextBlockParam(text=content, type="text"))
+                elif isinstance(content, TextPrompt):
+                    contents.append(TextBlockParam(text=content.text, type="text"))
+                elif isinstance(content, ToolCallPrompt):
+                    contents.append(
+                        ToolUseBlockParam(
+                            id="toolu_" + content.call_id.split("_")[-1],
+                            name=content.name,
+                            input=json.loads(content.args),
+                            type="tool_use",
+                        )
+                    )
+                elif isinstance(content, ToolUsePrompt):
+                    contents.append(
+                        ToolResultBlockParam(
+                            tool_use_id="toolu_" + content.call_id.split("_")[-1],
+                            type="tool_result",
+                            content=[
+                                TextBlockParam(
+                                    text=content.output if content.output else content.error,
+                                    type="text",
+                                )
+                            ],
+                            is_error=bool(content.error),
+                        )
+                    )
+                elif isinstance(content, ImagePrompt):
+                    contents.append(
+                        ImageBlockParam(
+                            source=Source(
+                                data=content.image,
+                                media_type=f"image/{content.format}",
+                                type="base64",
+                            ),
+                            type="image",
+                        ),
+                    )
+                elif isinstance(content, VideoPrompt):
+                    contents.extend(
+                        [
+                            ImageBlockParam(
+                                source=Source(
+                                    data=frame.image,
+                                    media_type=f"image/{frame.format}",
+                                    type="base64",
+                                ),
+                                type="image",
+                            )
+                            for frame in content.as_image_content()
+                        ]
+                    )
+                elif isinstance(content, AudioPrompt):
+                    raise NotImplementedError
+                elif isinstance(content, PDFPrompt):
+                    contents.extend(
+                        [
+                            ImageBlockParam(
+                                source=Source(
+                                    data=page.image,
+                                    media_type=f"image/{page.format}",
+                                    type="base64",
+                                ),
+                                type="image",
+                            )
+                            for page in content.as_image_content()
+                        ]
+                    )
+                elif isinstance(content, URIPrompt):
+                    raise NotImplementedError
+
+            mapped_messages.append(
+                MessageParam(
+                    role=message.role,
+                    content=contents,
+                )
+            )
+
+        return mapped_messages
 
     def map_to_client_tools(self, tools: list[Tool]) -> list[ToolParam]:
         """
-        Map tools to client-specific representations.
+        Map tools to provider-specific representations.
 
         Parameters
         ----------
@@ -578,7 +587,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         Returns
         ----------
         list[ToolParam]
-            List of client-specific tool representations.
+            List of provider-specific tool representations.
         """
         return [self.map_to_client_tool(tool=tool) for tool in tools]
 

@@ -77,7 +77,7 @@ class LLMClient(ABC, Generic[ClientMessage, ClientSystemMessage, ClientMessageCo
         raise NotImplementedError
 
     @abstractmethod
-    def map_to_client_prompt(self, message: Prompt) -> ClientMessage | list[ClientMessage]:
+    def map_to_client_prompts(self, messages: list[Prompt]) -> list[ClientMessage]:
         """
         Map a message to a client-specific representation.
 
@@ -88,21 +88,10 @@ class LLMClient(ABC, Generic[ClientMessage, ClientSystemMessage, ClientMessageCo
 
         Returns
         ----------
-        ClientMessage | list[ClientMessage]
+        list[ClientMessage]
             Client-specific message representation.
         """
         raise NotImplementedError
-
-    def map_to_client_prompts(self, messages: list[Prompt]) -> list[ClientMessage]:
-        mapped_messages: list[ClientMessage] = []
-        for message in messages:
-            if message.contents:
-                client_prompt = self.map_to_client_prompt(message)
-                if isinstance(client_prompt, list):
-                    mapped_messages.extend(client_prompt)
-                else:
-                    mapped_messages.append(client_prompt)
-        return mapped_messages
 
     @abstractmethod
     def map_to_client_tools(self, tools: list[Tool]) -> list[ClientTool]:

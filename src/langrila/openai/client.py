@@ -717,136 +717,161 @@ class OpenAIClient(
             prompt=_messages,
         )
 
-    def map_to_client_prompt(self, message: Prompt) -> OpenAIMessage | list[OpenAIMessage]:
+    def map_to_client_prompts(self, messages: list[Prompt]) -> list[OpenAIMessage]:
         """
-        Map a message to a client-specific representation.
+        Map a message to a provider-specific representation.
 
         Parameters
         ----------
-        message : Prompt
-            Prompt to map.
+        message : list[Prompt]
+            List of prompts to map.
 
         Returns
         ----------
-        OpenAIMessage | list[OpenAIMessage]
-            Client-specific message representation.
+        list[OpenAIMessage]
+            List of provider-specific message representation.
         """
-        tool_use = False
-        contents: list[OpenAIMessageContentType] = []
-        tool_use_messages: list[OpenAIMessage] = []
-        tool_call_messages: list[ChatCompletionMessageToolCall] = []
-        audio_response: Audio | None = None
-        for content in message.contents:
-            if isinstance(content, str):
-                contents.append(ChatCompletionContentPartTextParam(text=content, type="text"))
-            elif isinstance(content, TextPrompt):
-                contents.append(ChatCompletionContentPartTextParam(text=content.text, type="text"))
-            elif isinstance(content, ImagePrompt):
-                contents.append(
-                    ChatCompletionContentPartImageParam(
-                        type="image_url",
-                        image_url=ImageURL(
-                            url=f"data:image/{content.format};base64,{content.image}",
-                            detail=content.resolution if content.resolution else "auto",
-                        ),
-                    )
-                )
-            elif isinstance(content, PDFPrompt):
-                contents.extend(
-                    [
-                        ChatCompletionContentPartImageParam(
-                            type="image_url",
-                            image_url=ImageURL(
-                                url=f"data:image/{img.format};base64,{img.image}",
-                                detail="high",
-                            ),
-                        )
-                        for img in content.as_image_content()
-                    ]
-                )
-            elif isinstance(content, URIPrompt):
-                raise NotImplementedError
-            elif isinstance(content, VideoPrompt):
-                contents.extend(
-                    [
-                        ChatCompletionContentPartImageParam(
-                            type="image_url",
-                            image_url=ImageURL(
-                                url=f"data:image/{img.format};base64,{img.image}",
-                                detail=content.image_resolution,
-                            ),
-                        )
-                        for img in content.as_image_content()
-                    ]
-                )
-            elif isinstance(content, AudioPrompt):
-                if content.audio_id:
-                    audio_response = Audio(id=content.audio_id)
-                else:
+        mapped_messages: list[OpenAIMessage] = []
+
+        for message in messages:
+            if not message.contents:
+                continue
+
+            contents: list[OpenAIMessageContentType] = []
+            tool_use_messages: list[OpenAIMessage] = []
+            tool_call_contents: list[ChatCompletionMessageToolCall] = []
+            audio_response: Audio | None = None
+
+            for content in message.contents:
+                if isinstance(content, str):
+                    contents.append(ChatCompletionContentPartTextParam(text=content, type="text"))
+                elif isinstance(content, TextPrompt):
                     contents.append(
-                        ChatCompletionContentPartInputAudioParam(
-                            type="input_audio",
-                            input_audio=InputAudio(
-                                data=content.audio,
-                                format=content.mime_type.split("/")[-1],
+                        ChatCompletionContentPartTextParam(text=content.text, type="text")
+                    )
+                elif isinstance(content, ImagePrompt):
+                    contents.append(
+                        ChatCompletionContentPartImageParam(
+                            type="image_url",
+                            image_url=ImageURL(
+                                url=f"data:image/{content.format};base64,{content.image}",
+                                detail=content.resolution if content.resolution else "auto",
                             ),
                         )
                     )
-            elif isinstance(content, ToolCallPrompt):
-                content_args = content.args
-                tool_call_messages.append(
-                    ChatCompletionMessageToolCall(
-                        id="call_" + cast(str, content.call_id).split("_")[-1],
-                        type="function",
-                        function=Function(arguments=json.dumps(content_args), name=content.name),
+                elif isinstance(content, PDFPrompt):
+                    contents.extend(
+                        [
+                            ChatCompletionContentPartImageParam(
+                                type="image_url",
+                                image_url=ImageURL(
+                                    url=f"data:image/{img.format};base64,{img.image}",
+                                    detail="high",
+                                ),
+                            )
+                            for img in content.as_image_content()
+                        ]
+                    )
+                elif isinstance(content, URIPrompt):
+                    raise NotImplementedError
+                elif isinstance(content, VideoPrompt):
+                    contents.extend(
+                        [
+                            ChatCompletionContentPartImageParam(
+                                type="image_url",
+                                image_url=ImageURL(
+                                    url=f"data:image/{img.format};base64,{img.image}",
+                                    detail=content.image_resolution,
+                                ),
+                            )
+                            for img in content.as_image_content()
+                        ]
+                    )
+                elif isinstance(content, AudioPrompt):
+                    if content.audio_id:
+                        audio_response = Audio(id=content.audio_id)
+                    else:
+                        contents.append(
+                            ChatCompletionContentPartInputAudioParam(
+                                type="input_audio",
+                                input_audio=InputAudio(
+                                    data=content.audio,
+                                    format=content.mime_type.split("/")[-1],
+                                ),
+                            )
+                        )
+                elif isinstance(content, ToolCallPrompt):
+                    content_args = content.args
+                    tool_call_contents.append(
+                        ChatCompletionMessageToolCall(
+                            id="call_" + cast(str, content.call_id).split("_")[-1],
+                            type="function",
+                            function=Function(
+                                arguments=json.dumps(content_args), name=content.name
+                            ),
+                        )
+                    )
+
+                elif isinstance(content, ToolUsePrompt):
+                    tool_call_id = "call_" + cast(str, content.call_id).split("_")[-1]
+                    if content.output:
+                        tool_result = content.output
+                    elif content.error:
+                        tool_result = content.error
+                    else:
+                        raise ValueError("Tool use prompt must have output or error.")
+
+                    # For OpenAI API, the tool use message must be a separate message with the role "tool".
+                    # But langrila does not have a separate message for tool use.
+                    tool_use_messages.append(
+                        ChatCompletionToolMessageParam(
+                            role="tool", content=tool_result, tool_call_id=tool_call_id
+                        )
+                    )
+
+            if tool_call_contents:
+                mapped_messages.append(
+                    ChatCompletionMessage(
+                        role="assistant",
+                        tool_calls=tool_call_contents,
                     )
                 )
 
-            elif isinstance(content, ToolUsePrompt):
-                tool_use = True
-                tool_call_id = "call_" + cast(str, content.call_id).split("_")[-1]
-                if content.output:
-                    tool_result = content.output
-                elif content.error:
-                    tool_result = content.error
+            if tool_use_messages:
+                mapped_messages.extend(tool_use_messages)
+
+            if audio_response:
+                mapped_messages.append(
+                    ChatCompletionAssistantMessageParam(
+                        role="assistant",
+                        audio=audio_response,
+                        name=cast(str, message.name),
+                    )
+                )
+
+            if contents:
+                if message.role == "assistant":
+                    mapped_messages.append(
+                        ChatCompletionAssistantMessageParam(
+                            role="assistant",
+                            content=contents,  # type: ignore
+                            name=cast(str, message.name),
+                        )
+                    )
                 else:
-                    raise ValueError("Tool use prompt must have output or error.")
-
-                tool_use_messages.append(
-                    ChatCompletionToolMessageParam(
-                        role="tool", content=tool_result, tool_call_id=tool_call_id
+                    mapped_messages.append(
+                        ChatCompletionUserMessageParam(
+                            role="user",
+                            content=contents,  # type: ignore
+                            name=cast(str, message.name),
+                        )
                     )
-                )
 
-        if tool_call_messages:
-            return ChatCompletionMessage(
-                role="assistant",
-                tool_calls=tool_call_messages,
-            )
-        elif tool_use:
-            return tool_use_messages
-        elif audio_response:
-            return ChatCompletionAssistantMessageParam(
-                role="assistant",
-                audio=audio_response,
-                name=cast(str, message.name),
-            )
-        elif message.role == "assistant":
-            return ChatCompletionAssistantMessageParam(
-                role="assistant",
-                content=contents,  # type: ignore
-                name=cast(str, message.name),
-            )
-        else:
-            return ChatCompletionUserMessageParam(
-                role="user",
-                content=contents,  # type: ignore
-                name=cast(str, message.name),
-            )
+        return mapped_messages
 
     def map_to_client_tools(self, tools: list[Tool]) -> list[ChatCompletionToolParam]:
         """
-        Map tools to client-specific representations.
+        Map tools to provider-specific representations.
 
         Parameters
         ----------
@@ -856,7 +881,7 @@ class OpenAIClient(
         Returns
         ----------
         list[ChatCompletionToolParam]
-            List of client-specific tool representations.
+            List of provider-specific tool representations.
         """
         return [
             ChatCompletionToolParam(
