@@ -167,6 +167,16 @@ class OpenAIClient(
             **({"name": system_instruction.name} if system_instruction.name else {}),
         }
 
+    def _recurse_set_json_schema_extra(self, parameters: dict[str, Any]) -> dict[str, Any]:
+        """Recursively set the JSON schema extra properties in the same level as 'type' key."""
+        if "type" in parameters and parameters["type"] == "object":
+            parameters["additionalProperties"] = False
+
+        for _, value in parameters.items():
+            if isinstance(value, dict):
+                self._recurse_set_json_schema_extra(value)
+        return parameters
+
     def _prepare_tools_for_native_response_format(self, tools: dict[str, Any]) -> dict[str, Any]:
         """If you are using the native response format, the tool schemas must be strict."""
         tools_formatted = []
@@ -177,7 +187,9 @@ class OpenAIClient(
                     function=FunctionDefinition(
                         name=tool["function"]["name"],
                         description=tool["function"]["description"],
-                        parameters=tool["function"]["parameters"] | {"additionalProperties": False},
+                        parameters=self._recurse_set_json_schema_extra(
+                            tool["function"]["parameters"]
+                        ),
                         strict=True,
                     ),
                 )
