@@ -154,7 +154,9 @@ def create_parameters(
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
     params = parse_arguments(obj, include=include, exclude=exclude)
-    # ignored = set(kwargs.keys()) - params
+    invalid_params = set(kwargs.keys()) - params
+    if invalid_params:
+        raise ValueError(f"Invalid parameters: {invalid_params}, must be one of {params}")
     return {k: v for k, v in kwargs.items() if k in params}
 
 

@@ -133,12 +133,15 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if system_instruction:
             kwargs["system_instruction"] = system_instruction
 
+        model = cast(str | None, kwargs.pop("model", None))
+        name = cast(str | None, kwargs.pop("name", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
 
         response = self.client.models.generate_content(
-            model=kwargs.get("model"),
+            model=model,
             contents=messages,
             config=generation_config,
         )
@@ -163,12 +166,12 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         return Response(
             contents=cast(list[ResponseType], contents),
             usage=Usage(
-                model_name=cast(str | None, kwargs.get("model")),
+                model_name=model,
                 prompt_tokens=response.usage_metadata.prompt_token_count or 0,
                 output_tokens=response.usage_metadata.candidates_token_count or 0,
             ),
             raw=response,
-            name=cast(str | None, kwargs.get("name")),
+            name=name,
         )
 
     async def generate_text_async(
@@ -196,12 +199,15 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if system_instruction:
             kwargs["system_instruction"] = system_instruction
 
+        model = cast(str | None, kwargs.pop("model", None))
+        name = cast(str | None, kwargs.pop("name", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
 
         response = await self.client.aio.models.generate_content(
-            model=kwargs.get("model"),
+            model=model,
             contents=messages,
             config=generation_config,
         )
@@ -226,12 +232,12 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         return Response(
             contents=cast(list[ResponseType], contents),
             usage=Usage(
-                model_name=cast(str | None, kwargs.get("model")),
+                model_name=model,
                 prompt_tokens=response.usage_metadata.prompt_token_count or 0,
                 output_tokens=response.usage_metadata.candidates_token_count or 0,
             ),
             raw=response,
-            name=cast(str | None, kwargs.get("name")),
+            name=name,
         )
 
     def stream_text(
@@ -259,24 +265,27 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if system_instruction:
             kwargs["system_instruction"] = system_instruction
 
+        model = cast(str | None, kwargs.pop("model", None))
+        name = cast(str | None, kwargs.pop("name", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
 
         streamed_response = self.client.models.generate_content_stream(
-            model=kwargs.get("model"),
+            model=model,
             contents=messages,
             config=generation_config,
         )
 
         chunk_texts = ""
-        usage = Usage(model_name=cast(str | None, kwargs.get("model")))
+        usage = Usage(model_name=model)
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
         for chunk in streamed_response:
             if usage_metadata := chunk.usage_metadata:
                 usage = Usage(
-                    model_name=cast(str | None, kwargs.get("model")),
+                    model_name=model,
                     prompt_tokens=usage_metadata.prompt_token_count or 0,
                     output_tokens=usage_metadata.candidates_token_count or 0,
                 )
@@ -291,7 +300,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                             contents=[res],
                             usage=usage,
                             raw=chunk,
-                            name=cast(str | None, kwargs.get("name")),
+                            name=name,
                         )
                         continue
                     elif part.text and not part.text.strip():
@@ -314,7 +323,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                             contents=[res],
                             usage=usage,
                             raw=chunk,
-                            name=cast(str | None, kwargs.get("name")),
+                            name=name,
                         )
                     else:
                         continue
@@ -329,7 +338,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                 contents=cast(list[ResponseType], contents),
                 usage=usage,
                 raw=chunk,
-                name=cast(str | None, kwargs.get("name")),
+                name=name,
                 is_last_chunk=True,
             )
 
@@ -358,24 +367,27 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if system_instruction:
             kwargs["system_instruction"] = system_instruction
 
+        model = cast(str | None, kwargs.pop("model", None))
+        name = cast(str | None, kwargs.pop("name", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         generation_config_params = create_parameters(GenerateContentConfig, None, None, **_kwargs)
         generation_config = GenerateContentConfig(**generation_config_params)
 
         streamed_response = self.client.aio.models.generate_content_stream(
-            model=kwargs.get("model"),
+            model=model,
             contents=messages,
             config=generation_config,
         )
 
         chunk_texts = ""
-        usage = Usage(model_name=cast(str | None, kwargs.get("model")))
+        usage = Usage(model_name=model)
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
         async for chunk in streamed_response:
             if usage_metadata := chunk.usage_metadata:
                 usage = Usage(
-                    model_name=cast(str | None, kwargs.get("model")),
+                    model_name=model,
                     prompt_tokens=usage_metadata.prompt_token_count or 0,
                     output_tokens=usage_metadata.candidates_token_count or 0,
                 )
@@ -390,7 +402,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                             contents=[res],
                             usage=usage,
                             raw=chunk,
-                            name=cast(str | None, kwargs.get("name")),
+                            name=name,
                         )
                         continue
                     elif part.text and not part.text.strip():
@@ -413,7 +425,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                             contents=[res],
                             usage=usage,
                             raw=chunk,
-                            name=cast(str | None, kwargs.get("name")),
+                            name=name,
                         )
                     else:
                         continue
@@ -428,7 +440,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                 contents=cast(list[ResponseType], contents),
                 usage=usage,
                 raw=chunk,
-                name=cast(str | None, kwargs.get("name")),
+                name=name,
                 is_last_chunk=True,
             )
 
@@ -456,16 +468,18 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if not isinstance(texts, list):
             texts = [texts]
 
+        model = cast(str | None, kwargs.pop("model", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         embed_config_params = create_parameters(EmbedContentConfig, None, None, **_kwargs)
         embed_config = EmbedContentConfig(**embed_config_params)
 
-        total_usage = Usage(model_name=kwargs.get("model"))
+        total_usage = Usage(model_name=model)
         batch_size = kwargs.get("batch_size", 10)
         embeddings = []
         for batch in make_batch(texts, batch_size=batch_size):
             embedding = self.client.models.embed_content(
-                model=kwargs.get("model"),
+                model=model,
                 contents=batch,
                 config=embed_config,
             )
@@ -504,16 +518,18 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if not isinstance(texts, list):
             texts = [texts]
 
+        model = cast(str | None, kwargs.pop("model", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
         embed_config_params = create_parameters(EmbedContentConfig, None, None, **_kwargs)
         embed_config = EmbedContentConfig(**embed_config_params)
 
-        total_usage = Usage(model_name=kwargs.get("model"))
+        total_usage = Usage(model_name=model)
         batch_size = kwargs.get("batch_size", 10)
         embeddings = []
         for batch in make_batch(texts, batch_size=batch_size):
             embedding = await self.client.aio.models.embed_content(
-                model=kwargs.get("model"),
+                model=model,
                 contents=batch,
                 config=embed_config,
             )
@@ -546,14 +562,18 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         Response
             Response object containing generated image.
         """
+
+        model = cast(str | None, kwargs.pop("model", None))
+        name = cast(str | None, kwargs.pop("name", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
-        embed_config_params = create_parameters(GenerateImageConfig, None, None, **_kwargs)
-        embed_config = GenerateImageConfig(**embed_config_params)
+        generate_config_params = create_parameters(GenerateImageConfig, None, None, **_kwargs)
+        generate_config = GenerateImageConfig(**generate_config_params)
 
         image = self.client.models.generate_image(
-            model=kwargs.get("model"),
+            model=model,
             prompt=prompt,
-            config=embed_config,
+            config=generate_config,
         )
 
         contents = []
@@ -566,7 +586,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             contents=contents,
             usage=Usage(),
             raw=image,
-            name=cast(str | None, kwargs.get("name")),
+            name=name,
         )
 
     async def generate_image_async(self, prompt: str, **kwargs: Any) -> Response:
@@ -587,14 +607,17 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         Response
             Response object containing generated image.
         """
+        model = cast(str | None, kwargs.pop("model", None))
+        name = cast(str | None, kwargs.pop("name", None))
+
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
-        embed_config_params = create_parameters(GenerateImageConfig, None, None, **_kwargs)
-        embed_config = GenerateImageConfig(**embed_config_params)
+        generate_config_params = create_parameters(GenerateImageConfig, None, None, **_kwargs)
+        generate_config = GenerateImageConfig(**generate_config_params)
 
         image = await self.client.aio.models.generate_image(
-            model=kwargs.get("model"),
+            model=model,
             prompt=prompt,
-            config=embed_config,
+            config=generate_config,
         )
 
         contents = []
@@ -607,7 +630,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
             contents=contents,
             usage=Usage(),
             raw=image,
-            name=cast(str | None, kwargs.get("name")),
+            name=name,
         )
 
     def map_to_client_prompts(self, messages: list[Prompt]) -> list[Content]:

@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, AsyncGenerator, Generator, Literal
+from typing import Any, AsyncGenerator, Generator, Literal, cast
 
 from anthropic import (
     Anthropic,
@@ -75,6 +75,16 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         Environment variable name for the API key, by default None
     api_type : Literal["anthropic", "bedrock", "vertexai"], optional
         API type, by default "anthropic"
+    aws_access_key_env_name : str, optional
+        Environment variable name for the AWS access key, by default None
+    aws_secret_key_env_name : str, optional
+        Environment variable name for the AWS secret key, by default None
+    aws_region : str, optional
+        AWS region, by default None
+    google_cloud_project_env_name : str, optional
+        Environment variable name for the Google Cloud project, by default NOT_GIVEN
+    google_cloud_region : str, optional
+        Google Cloud region, by default NOT_GIVEN
     **kwargs : Any
         Additional parameters to pass to the client.
         Basically, any parameter that the client accepts can be passed here.
@@ -89,7 +99,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         aws_secret_key_env_name: str | None = None,
         aws_region: str | None = None,
         google_cloud_project_env_name: str | NotGiven = NOT_GIVEN,
-        google_cloud_region_env_name: str | NotGiven = NOT_GIVEN,
+        google_cloud_region: str | NotGiven = NOT_GIVEN,
         **kwargs: Any,
     ):
         self.api_key = os.getenv(api_key_env_name) if api_key_env_name else None
@@ -104,44 +114,42 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         self.google_cloud_project = (
             os.getenv(google_cloud_project_env_name) if google_cloud_project_env_name else NOT_GIVEN
         )
-        self.google_cloud_region = (
-            os.getenv(google_cloud_region_env_name) if google_cloud_region_env_name else NOT_GIVEN
-        )
+        self.google_cloud_region = google_cloud_region
 
         self._client: ClientType
         self._async_client: ClientType
         if self.api_type == "anthropic":
             self._client = Anthropic(
                 api_key=self.api_key,
-                **create_parameters(Anthropic, **kwargs),
+                **kwargs,
             )
             self._async_client = AsyncAnthropic(
                 api_key=self.api_key,
-                **create_parameters(AsyncAnthropic, **kwargs),
+                **kwargs,
             )
         elif self.api_type == "bedrock":
             self._client = AnthropicBedrock(
                 aws_access_key=self.aws_access_key,
                 aws_secret_key=self.aws_secret_key,
                 aws_region=self.aws_region,
-                **create_parameters(AnthropicBedrock, **kwargs),
+                **kwargs,
             )
             self._async_client = AsyncAnthropicBedrock(
                 aws_access_key=self.aws_access_key,
                 aws_secret_key=self.aws_secret_key,
                 aws_region=self.aws_region,
-                **create_parameters(AsyncAnthropicBedrock, **kwargs),
+                **kwargs,
             )
         elif self.api_type == "vertexai":
             self._client = AnthropicVertex(
                 region=self.google_cloud_region,
                 project_id=self.google_cloud_project,
-                **create_parameters(AnthropicVertex, **kwargs),
+                **kwargs,
             )
             self._async_client = AsyncAnthropicVertex(
                 region=self.google_cloud_region,
                 project_id=self.google_cloud_project,
-                **create_parameters(AsyncAnthropicVertex, **kwargs),
+                **kwargs,
             )
 
     def setup_system_instruction(self, system_instruction: SystemPrompt) -> str:
@@ -182,6 +190,8 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         Response
             Generated text response.
         """
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             kwargs["system"] = system_instruction
 
@@ -212,7 +222,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                 output_tokens=response.usage.output_tokens,
             ),
             raw=response,
-            name=kwargs.get("name"),
+            name=name,
             prompt=messages,
         )
 
@@ -238,6 +248,8 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         Response
             Generated text response.
         """
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             kwargs["system"] = system_instruction
 
@@ -268,7 +280,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                 output_tokens=response.usage.output_tokens,
             ),
             raw=response,
-            name=kwargs.get("name"),
+            name=name,
             prompt=messages,
         )
 
@@ -294,6 +306,8 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         Response
             Streamed text response.
         """
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             kwargs["system"] = system_instruction
 
@@ -371,7 +385,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                         output_tokens=usage.output_tokens + response.usage.output_tokens,
                     )
 
-        yield Response(contents=contents, usage=usage, is_last_chunk=True)
+        yield Response(contents=contents, usage=usage, is_last_chunk=True, name=name)
 
     async def stream_text_async(
         self, messages: list[MessageParam], system_instruction: str | None = None, **kwargs: Any
@@ -395,6 +409,8 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         Response
             Streamed text response.
         """
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             kwargs["system"] = system_instruction
 
@@ -472,7 +488,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                         output_tokens=usage.output_tokens + response.usage.output_tokens,
                     )
 
-        yield Response(contents=contents, usage=usage, is_last_chunk=True)
+        yield Response(contents=contents, usage=usage, is_last_chunk=True, name=name)
 
     def map_to_client_prompts(self, messages: list[Prompt]) -> list[MessageParam]:
         """
