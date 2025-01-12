@@ -26,7 +26,7 @@ from ..core.prompt import (
 from ..core.response import Response, ResponseType, TextResponse, ToolCallResponse
 from ..core.tool import Tool
 from ..core.usage import Usage
-from ..utils import create_parameters, utf8_to_bytes
+from ..utils import utf8_to_bytes
 
 BedrockMessageType = dict[str, Any]
 BedrockSystemMessageType = list[dict[str, Any]]
@@ -136,7 +136,7 @@ class BedrockClient(
                     contents.append(
                         ToolCallResponse(
                             name=tool_spec["name"],
-                            args=tool_spec["input"],
+                            args=json.dumps(tool_spec["input"], ensure_ascii=False),
                             call_id=tool_spec["toolUseId"],
                         )
                     )
