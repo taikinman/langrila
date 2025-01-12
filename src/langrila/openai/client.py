@@ -87,6 +87,12 @@ class OpenAIClient(
         API type, by default "openai"
     organization_id_env_name : str, optional
         Environment variable name for the organization ID, by default None
+    azure_endpoint_env_name : str, optional
+        Environment variable name for the Azure endpoint, by default None
+    azure_deployment_env_name : str, optional
+        Environment variable name for the Azure deployment, by default None
+    azure_api_version : str, optional
+        Azure API version, by default None
     **kwargs : Any
         Additional keyword arguments to pass to the API client.
         Basically the same as the parameters in the raw OpenAI API.
@@ -120,12 +126,12 @@ class OpenAIClient(
             self._client = OpenAI(
                 api_key=self.api_key,
                 organization=self.organization,
-                **create_parameters(OpenAI, **kwargs),
+                **kwargs,
             )
             self._async_client = AsyncOpenAI(
                 api_key=self.api_key,
                 organization=self.organization,
-                **create_parameters(AsyncOpenAI, **kwargs),
+                **kwargs,
             )
         elif self.api_type == "azure":
             self._client = AzureOpenAI(
@@ -134,7 +140,7 @@ class OpenAIClient(
                 azure_endpoint=self.azure_endpoint,
                 azure_deployment=self.azure_deployment,
                 api_version=self.azure_api_version,
-                **create_parameters(AzureOpenAI, **kwargs),
+                **kwargs,
             )
             self._async_client = AsyncAzureOpenAI(
                 api_key=self.api_key,
@@ -142,7 +148,7 @@ class OpenAIClient(
                 azure_endpoint=self.azure_endpoint,
                 azure_deployment=self.azure_deployment,
                 api_version=self.azure_api_version,
-                **create_parameters(AsyncAzureOpenAI, **kwargs),
+                **kwargs,
             )
         else:
             raise ValueError(f"Invalid API type: {self.api_type}")
@@ -222,6 +228,8 @@ class OpenAIClient(
         Response
             Response object containing the generated text.
         """
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             _messages = [system_instruction] + messages
         else:
@@ -276,7 +284,7 @@ class OpenAIClient(
             contents=cast(list[ResponseType], contents),
             usage=usage,
             raw=response,
-            name=cast(str, kwargs.get("name")),
+            name=name,
             prompt=_messages,
         )
 
@@ -305,6 +313,8 @@ class OpenAIClient(
         Response
             Response object containing the generated text.
         """
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             _messages = [system_instruction] + messages
         else:
@@ -359,7 +369,7 @@ class OpenAIClient(
             contents=cast(list[ResponseType], contents),
             usage=usage,
             raw=response,
-            name=cast(str, kwargs.get("name")),
+            name=name,
             prompt=_messages,
         )
 
@@ -388,6 +398,8 @@ class OpenAIClient(
         Response
             Response object containing the generated text.
         """
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             _messages = [system_instruction] + messages
         else:
@@ -423,7 +435,7 @@ class OpenAIClient(
                             contents=[res],
                             usage=usage,
                             raw=chunk,
-                            name=cast(str | None, kwargs.get("name")),
+                            name=name,
                         )
                         continue
                 elif tool_calls := delta.tool_calls:
@@ -450,7 +462,7 @@ class OpenAIClient(
                                 contents=[res],
                                 usage=usage,
                                 raw=chunk,
-                                name=cast(str | None, kwargs.get("name")),
+                                name=name,
                             )
                     continue
             else:
@@ -471,7 +483,7 @@ class OpenAIClient(
                 contents=contents,
                 usage=usage,
                 raw=response,
-                name=cast(str | None, kwargs.get("name")),
+                name=name,
                 is_last_chunk=True,
             )
 
@@ -503,6 +515,7 @@ class OpenAIClient(
         Response
             Response object containing the generated text.
         """
+        name = cast(str | None, kwargs.pop("name", None))
 
         if system_instruction:
             _messages = [system_instruction] + messages
@@ -539,7 +552,7 @@ class OpenAIClient(
                             contents=[res],
                             usage=usage,
                             raw=chunk,
-                            name=cast(str | None, kwargs.get("name")),
+                            name=name,
                         )
                     continue
                 elif tool_calls := delta.tool_calls:
@@ -566,7 +579,7 @@ class OpenAIClient(
                                 contents=[res],
                                 usage=usage,
                                 raw=chunk,
-                                name=cast(str | None, kwargs.get("name")),
+                                name=name,
                             )
                     continue
 
@@ -588,7 +601,7 @@ class OpenAIClient(
             contents=contents,
             usage=usage,
             raw=response,
-            name=cast(str | None, kwargs.get("name")),
+            name=name,
             is_last_chunk=True,
         )
 
@@ -681,6 +694,8 @@ class OpenAIClient(
         system_instruction: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> Response:
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             _messages = [system_instruction] + messages
         else:
@@ -713,7 +728,7 @@ class OpenAIClient(
             contents=cast(list[ResponseType], contents),
             usage=Usage(),
             raw=response,
-            name=cast(str, kwargs.get("name")),
+            name=name,
             prompt=_messages,
         )
 
