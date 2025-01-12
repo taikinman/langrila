@@ -71,6 +71,7 @@ class PDFPrompt(BaseModel):
     pdf: PathType
     resolution_scale: float = 2.5
     image_resolution: Literal["auto", "low", "high"] = "high"
+    name: str = ""
 
     def as_image_content(self) -> list[ImagePrompt]:
         from ..file_utils.pdf import read_pdf_asimage
@@ -79,6 +80,18 @@ class PDFPrompt(BaseModel):
             ImagePrompt(image=image, resolution=self.image_resolution)
             for image in read_pdf_asimage(self.pdf, scale=self.resolution_scale)
         ]
+
+    def as_bytes(self) -> bytes:
+        with open(self.pdf, "rb") as pdf_file:
+            pdf_content = pdf_file.read()
+            encoded_content = base64.b64encode(pdf_content)
+        return encoded_content
+
+    def as_utf8(self) -> str:
+        with open(self.pdf, "rb") as pdf_file:
+            pdf_content = pdf_file.read()
+            encoded_content = base64.b64encode(pdf_content)
+        return encoded_content.decode("utf-8")
 
 
 class AudioPrompt(BaseModel):
