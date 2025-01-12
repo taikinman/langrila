@@ -119,6 +119,9 @@ class BedrockClient(
         if tools := kwargs.pop("tools", []):
             kwargs["toolConfig"] = {"tools": tools}
 
+            if tool_choice := kwargs.pop("toolChoice", None):
+                kwargs["toolConfig"]["toolChoice"] = tool_choice
+
         response = self._client.converse(
             messages=messages,
             **kwargs,
