@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import secrets
 from pathlib import Path
 from typing import Any, AsyncGenerator, Generator, cast
@@ -111,6 +112,8 @@ class BedrockClient(
         system_instruction: BedrockSystemMessageType | None = None,
         **kwargs: Any,
     ) -> Response:
+        name = cast(str | None, kwargs.pop("name", None))
+
         if system_instruction:
             kwargs["system"] = system_instruction
 
@@ -144,7 +147,7 @@ class BedrockClient(
         response_usage = response.get("usage", {})
         usage = Usage(
             model_name=kwargs.get("modelId"),
-            prompt_tokens=response.get("inputTokens", 0),
+            prompt_tokens=response_usage.get("inputTokens", 0),
             output_tokens=response_usage.get("outputTokens", 0),
         )
         return Response(
@@ -152,6 +155,7 @@ class BedrockClient(
             contents=contents,
             usage=usage,
             raw=response,
+            name=name,
         )
 
     async def generate_text_async(
@@ -160,6 +164,7 @@ class BedrockClient(
         system_instruction: BedrockSystemMessageType | None = None,
         **kwargs: Any,
     ) -> Response:
+        # How to implement this method?
         raise NotImplementedError
 
     def stream_text(
@@ -168,7 +173,108 @@ class BedrockClient(
         system_instruction: BedrockSystemMessageType | None = None,
         **kwargs: Any,
     ) -> Generator[Response, None, None]:
-        raise NotImplementedError
+        name = cast(str | None, kwargs.pop("name", None))
+
+        if system_instruction:
+            kwargs["system"] = system_instruction
+
+        if tools := kwargs.pop("tools", []):
+            kwargs["toolConfig"] = {"tools": tools}
+
+            if tool_choice := kwargs.pop("toolChoice", None):
+                kwargs["toolConfig"]["toolChoice"] = tool_choice
+
+        streamed_response = self._client.converse_stream(
+            messages=messages,
+            **kwargs,
+        )
+
+        combined_chunk_text = ""
+        chunk_args = ""
+        res: TextResponse | ToolCallResponse | None = None
+        contents: list[TextResponse | ToolCallResponse] = []
+        usage = Usage(model_name=kwargs.get("modelId"))
+        for chunk in streamed_response.get("stream", []):
+            if message_start := chunk.get("messageStart"):
+                role = message_start.get("role")
+            elif content_block_delta := chunk.get("contentBlockDelta"):
+                delta = content_block_delta.get("delta", {})
+
+                if text := delta.get("text"):
+                    combined_chunk_text += text
+                    res = TextResponse(text=combined_chunk_text)
+                    yield Response(
+                        role=role,
+                        contents=[res],
+                        raw=chunk,
+                        name=name,
+                    )
+                if tool_use := delta.get("toolUse"):
+                    if tool_use.get("toolUseId"):
+                        tool_use_id = tool_use["toolUseId"]
+                        tool_name = tool_use["name"]
+                    elif tool_use.get("input"):
+                        chunk_args = tool_use["input"]
+
+                        res = ToolCallResponse(name=tool_name, args=chunk_args, call_id=tool_use_id)
+                        yield Response(
+                            role=role,
+                            contents=[res],
+                            raw=chunk,
+                            name=name,
+                        )
+            elif content_block_start := chunk.get("contentBlockStart"):
+                start = content_block_start.get("start", {})
+
+                if text := start.get("text"):
+                    combined_chunk_text += text
+                    res = TextResponse(text=combined_chunk_text)
+                    yield Response(
+                        role=role,
+                        contents=[res],
+                        raw=chunk,
+                        name=name,
+                    )
+                if tool_use := start.get("toolUse"):
+                    if tool_use.get("toolUseId"):
+                        tool_use_id = tool_use["toolUseId"]
+                        tool_name = tool_use["name"]
+                    elif tool_use.get("input"):
+                        chunk_args = tool_use["input"]
+
+                        res = ToolCallResponse(name=tool_name, args=chunk_args, call_id=tool_use_id)
+                        yield Response(
+                            role=role,
+                            contents=[res],
+                            raw=chunk,
+                            name=name,
+                        )
+            elif content_block_stop := chunk.get("contentBlockStop"):
+                contents.append(res)
+
+                combined_chunk_text = ""
+                chunk_args = ""
+                tool_use_id = ""
+                tool_name = None
+                res = None
+            elif metadata := chunk.get("metadata"):
+                if usage_metadata := metadata.get("usage"):
+                    usage = Usage(
+                        model_name=kwargs.get("modelId"),
+                        prompt_tokens=usage_metadata.get("inputTokens", 0),
+                        output_tokens=usage_metadata.get("outputTokens", 0),
+                    )
+            else:
+                continue
+
+        yield Response(
+            role=role,
+            contents=contents,
+            usage=usage,
+            raw=chunk,
+            name=name,
+            is_last_chunk=True,
+        )
 
     def stream_text_async(
         self,
@@ -176,6 +282,7 @@ class BedrockClient(
         system_instruction: BedrockSystemMessageType | None = None,
         **kwargs: Any,
     ) -> AsyncGenerator[Response, None]:
+        # How to implement this method?
         raise NotImplementedError
 
     def map_to_client_prompts(self, messages: list[Prompt]) -> list[BedrockMessageType]:
@@ -198,7 +305,6 @@ class BedrockClient(
                 continue
 
             contents: list[BedrockMessageContentType] = []
-            tool_use_contents: list[dict[str, Any]] = []
             for content in message.contents:
                 if isinstance(content, str):
                     contents.append(
@@ -218,7 +324,7 @@ class BedrockClient(
                             "toolUse": {
                                 "toolUseId": content.call_id,
                                 "name": content.name,
-                                "input": json.loads(content.args),
+                                "input": json.loads(re.sub(r'\+"', '"', content.args)),
                             }
                         }
                     )
@@ -229,7 +335,7 @@ class BedrockClient(
                                 "toolUseId": content.call_id,
                                 "content": [
                                     {
-                                        "text": content.output,
+                                        "text": content.output or content.error,
                                     }
                                 ],
                             }
