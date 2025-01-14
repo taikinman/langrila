@@ -13,7 +13,6 @@ from ._context import AgentInternalContext
 from .client import LLMClient
 from .config import AgentConfig
 from .embedding import EmbeddingResults
-from .error import RetryLimitExceededError
 from .logger import DEFAULT_LOGGER as default_logger
 from .memory import BaseConversationMemory
 from .message import Message
@@ -123,7 +122,9 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         self.planning = planning
         self.agent_config = agent_config or AgentConfig()
         self.retry_prompt = self.agent_config.internal_prompt.error_retry
-        self.max_error_retries = self.agent_config.max_error_retries
+        self.__max_error_retries = self.agent_config.max_error_retries
+        self.__max_consecutive_tool_call = self.agent_config.max_consecutive_tool_call
+        self.__max_consecutive_text_response = self.agent_config.max_consecutive_text_response
         self.logger = logger or default_logger
         self.system_instruction = system_instruction
         self._store_conversation = self.agent_config.store_conversation
@@ -466,8 +467,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
-            max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(_tools) + 2,
+            max_error_retries=self.__max_error_retries,
+            max_consecutive_tool_call=self.__max_consecutive_tool_call
+            if self.__max_consecutive_tool_call
+            else len(_tools) + 2,
+            max_consecutive_text_response=self.__max_consecutive_text_response,
         )
         final_result = None
         while ctx:
@@ -521,13 +525,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                             ctx.increment_repeat_text_response_count()
                             ctx.reset_repeat_tool_call_count()
 
-                            if ctx.text_response_count != ctx.max_repeat_text_response:
+                            if ctx.text_response_count != ctx.max_consecutive_text_response:
                                 messages.append(
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
 
-        if not ctx:
-            raise RetryLimitExceededError()
+        ctx.check()
 
         messages_list.append(messages[init_len_messages:])
         self.store_history(messages_list)
@@ -599,8 +602,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
-            max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(_tools) + 2,
+            max_error_retries=self.__max_error_retries,
+            max_consecutive_tool_call=self.__max_consecutive_tool_call
+            if self.__max_consecutive_tool_call
+            else len(_tools) + 2,
+            max_consecutive_text_response=self.__max_consecutive_text_response,
         )
         final_result = None
         while ctx:
@@ -654,13 +660,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                             ctx.increment_repeat_text_response_count()
                             ctx.reset_repeat_tool_call_count()
 
-                            if ctx.text_response_count != ctx.max_repeat_text_response:
+                            if ctx.text_response_count != ctx.max_consecutive_text_response:
                                 messages.append(
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
 
-        if not ctx:
-            raise RetryLimitExceededError()
+        ctx.check()
 
         messages_list.append(messages[init_len_messages:])
         self.store_history(messages_list)
@@ -734,8 +739,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
-            max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(_tools) + 2,
+            max_error_retries=self.__max_error_retries,
+            max_consecutive_tool_call=self.__max_consecutive_tool_call
+            if self.__max_consecutive_tool_call
+            else len(_tools) + 2,
+            max_consecutive_text_response=self.__max_consecutive_text_response,
         )
         final_result = None
         while ctx:
@@ -790,13 +798,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                             ctx.increment_repeat_text_response_count()
                             ctx.reset_repeat_tool_call_count()
 
-                            if ctx.text_response_count != ctx.max_repeat_text_response:
+                            if ctx.text_response_count != ctx.max_consecutive_text_response:
                                 messages.append(
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
 
-        if not ctx:
-            raise RetryLimitExceededError()
+        ctx.check()
 
         messages_list.append(messages[init_len_messages:])
         self.store_history(messages_list)
@@ -866,8 +873,11 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             messages.extend(self.llm._process_user_prompt(prompt))
 
         ctx = AgentInternalContext(
-            max_error_retries=self.max_error_retries,
-            max_repeat_tool_call=len(_tools) + 2,
+            max_error_retries=self.__max_error_retries,
+            max_consecutive_tool_call=self.__max_consecutive_tool_call
+            if self.__max_consecutive_tool_call
+            else len(_tools) + 2,
+            max_consecutive_text_response=self.__max_consecutive_text_response,
         )
         final_result = None
         while ctx:
@@ -922,13 +932,12 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
                             ctx.increment_repeat_text_response_count()
                             ctx.reset_repeat_tool_call_count()
 
-                            if ctx.text_response_count != ctx.max_repeat_text_response:
+                            if ctx.text_response_count != ctx.max_consecutive_text_response:
                                 messages.append(
                                     Prompt(contents=self.__no_tool_use_retry_prompt, role="user")
                                 )
 
-        if not ctx:
-            raise RetryLimitExceededError()
+        ctx.check()
 
         messages_list.append(messages[init_len_messages:])
         self.store_history(messages_list)

@@ -1,20 +1,26 @@
 from dataclasses import dataclass
 
+from .error import (
+    RetryLimitExceededError,
+    TextResponseLimitExceededError,
+    ToolCallLimitExceededError,
+)
+
 
 @dataclass
 class AgentInternalContext:
     error_retries_count: int = 0
     max_error_retries: int = 3
     text_response_count: int = 0
-    max_repeat_text_response: int = 3
+    max_consecutive_text_response: int = 3
     tool_call_count: int = 0
-    max_repeat_tool_call: int = 3
+    max_consecutive_tool_call: int = 3
 
     def __bool__(self) -> bool:
         return (
             self.error_retries_count < self.max_error_retries
-            and self.text_response_count < self.max_repeat_text_response
-            and self.tool_call_count < self.max_repeat_tool_call
+            and self.text_response_count < self.max_consecutive_text_response
+            and self.tool_call_count < self.max_consecutive_tool_call
         )
 
     def increment_error_retries_count(self) -> None:
@@ -34,3 +40,11 @@ class AgentInternalContext:
 
     def reset_repeat_tool_call_count(self) -> None:
         self.tool_call_count = 0
+
+    def check(self) -> None:
+        if self.error_retries_count >= self.max_error_retries:
+            raise RetryLimitExceededError()
+        elif self.tool_call_count >= self.max_consecutive_tool_call:
+            raise ToolCallLimitExceededError()
+        elif self.text_response_count >= self.max_consecutive_text_response:
+            raise TextResponseLimitExceededError()

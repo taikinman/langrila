@@ -5,6 +5,11 @@ from .pydantic import BaseModel
 
 
 class AgentConfig(BaseModel):
+    """
+    The instance of this class is used to configure the internal behaviour and internal prompts in an agent
+    and can be passed to the Agent constructor.
+    """
+
     internal_prompt: InternalPrompt = Field(
         default=InternalPrompt(),
         description="Retry prompt configuration",
@@ -31,4 +36,14 @@ class AgentConfig(BaseModel):
             "Description of the tool for generating final answer with specified response schema. "
             "This tool is invoked when 'response_schema_as_tool' is specified."
         ),
+    )
+
+    max_consecutive_tool_call: int | None = Field(
+        default=None,
+        description="Maximum number of times tools can be called in a row. If None, `len(agent.tools) + 2` is used.",
+    )
+
+    max_consecutive_text_response: int = Field(
+        default=3,
+        description="Maximum number of times text responses can be generated in a row. Default is 3.",
     )
