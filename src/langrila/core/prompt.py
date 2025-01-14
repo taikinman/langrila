@@ -81,11 +81,14 @@ class PDFPrompt(BaseModel):
             for image in read_pdf_asimage(self.pdf, scale=self.resolution_scale)
         ]
 
-    def as_bytes(self) -> bytes:
+    def as_bytes(self, encode_with_base64: bool = False) -> bytes:
         with open(self.pdf, "rb") as pdf_file:
             pdf_content = pdf_file.read()
-            encoded_content = base64.b64encode(pdf_content)
-        return encoded_content
+
+        if encode_with_base64:
+            return base64.b64encode(pdf_content)
+
+        return pdf_content
 
     def as_utf8(self) -> str:
         with open(self.pdf, "rb") as pdf_file:
