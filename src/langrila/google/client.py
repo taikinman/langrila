@@ -308,6 +308,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
 
                     if res:
                         contents.append(res)
+                        res = None
 
                     chunk_texts = ""
 
@@ -325,22 +326,22 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                             raw=chunk,
                             name=name,
                         )
-                    else:
-                        continue
 
-                    if res:
-                        contents.append(res)
+                        if res:
+                            contents.append(res)
+                            res = None
 
-                    res = None
+        if res:
+            contents.append(res)
+            res = None
 
-        if contents:
-            yield Response(
-                contents=cast(list[ResponseType], contents),
-                usage=usage,
-                raw=chunk,
-                name=name,
-                is_last_chunk=True,
-            )
+        yield Response(
+            contents=cast(list[ResponseType], contents),
+            usage=usage,
+            raw=chunk,
+            name=name,
+            is_last_chunk=True,
+        )
 
     async def stream_text_async(
         self, messages: list[Content], system_instruction: str | None = None, **kwargs: Any
@@ -410,6 +411,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
 
                     if res:
                         contents.append(res)
+                        res = None
 
                     chunk_texts = ""
 
@@ -427,22 +429,22 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
                             raw=chunk,
                             name=name,
                         )
-                    else:
-                        continue
 
-                    if res:
-                        contents.append(res)
+                        if res:
+                            contents.append(res)
+                            res = None
 
-                    res = None
+        if res:
+            contents.append(res)
+            res = None
 
-        if contents:
-            yield Response(
-                contents=cast(list[ResponseType], contents),
-                usage=usage,
-                raw=chunk,
-                name=name,
-                is_last_chunk=True,
-            )
+        yield Response(
+            contents=cast(list[ResponseType], contents),
+            usage=usage,
+            raw=chunk,
+            name=name,
+            is_last_chunk=True,
+        )
 
     def embed_text(self, texts: Sequence[str], **kwargs: Any) -> EmbeddingResults:
         """
