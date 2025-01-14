@@ -64,6 +64,7 @@ If necessary, set environment variables to use OpenAI API, Azure OpenAI Service,
 - Claude on Anthropic
 - Claude on Amazon Bedrock
 - Claude on VertexAI (not tested)
+- Converse API models on Amazon Bedrock
 
 # Basic usage
 
