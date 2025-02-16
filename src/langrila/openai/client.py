@@ -626,6 +626,8 @@ class OpenAIClient(
         EmbeddingResults
             Embedding results object containing the embeddings.
         """
+        batch_size = kwargs.pop("batch_size", 10)
+
         embed_params = create_parameters(self._client.embeddings.create, **kwargs)
 
         embeddings = []
@@ -633,7 +635,6 @@ class OpenAIClient(
             texts = [texts]
 
         total_usage = Usage(model_name=kwargs.get("model"))
-        batch_size = kwargs.get("batch_size", 10)
         for batch in make_batch(texts, batch_size=batch_size):
             response = self._client.embeddings.create(input=batch, **embed_params)
             embeddings.extend([e.embedding for e in response.data])
@@ -666,6 +667,8 @@ class OpenAIClient(
         EmbeddingResults
             Embedding results object containing the embeddings.
         """
+        batch_size = kwargs.pop("batch_size", 10)
+
         embed_params = create_parameters(self._async_client.embeddings.create, **kwargs)
 
         embeddings = []
@@ -673,7 +676,6 @@ class OpenAIClient(
             texts = [texts]
 
         total_usage = Usage(model_name=kwargs.get("model"))
-        batch_size = kwargs.get("batch_size", 10)
         for batch in make_batch(texts, batch_size=batch_size):
             response = await self._async_client.embeddings.create(input=batch, **embed_params)
             embeddings.extend([e.embedding for e in response.data])
