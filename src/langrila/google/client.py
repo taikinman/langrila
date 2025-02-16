@@ -470,6 +470,8 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if not isinstance(texts, list):
             texts = [texts]
 
+        batch_size = kwargs.pop("batch_size", 10)
+
         model = cast(str | None, kwargs.pop("model", None))
 
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
@@ -477,7 +479,6 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         embed_config = EmbedContentConfig(**embed_config_params)
 
         total_usage = Usage(model_name=model)
-        batch_size = kwargs.get("batch_size", 10)
         embeddings = []
         for batch in make_batch(texts, batch_size=batch_size):
             embedding = self.client.models.embed_content(
@@ -520,6 +521,8 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         if not isinstance(texts, list):
             texts = [texts]
 
+        batch_size = kwargs.pop("batch_size", 10)
+
         model = cast(str | None, kwargs.pop("model", None))
 
         _kwargs = {snake_to_camel(k): v for k, v in kwargs.items()}
@@ -527,7 +530,6 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         embed_config = EmbedContentConfig(**embed_config_params)
 
         total_usage = Usage(model_name=model)
-        batch_size = kwargs.get("batch_size", 10)
         embeddings = []
         for batch in make_batch(texts, batch_size=batch_size):
             embedding = await self.client.aio.models.embed_content(
