@@ -13,6 +13,7 @@ from google.genai.types import (
     FunctionDeclaration,
     FunctionResponse,
     GenerateContentConfig,
+    GenerateContentResponse,
     GenerateImageConfig,
     Part,
 )
@@ -282,7 +283,10 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         usage = Usage(model_name=model)
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
+        raw_chunks: list[GenerateContentResponse] = []
         for chunk in streamed_response:
+            raw_chunks.append(chunk)
+
             if usage_metadata := chunk.usage_metadata:
                 usage = Usage(
                     model_name=model,
@@ -338,7 +342,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         yield Response(
             contents=cast(list[ResponseType], contents),
             usage=usage,
-            raw=chunk,
+            raw=raw_chunks,
             name=name,
             is_last_chunk=True,
         )
@@ -385,7 +389,10 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         usage = Usage(model_name=model)
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
+        raw_chunks: list[GenerateContentResponse] = []
         async for chunk in streamed_response:
+            raw_chunks.append(chunk)
+
             if usage_metadata := chunk.usage_metadata:
                 usage = Usage(
                     model_name=model,
@@ -441,7 +448,7 @@ class GoogleClient(LLMClient[Content, str, Part, GeminiTool]):
         yield Response(
             contents=cast(list[ResponseType], contents),
             usage=usage,
-            raw=chunk,
+            raw=raw_chunks,
             name=name,
             is_last_chunk=True,
         )

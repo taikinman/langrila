@@ -320,8 +320,11 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         chunk_args = ""
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
+        raw_chunks: list[Any] = []
         with streamed_response as stream:
             for response in stream:
+                raw_chunks.append(response)
+
                 if isinstance(response, RawMessageStartEvent):
                     usage = Usage(
                         model_name=kwargs.get("model"),
@@ -336,6 +339,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                             yield Response(
                                 contents=[res],
                                 usage=usage,
+                                raw=response,
                             )
                         continue
 
@@ -357,6 +361,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                             yield Response(
                                 contents=[res],
                                 usage=usage,
+                                raw=response,
                             )
                         continue
 
@@ -370,6 +375,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                             yield Response(
                                 contents=[res],
                                 usage=usage,
+                                raw=response,
                             )
                         continue
                 elif isinstance(response, RawContentBlockStopEvent):
@@ -385,7 +391,9 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                         output_tokens=usage.output_tokens + response.usage.output_tokens,
                     )
 
-        yield Response(contents=contents, usage=usage, is_last_chunk=True, name=name)
+        yield Response(
+            contents=contents, usage=usage, is_last_chunk=True, name=name, raw=raw_chunks
+        )
 
     async def stream_text_async(
         self, messages: list[MessageParam], system_instruction: str | None = None, **kwargs: Any
@@ -423,8 +431,12 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
         chunk_args = ""
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
+        raw_chunks: list[Any] = []
+
         async with streamed_response as stream:
             async for response in stream:
+                raw_chunks.append(response)
+
                 if isinstance(response, RawMessageStartEvent):
                     usage = Usage(
                         model_name=kwargs.get("model"),
@@ -439,6 +451,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                             yield Response(
                                 contents=[res],
                                 usage=usage,
+                                raw=response,
                             )
                         continue
 
@@ -460,6 +473,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                             yield Response(
                                 contents=[res],
                                 usage=usage,
+                                raw=response,
                             )
                         continue
 
@@ -473,6 +487,7 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                             yield Response(
                                 contents=[res],
                                 usage=usage,
+                                raw=response,
                             )
                         continue
                 elif isinstance(response, RawContentBlockStopEvent):
@@ -488,7 +503,9 @@ class AnthropicClient(LLMClient[MessageParam, str, AnthropicContentType, ToolPar
                         output_tokens=usage.output_tokens + response.usage.output_tokens,
                     )
 
-        yield Response(contents=contents, usage=usage, is_last_chunk=True, name=name)
+        yield Response(
+            contents=contents, usage=usage, is_last_chunk=True, name=name, raw=raw_chunks
+        )
 
     def map_to_client_prompts(self, messages: list[Prompt]) -> list[MessageParam]:
         """
