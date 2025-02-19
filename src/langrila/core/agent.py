@@ -329,7 +329,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         prompt: AgentInput,
         system_instruction: SystemPrompt | None = None,
         **kwargs: Any,
-    ) -> list[Prompt | Response]:
+    ) -> tuple[Prompt, Response, Prompt]:
         while True:
             # Provide information about subagents and tools to the agnet
             planning_message = Prompt(
@@ -353,7 +353,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
             break
 
-        return [planning_message, response, next_turn_message]
+        return planning_message, response, next_turn_message
 
     async def _planning_step_async(
         self,
@@ -361,7 +361,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         prompt: AgentInput,
         system_instruction: SystemPrompt | None = None,
         **kwargs: Any,
-    ) -> list[Prompt | Response]:
+    ) -> tuple[Prompt, Response, Prompt]:
         while True:
             # Provide information about subagents and tools to the agnet
             planning_message = Prompt(
@@ -385,7 +385,7 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
             break
 
-        return [planning_message, response, next_turn_message]
+        return planning_message, response, next_turn_message
 
     def _flatten_history(self, messages: list[list[Prompt | Response]]) -> list[Prompt | Response]:
         return sum(messages, [])
@@ -447,14 +447,18 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         init_len_messages = len(messages)
 
         if self.planning:
-            messages.extend(
-                self._planning_step(
-                    messages=messages,
-                    prompt=prompt,
-                    system_instruction=system_instruction,
-                    **all_kwargs,
-                )
+            planning_message, response, next_turn_message = self._planning_step(
+                messages=messages,
+                prompt=prompt,
+                system_instruction=system_instruction,
+                **all_kwargs,
             )
+
+            if response.contents:
+                messages.extend([planning_message, response, next_turn_message])
+            else:
+                return response
+
         else:
             messages.extend(self.llm._process_user_prompt(prompt))
 
@@ -578,14 +582,18 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         init_len_messages = len(messages)
 
         if self.planning:
-            messages.extend(
-                await self._planning_step_async(
-                    messages=messages,
-                    prompt=prompt,
-                    system_instruction=system_instruction,
-                    **all_kwargs,
-                )
+            planning_message, response, next_turn_message = await self._planning_step_async(
+                messages=messages,
+                prompt=prompt,
+                system_instruction=system_instruction,
+                **all_kwargs,
             )
+
+            if response.contents:
+                messages.extend([planning_message, response, next_turn_message])
+            else:
+                return response
+
         else:
             messages.extend(self.llm._process_user_prompt(prompt))
 
@@ -711,14 +719,18 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         init_len_messages = len(messages)
 
         if self.planning:
-            messages.extend(
-                self._planning_step(
-                    messages=messages,
-                    prompt=prompt,
-                    system_instruction=system_instruction,
-                    **all_kwargs,
-                )
+            planning_message, response, next_turn_message = self._planning_step(
+                messages=messages,
+                prompt=prompt,
+                system_instruction=system_instruction,
+                **all_kwargs,
             )
+
+            if response.contents:
+                messages.extend([planning_message, response, next_turn_message])
+            else:
+                yield response
+                return
         else:
             messages.extend(self.llm._process_user_prompt(prompt))
 
@@ -845,14 +857,18 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
         init_len_messages = len(messages)
 
         if self.planning:
-            messages.extend(
-                await self._planning_step_async(
-                    messages=messages,
-                    prompt=prompt,
-                    system_instruction=system_instruction,
-                    **all_kwargs,
-                )
+            planning_message, response, next_turn_message = await self._planning_step_async(
+                messages=messages,
+                prompt=prompt,
+                system_instruction=system_instruction,
+                **all_kwargs,
             )
+
+            if response.contents:
+                messages.extend([planning_message, response, next_turn_message])
+            else:
+                yield response
+                return
         else:
             messages.extend(self.llm._process_user_prompt(prompt))
 
