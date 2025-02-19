@@ -345,10 +345,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
 
             self._usage = self._update_usage(self._usage, response)
 
-            if not response.contents:
-                self.logger.error("No response received from the model. Retrying.")
-                continue
-
             # Next turn message is configurable internal prompt
             next_turn_message = Prompt(
                 contents=[TextPrompt(text=self.agent_config.internal_prompt.do_plan)],
@@ -380,10 +376,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             )
 
             self._usage = self._update_usage(self._usage, response)
-
-            if not response.contents:
-                self.logger.error("No response received from the model. Retrying.")
-                continue
 
             # Next turn message is configurable internal prompt
             next_turn_message = Prompt(
@@ -483,10 +475,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             )
 
             self._usage = self._update_usage(self._usage, response)
-
-            if not response.contents:
-                self.logger.error("No response received from the model. Retrying.")
-                continue
 
             messages.append(response)
 
@@ -618,10 +606,6 @@ class Agent(Generic[ClientMessage, ClientSystemMessage, ClientMessageContent, Cl
             )
 
             self._usage = self._update_usage(self._usage, response)
-
-            if not response.contents:
-                self.logger.error("No response received from the model. Retrying.")
-                continue
 
             messages.append(response)
 
