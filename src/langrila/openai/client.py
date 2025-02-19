@@ -275,10 +275,11 @@ class OpenAIClient(
                             args=tool_call.function.arguments,
                         )
                     )
-            elif transcript := choice.message.audio.transcript:
-                response_message = transcript.strip()
-                if response_message:
-                    contents.append(TextResponse(text=response_message))
+            elif choice.message.audio:
+                if transcript := choice.message.audio.transcript:
+                    response_message = transcript.strip()
+                    if response_message:
+                        contents.append(TextResponse(text=response_message))
 
         return Response(
             contents=cast(list[ResponseType], contents),
