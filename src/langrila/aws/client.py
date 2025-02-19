@@ -189,8 +189,11 @@ class BedrockClient(
         chunk_args = ""
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
+        raw_chunks: list[Any] = []
         usage = Usage(model_name=kwargs.get("modelId"))
         for chunk in streamed_response.get("stream", []):
+            raw_chunks.append(chunk)
+
             if message_start := chunk.get("messageStart"):
                 role = message_start.get("role")
             elif content_block_delta := chunk.get("contentBlockDelta"):
@@ -267,7 +270,7 @@ class BedrockClient(
             role=role,
             contents=contents,
             usage=usage,
-            raw=chunk,
+            raw=raw_chunks,
             name=name,
             is_last_chunk=True,
         )

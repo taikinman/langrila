@@ -6,6 +6,7 @@ from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 from openai._types import NOT_GIVEN, NotGiven
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
+    ChatCompletionChunk,
     ChatCompletionMessage,
     ChatCompletionMessageToolCall,
     ChatCompletionSystemMessageParam,
@@ -425,7 +426,10 @@ class OpenAIClient(
         usage = Usage(model_name=cast(str | None, kwargs.get("model")))
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
+        raw_chunks: list[ChatCompletionChunk] = []
         for chunk in response:
+            raw_chunks.append(chunk)
+
             if choices := cast(list[Choice], chunk.choices):
                 delta = choices[0].delta
                 if content := delta.content:
@@ -481,13 +485,13 @@ class OpenAIClient(
             chunk_args = ""
             call_id = ""
 
-            yield Response(
-                contents=contents,
-                usage=usage,
-                raw=response,
-                name=name,
-                is_last_chunk=True,
-            )
+        yield Response(
+            contents=contents,
+            usage=usage,
+            raw=raw_chunks,
+            name=name,
+            is_last_chunk=True,
+        )
 
         chunk_texts = ""
         res = None
@@ -542,7 +546,10 @@ class OpenAIClient(
         usage = Usage(model_name=cast(str | None, kwargs.get("model")))
         res: TextResponse | ToolCallResponse | None = None
         contents: list[TextResponse | ToolCallResponse] = []
+        raw_chunks: list[ChatCompletionChunk] = []
         async for chunk in response:
+            raw_chunks.append(chunk)
+
             if choices := cast(list[Choice], chunk.choices):
                 delta = choices[0].delta
                 if content := delta.content:
@@ -602,7 +609,7 @@ class OpenAIClient(
         yield Response(
             contents=contents,
             usage=usage,
-            raw=response,
+            raw=raw_chunks,
             name=name,
             is_last_chunk=True,
         )
